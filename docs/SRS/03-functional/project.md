@@ -1,202 +1,122 @@
-# Functional Requirements: Project Management
+# Project / Members / Settings
 
-## FR-03: CRUD Dự án
-**Mức ưu tiên:** Must  
-**Mô tả:** Tạo, xem, cập nhật, xóa mềm và khôi phục dự án Godot trong hệ thống.
+## Mục tiêu
 
-### Luồng chính — Tạo dự án
-1. User nhập tên dự án, mô tả (optional), Godot version, visibility (private/internal).
-2. Hệ thống validate: tên unique trong hệ thống, tên 3-50 ký tự, chỉ chứa `[a-zA-Z0-9_-]`.
-3. Tạo project, gán người tạo làm `project_owner`.
-4. Ghi Activity Log: `project.created`.
+Module Project quản lý vòng đời dự án Godot trong GodForge, thành viên, vai trò theo project và cấu hình dự án.
 
-### Luồng chính — Cập nhật dự án
-1. Project Admin/Owner cập nhật tên, mô tả, Godot version, settings.
-2. Validate input, lưu thay đổi.
-3. Ghi Activity Log: `project.updated`.
+## Tác nhân
 
-### Luồng chính — Xóa mềm
-1. Project Owner chọn xóa dự án.
-2. Hệ thống xác nhận (prompt confirmation).
-3. Đánh dấu `deleted_at` timestamp (soft-delete).
-4. Dự án không còn xuất hiện trong danh sách, nhưng dữ liệu vẫn tồn tại.
-5. Ghi Activity Log: `project.deleted`.
+- System Admin
+- Organization Owner
+- Project Admin
+- Developer
+- Reviewer/QA
+- Viewer
 
-### Luồng chính — Khôi phục
-1. System Admin xem danh sách dự án đã xóa.
-2. Chọn khôi phục → xóa `deleted_at`, dự án trở lại bình thường.
+## Phạm vi
 
-### Business Rules
-- **BR-10:** Tên project unique toàn hệ thống (case-insensitive).
-- **BR-11:** Soft-delete giữ lại data 30 ngày, sau đó eligible cho hard-delete bởi background job.
-- **BR-12:** Visibility mặc định là `private`.
-- **BR-13:** Tạo project tự động gán creator làm `project_owner`.
+- Tạo, xem, cập nhật, xóa mềm và khôi phục project.
+- Tự động gán người tạo làm `project_owner`.
+- Quản lý thành viên và project-level role.
+- Quản lý project settings và user settings liên quan.
+- Ghi Activity Log cho mọi thao tác write.
 
-### Acceptance Criteria
-- [x] AC-13: Tạo project với tên hợp lệ → project xuất hiện trong danh sách.
-- [x] AC-14: Tạo project với tên trùng → 409 Conflict.
-- [x] AC-15: Xóa mềm project → không xuất hiện trong list, nhưng data còn trong DB.
-- [x] AC-16: Khôi phục project đã xóa → xuất hiện lại.
-- [x] AC-17: User không có quyền sửa project → 403.
+## Yêu cầu chức năng
 
----
+| ID | Tên yêu cầu | Mô tả | Priority | Actor |
+| --- | --- | --- | --- | --- |
+| FR-03 | CRUD dự án | Tạo, xem, cập nhật, xóa mềm và khôi phục dự án Godot. | Must | System Admin, Project Admin, User |
+| FR-03.1 | Quản lý thành viên | Mời, đổi role và xóa member trong project. | Must | Project Admin |
+| FR-17 | Cài đặt | Cấu hình project settings và user settings. | Should | Project Admin, User |
+| BR-10 | Unique project name | Tên project unique toàn hệ thống, case-insensitive. | Must | System |
+| BR-11 | Soft delete | Project bị xóa mềm giữ dữ liệu 30 ngày trước khi eligible hard-delete. | Must | System |
+| BR-13 | Creator owner | Người tạo project được gán `project_owner`. | Must | System |
 
-## FR-14: Dashboard
-**Mức ưu tiên:** Must  
-**Mô tả:** Trang tổng quan hiển thị thống kê, health score, trạng thái repository, job gần đây và hoạt động mới.
+## Luồng xử lý chính
 
-### Dữ liệu hiển thị
-| Mục | Mô tả | Nguồn |
-|-----|-------|-------|
-| Project Summary | Tổng số scene, asset, script, resource | Redis Cache |
-| Health Score | Điểm sức khỏe dự án (0-100) | Redis Cache (từ health_reports) |
-| Repository Status | Branch hiện tại, commit mới nhất, sync status | DB + Git |
-| Recent Jobs | 10 job gần nhất (status, type, duration) | DB (jobs table) |
-| Activity Feed | 20 hoạt động gần nhất | DB (activities table) |
-| Health Issues | Top 5 issues nghiêm trọng nhất | Redis Cache |
+### Tạo project
 
-### Business Rules
-- **BR-14:** Dashboard data ưu tiên lấy từ Redis Cache. Cache TTL: 5 phút.
-- **BR-15:** Nếu cache miss → query DB và rebuild cache.
-- **BR-16:** Dashboard chỉ hiển thị data của project mà user có quyền truy cập.
+1. User nhập tên, mô tả, Godot version và visibility.
+2. Backend validate tên 3-50 ký tự, unique case-insensitive và visibility hợp lệ.
+3. Hệ thống tạo project, slug và project settings mặc định.
+4. Người tạo được gán `project_owner`.
+5. Hệ thống ghi activity `project.created`.
 
-### Acceptance Criteria
-- [x] AC-18: Mở dashboard → hiển thị đầy đủ 6 mục trên trong P95 < 2 giây.
-- [x] AC-19: Cache hit → response < 500ms.
-- [x] AC-20: User chỉ thấy data của project được phân quyền.
+### Cập nhật project
 
----
+1. Project Admin/Owner cập nhật tên, mô tả, Godot version hoặc visibility.
+2. Backend kiểm tra project chưa bị deleted/archived và actor có quyền.
+3. Hệ thống validate input, lưu thay đổi và ghi `project.updated`.
 
-## FR-15: Tìm kiếm (Search)
-**Mức ưu tiên:** Should  
-**Mô tả:** Tìm kiếm dự án, scene, node, asset, script, commit.
+### Quản lý members
 
-### Chi tiết
-- **Searchable fields:** project name, scene name, node name/type, asset path, script path, commit message, author.
-- **Search type:** Full-text search (PostgreSQL `tsvector`/`tsquery`).
-- **Pagination:** Offset-based, default page size = 20, max = 100.
-- **Filtering:** Theo project, loại resource (scene/asset/script), thời gian.
+1. Project Admin nhập email và role cần mời.
+2. Backend kiểm tra user tồn tại hoặc tạo invite theo chính sách.
+3. Hệ thống tạo/cập nhật `project_members`.
+4. User nhận notification `member.invited` hoặc `member.role_changed`.
+5. Hệ thống ghi activity tương ứng.
 
-### Business Rules
-- **BR-17:** Kết quả tìm kiếm phải tuân thủ RBAC — chỉ trả về data thuộc project user có quyền.
-- **BR-18:** Query tối đa 200 ký tự, sanitize input chống SQL injection.
+### Xóa mềm và khôi phục
 
-### Acceptance Criteria
-- [x] AC-21: Tìm kiếm "Player" → trả về scenes, nodes, scripts có chứa "Player".
-- [x] AC-22: User không có quyền project A → kết quả không chứa data từ project A.
-- [x] AC-23: Kết quả được phân trang đúng.
+1. Project Owner xác nhận thao tác xóa project.
+2. Backend set `deleted_at`, ẩn project khỏi danh sách thường và ghi `project.deleted`.
+3. System Admin có thể khôi phục project đã xóa mềm bằng cách xóa `deleted_at`.
 
----
+## Ngoại lệ / lỗi
 
-## FR-16: Thông báo (Notification)
-**Mức ưu tiên:** Should  
-**Mô tả:** Gửi và quản lý thông báo cho người dùng.
+| Tình huống | HTTP Status | Error Code | Hành vi |
+| --- | --- | --- | --- |
+| Tên project trùng | 409 | `PROJECT_NAME_EXISTS` | Không tạo/cập nhật project. |
+| Project không tồn tại hoặc không có quyền | 404/403 | `PROJECT_NOT_FOUND` / `FORBIDDEN` | Không lộ thông tin ngoài quyền. |
+| Xóa owner cuối cùng | 400 | `LAST_OWNER_CANNOT_BE_REMOVED` | Không cập nhật member. |
+| Role không hợp lệ | 400 | `VALIDATION_ERROR` | Trả field error. |
+| Developer cập nhật settings project | 403 | `FORBIDDEN` | Từ chối thao tác. |
+| Project đã deleted | 409 | `PROJECT_DELETED` | Yêu cầu restore trước nếu được phép. |
 
-### Loại thông báo
-| Type | Trigger | Mức độ |
-|------|---------|--------|
-| `job.completed` | Worker hoàn thành job (parse/analyze/diff) | Info |
-| `job.failed` | Worker thất bại | Warning |
-| `health.critical` | Health issue mức Critical mới phát hiện | Warning |
-| `member.invited` | Được mời vào project | Info |
-| `member.role_changed` | Vai trò bị thay đổi | Info |
+## Acceptance Criteria
 
-### Kênh gửi
-- **In-app:** Lưu DB, hiển thị bell icon + dropdown. Realtime qua SignalR.
-- **Email:** Cho các event quan trọng (invite, critical health). Có thể tắt trong settings.
+- AC-13: Tạo project với tên hợp lệ làm project xuất hiện trong danh sách của creator.
+- AC-14: Tạo project với tên trùng trả 409.
+- AC-15: Xóa mềm project làm project không xuất hiện trong list thường nhưng dữ liệu còn trong DB.
+- AC-16: System Admin khôi phục project đã xóa mềm thành công.
+- AC-17: User không có quyền sửa project nhận 403.
+- AC-27: Project Admin thay đổi setting và setting được lưu/applied.
+- AC-28: Developer cố thay đổi project setting nhận 403.
+- AC-29: User thay đổi personal settings và UI dùng setting mới.
 
-### Business Rules
-- **BR-19:** Notification được gửi realtime qua SignalR khi user online.
-- **BR-20:** User có thể đánh dấu đã đọc (mark as read) hoặc đánh dấu tất cả.
-- **BR-21:** Notification retention: 90 ngày.
+## API liên quan
 
-### Acceptance Criteria
-- [x] AC-24: Job hoàn thành → user nhận notification realtime (nếu online) hoặc thấy khi mở app.
-- [x] AC-25: Đánh dấu đã đọc → notification không còn badge unread.
-- [x] AC-26: Notification cũ hơn 90 ngày bị xóa bởi background job.
+| Method | Path | Permission | Request chính | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects` | Authenticated | pagination/filter | Project list theo quyền | `FORBIDDEN` |
+| POST | `/api/v1/projects` | Authenticated | name, description, godotVersion, visibility | Project created | `PROJECT_NAME_EXISTS`, `VALIDATION_ERROR` |
+| GET | `/api/v1/projects/{id}` | Project member | project id | Project detail | `PROJECT_NOT_FOUND` |
+| PUT | `/api/v1/projects/{id}` | `project_admin+` | project fields | Project updated | `FORBIDDEN`, `VALIDATION_ERROR` |
+| DELETE | `/api/v1/projects/{id}` | `project_owner` | confirmation | Project soft-deleted | `FORBIDDEN` |
+| POST | `/api/v1/projects/{id}/restore` | `system_admin` | none | Project restored | `PROJECT_NOT_FOUND` |
+| GET | `/api/v1/projects/{id}/members` | Project member | pagination | Member list | `FORBIDDEN` |
+| POST | `/api/v1/projects/{id}/members` | `project_admin+` | email, role | Member added/invited | `ALREADY_MEMBER`, `USER_NOT_FOUND` |
+| PUT | `/api/v1/projects/{id}/members/{userId}` | `project_admin+` | role | Role updated | `LAST_OWNER_CANNOT_BE_REMOVED` |
+| DELETE | `/api/v1/projects/{id}/members/{userId}` | `project_admin+` | none | Member removed | `LAST_OWNER_CANNOT_BE_REMOVED` |
+| GET | `/api/v1/projects/{id}/settings` | `project_admin+` | none | Project settings | `FORBIDDEN` |
+| PUT | `/api/v1/projects/{id}/settings` | `project_admin+` | settings payload | Settings updated | `VALIDATION_ERROR` |
+| PUT | `/api/v1/users/me/settings` | Authenticated | user settings | Settings updated | `VALIDATION_ERROR` |
 
----
+## Database liên quan
 
-## FR-17: Cài đặt (Settings)
-**Mức ưu tiên:** Should  
-**Mô tả:** Cho phép cấu hình dự án và tùy chọn cá nhân.
+| Bảng | Vai trò |
+| --- | --- |
+| `projects` | Lưu project core data, slug, visibility, health score cache, creator và `deleted_at`. |
+| `project_members` | Gán user vào project kèm role và invited_by. |
+| `project_settings` | Lưu auto parse/analyze, health schedule và notification policy của project. |
+| `user_settings` | Lưu theme và notification preference của user. |
+| `activities` | Ghi project/member/settings write operations. |
+| `notifications` | Gửi thông báo invite, role change hoặc project event quan trọng. |
 
-### Project Settings (Project Admin+)
-| Setting | Mô tả | Default |
-|---------|-------|---------|
-| `godot_version` | Phiên bản Godot Engine | `4.x` |
-| `auto_parse_on_push` | Tự động parse khi có push mới | `true` |
-| `auto_analyze_on_parse` | Tự động analyze sau khi parse xong | `true` |
-| `health_check_schedule` | Lịch chạy health check | `daily` |
-| `notification_email_enabled` | Gửi email notification | `true` |
+## Ghi chú bảo mật / phân quyền
 
-### User Settings (Cá nhân)
-| Setting | Mô tả | Default |
-|---------|-------|---------|
-| `theme` | Giao diện sáng/tối | `dark` |
-| `notification_in_app` | Nhận thông báo in-app | `true` |
-| `notification_email` | Nhận email thông báo | `true` |
-| `language` | Ngôn ngữ giao diện (MVP: chỉ tiếng Anh) | `en` |
-
-### Acceptance Criteria
-- [x] AC-27: Project Admin thay đổi setting → setting được lưu và áp dụng.
-- [x] AC-28: Developer cố thay đổi project setting → 403.
-- [x] AC-29: User thay đổi theme → giao diện cập nhật ngay.
-
----
-
-## FR-18: Activity Log
-**Mức ưu tiên:** Must  
-**Mô tả:** Ghi nhận hoạt động quan trọng của người dùng và hệ thống để phục vụ audit.
-
-### Cấu trúc Activity Entry
-```json
-{
-  "id": "uuid",
-  "project_id": "uuid | null",
-  "user_id": "uuid | null",
-  "action": "project.created",
-  "target_type": "project",
-  "target_id": "uuid",
-  "metadata": { "project_name": "MyGame" },
-  "ip_address": "1.2.3.4",
-  "correlation_id": "abc-123",
-  "created_at": "2026-07-01T10:00:00Z"
-}
-```
-
-### Danh sách Action Types
-| Action | Mô tả |
-|--------|-------|
-| `user.login.success` | Đăng nhập thành công |
-| `user.login.failed` | Đăng nhập thất bại |
-| `user.logout` | Đăng xuất |
-| `user.created` | Tạo account mới |
-| `user.role_changed` | Thay đổi vai trò |
-| `project.created` | Tạo project |
-| `project.updated` | Cập nhật project |
-| `project.deleted` | Xóa mềm project |
-| `project.restored` | Khôi phục project |
-| `project.member_added` | Thêm member |
-| `project.member_removed` | Xóa member |
-| `repo.connected` | Kết nối repository |
-| `repo.disconnected` | Ngắt kết nối |
-| `git.push` | Push thành công |
-| `git.pull` | Pull thành công |
-| `git.merge` | Merge thành công |
-| `job.started` | Job bắt đầu |
-| `job.completed` | Job hoàn thành |
-| `job.failed` | Job thất bại |
-
-### Business Rules
-- **BR-22:** Mọi thao tác thay đổi dữ liệu (write) phải ghi Activity Log.
-- **BR-23:** Log thất bại cũng phải được ghi, kèm correlation_id.
-- **BR-24:** KHÔNG lưu thông tin nhạy cảm (password, token) trong log.
-- **BR-25:** Activity Log retention: 1 năm. Sau đó eligible cho archival.
-- **BR-26:** Activity Log là append-only, không được sửa hay xóa.
-
-### Acceptance Criteria
-- [x] AC-30: Tạo project → activity log được ghi với action `project.created`.
-- [x] AC-31: Đăng nhập thất bại → activity log ghi `user.login.failed` kèm IP.
-- [x] AC-32: Activity log không chứa password hay token.
-- [x] AC-33: Xem activity log theo project → chỉ thấy log thuộc project đó, phân trang.
+- Project list và project detail phải filter theo membership hoặc quyền System Admin.
+- Không trả dữ liệu project bị deleted cho user thường.
+- Không cho phép self-promote hoặc giảm quyền owner cuối cùng.
+- Mọi write operation phải ghi activity log và correlation id.
+- Settings liên quan credential/repository phải ẩn secret và kiểm tra quyền `project_admin+`.

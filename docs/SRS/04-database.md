@@ -1,4 +1,13 @@
-# 4. Kiến trúc Dữ liệu (Database)
+# 4. Database
+
+## 4.0 Mục tiêu
+
+Database của GodForge dùng PostgreSQL làm nguồn dữ liệu chính, chia rõ **Core Schema** và **Metadata Schema**:
+
+- Core Schema lưu dữ liệu nghiệp vụ không thể tái tạo đầy đủ từ repository: user, project, membership, repository config, job, notification, activity và settings.
+- Metadata Schema lưu dữ liệu có thể tái tạo từ repository snapshot: scene, node, asset, script, resource, dependency và health output.
+- Redis dùng cho cache, rate limit và distributed lock.
+- MinIO dùng cho artifact lớn như diff result, thumbnail, preview và report export.
 
 ## 4.1 Cơ sở dữ liệu chính: PostgreSQL
 
@@ -31,6 +40,29 @@ erDiagram
 
     jobs ||--o{ notifications : "triggers"
 ```
+
+## 4.1.1 Trách nhiệm bảng và quan hệ chính
+
+| Bảng | Mục đích | Quan hệ chính |
+| --- | --- | --- |
+| `users` | Danh tính, trạng thái tài khoản và role hệ thống. | 1-n `refresh_tokens`, `project_members`, `activities`, `notifications`, `user_settings`. |
+| `refresh_tokens` | Session refresh token dạng hash. | n-1 `users`. |
+| `projects` | Aggregate chính của dự án Godot. | 1-n `project_members`, `repositories`, `jobs`, `activities`, `health_reports`; 1-1 `project_settings`. |
+| `project_members` | Gán user vào project với role. | n-1 `users`, n-1 `projects`. |
+| `repositories` | Cấu hình repository Git và workspace. | n-1 `projects`; 1-n metadata entities. |
+| `jobs` | Lifecycle tác vụ async. | n-1 `projects`, optional n-1 `users`, 1-n `notifications`. |
+| `activities` | Activity/audit log append-only. | optional n-1 `projects`, optional n-1 `users`. |
+| `notifications` | Notification theo recipient. | n-1 `users`, optional n-1 `projects`, optional n-1 `jobs`. |
+| `project_settings` | Cấu hình project. | 1-1 `projects`. |
+| `user_settings` | Tùy chọn cá nhân. | 1-1 `users`. |
+| `scenes` | Metadata scene `.tscn`. | n-1 `repositories`, 1-n `scene_nodes`, 1-n `dependencies` theo source path. |
+| `scene_nodes` | Node tree của scene. | n-1 `scenes`. |
+| `assets` | Metadata asset. | n-1 `repositories`, liên kết logic qua `dependencies`. |
+| `scripts` | Metadata `.gd`. | n-1 `repositories`, liên kết logic qua `dependencies`. |
+| `resources` | Metadata `.tres`/`.res`. | n-1 `repositories`, liên kết logic qua `dependencies`. |
+| `dependencies` | Cạnh graph phụ thuộc. | n-1 `repositories`, source/target path tham chiếu metadata. |
+| `health_reports` | Kết quả health analysis. | n-1 `projects`, 1-n `health_issues`, optional n-1 `jobs`. |
+| `health_issues` | Issue cụ thể trong report. | n-1 `health_reports`. |
 
 ---
 
@@ -155,7 +187,7 @@ Trạng thái tác vụ bất đồng bộ.
 |--------|------|----------|---------|-------------|-------|
 | `id` | `uuid` | NO | `gen_random_uuid()` | PK | |
 | `project_id` | `uuid` | NO | | FK → `projects.id` ON DELETE CASCADE | |
-| `type` | `varchar(30)` | NO | | CHECK (`clone`, `fetch`, `parse`, `analyze`, `diff`) | Loại job |
+| `type` | `varchar(30)` | NO | | CHECK (`clone`, `fetch`, `parse`, `analyze`, `diff`, `preview`) | Loại job |
 | `status` | `varchar(20)` | NO | `'queued'` | CHECK (`queued`, `running`, `completed`, `failed`, `cancelled`) | |
 | `progress` | `int` | NO | `0` | CHECK (0-100) | % hoàn thành |
 | `started_at` | `timestamptz` | YES | | | Bắt đầu xử lý |
