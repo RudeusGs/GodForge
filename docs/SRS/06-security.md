@@ -1,28 +1,28 @@
 # 6. Security
 
-## 6.1 Mục tiêu bảo mật
+## 6.1 Security Objectives
 
-GodForge quản lý repository, metadata dự án, credential Git và lịch sử hoạt động nên phải coi dữ liệu dự án là nhạy cảm. Mục tiêu bảo mật chính:
+GodForge manages repositories, project metadata, Git credentials, and activity histories, so project data must be treated as sensitive. Primary security objectives:
 
-- Xác thực user bằng JWT access token và refresh token rotation.
-- Phân quyền bằng RBAC ở system-level và project-level.
-- Không lưu credential, password hoặc token plaintext.
-- Không expose internal path, credential, stack trace hoặc raw command output nhạy cảm.
-- Ghi audit/activity log cho thao tác quan trọng với correlation id.
-- Validate mọi input từ user, repository URL, file path và worker message.
+- Authenticate users using JWT access tokens and refresh token rotation.
+- Enforce authorization via RBAC at the system and project levels.
+- Do not store credentials, passwords, or tokens in plaintext.
+- Do not expose internal paths, credentials, stack traces, or sensitive raw command outputs.
+- Record audit/activity logs for critical operations with a correlation ID.
+- Validate all user input, repository URLs, file paths, and worker messages.
 
 ## 6.2 Authentication
 
-| Thành phần | Quy định |
+| Component | Policy |
 | --- | --- |
-| Access token | JWT, lifetime 15 phút. |
-| Refresh token | Opaque random token, lifetime 7 ngày, lưu hash SHA-256 trong DB. |
-| Rotation | Mỗi lần refresh phát refresh token mới và revoke token cũ. |
-| JWT issuer | `godforge-api` hoặc cấu hình theo môi trường. |
-| JWT audience | `godforge-client` hoặc cấu hình theo môi trường. |
-| Clock skew | Tối đa 30 giây. |
+| Access token | JWT, lifetime 15 minutes. |
+| Refresh token | Opaque random token, lifetime 7 days, hash SHA-256 stored in DB. |
+| Rotation | A new refresh token is issued and the old one is revoked upon every refresh. |
+| JWT issuer | `godforge-api` or configured per environment. |
+| JWT audience | `godforge-client` or configured per environment. |
+| Clock skew | Maximum 30 seconds. |
 
-JWT payload tối thiểu:
+Minimum JWT payload:
 
 ```json
 {
@@ -38,101 +38,101 @@ JWT payload tối thiểu:
 }
 ```
 
-## 6.3 Password hashing
+## 6.3 Password Hashing
 
-| Quy định | Giá trị |
+| Policy | Value |
 | --- | --- |
 | Algorithm | bcrypt |
-| Cost factor | Tối thiểu 12 |
-| Minimum length | 8 ký tự |
-| Require uppercase | Có |
-| Require lowercase | Có |
-| Require digit | Có |
-| Require special character | Không bắt buộc trong MVP |
-| Max length | 128 ký tự |
+| Cost factor | Minimum 12 |
+| Minimum length | 8 characters |
+| Require uppercase | Yes |
+| Require lowercase | Yes |
+| Require digit | Yes |
+| Require special character | Optional in MVP |
+| Max length | 128 characters |
 
-Không dùng MD5, SHA-1, SHA-256 đơn thuần hoặc custom hash cho password.
+Do not use simple MD5, SHA-1, SHA-256, or custom hashes for passwords.
 
 ## 6.4 Authorization / RBAC
 
-### System-level roles
+### System-level Roles
 
 | Action | system_admin | user |
 | --- | :---: | :---: |
-| Manage users | Có | Không |
-| View all projects for operations | Có | Không |
-| Restore deleted projects | Có | Không |
-| System configuration | Có | Không |
-| Create project | Có | Có |
+| Manage users | Yes | No |
+| View all projects for operations | Yes | No |
+| Restore deleted projects | Yes | No |
+| System configuration | Yes | No |
+| Create project | Yes | Yes |
 
-### Project-level roles
+### Project-level Roles
 
 | Action | project_owner | project_admin | developer | reviewer | viewer |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| Delete project | Có | Không | Không | Không | Không |
-| Manage members | Có | Có | Không | Không | Không |
-| Configure repository | Có | Có | Không | Không | Không |
-| Update project settings | Có | Có | Không | Không | Không |
-| Git operations | Có | Có | Có | Không | Không |
-| Trigger parse/analyze | Có | Có | Có | Không | Không |
-| View scenes/assets | Có | Có | Có | Có | Có |
-| View dependency/diff/health | Có | Có | Có | Có | Có |
-| View activity | Có | Có | Có | Có | Có |
+| Delete project | Yes | No | No | No | No |
+| Manage members | Yes | Yes | No | No | No |
+| Configure repository | Yes | Yes | No | No | No |
+| Update project settings | Yes | Yes | No | No | No |
+| Git operations | Yes | Yes | Yes | No | No |
+| Trigger parse/analyze | Yes | Yes | Yes | No | No |
+| View scenes/assets | Yes | Yes | Yes | Yes | Yes |
+| View dependency/diff/health | Yes | Yes | Yes | Yes | Yes |
+| View activity | Yes | Yes | Yes | Yes | Yes |
 
-### Quy tắc phân quyền
+### Authorization Rules
 
-- Kiểm tra quyền ở Application/Use Case layer, không chỉ ở Controller hoặc UI.
-- Mọi query dữ liệu project phải có project scope.
-- System Admin bypass project RBAC cho quản trị nhưng vẫn ghi activity/audit.
-- Frontend role-based visibility chỉ là hỗ trợ UX, không phải biện pháp bảo mật.
+- Enforce permissions at the Application/Use Case layer, not just at the Controller or UI layer.
+- All project data queries must include a project scope.
+- System Admin bypasses project RBAC for administrative purposes, but activities/audits are still logged.
+- Frontend role-based visibility is merely a UX aid, not a security measure.
 
-## 6.5 Git credential encryption
+## 6.5 Git Credential Encryption
 
-| Nội dung | Quy định |
+| Area | Policy |
 | --- | --- |
-| Git PAT | Mã hóa AES-256-GCM hoặc cơ chế tương đương trước khi lưu. |
-| Key | Lưu trong secret manager hoặc environment variable bảo vệ, không hardcode. |
-| API response | Không trả plaintext; chỉ trả trạng thái cấu hình hoặc masked value. |
-| Logs | Không log PAT, remote URL có embedded credential, token hoặc secret. |
-| Decrypt | Chỉ decrypt trong worker/service khi cần Git operation. |
+| Git PAT | Encrypt using AES-256-GCM or equivalent mechanism before saving. |
+| Key | Store in a secure secret manager or protected environment variable, never hardcoded. |
+| API response | Never return plaintext; only return configuration status or masked value. |
+| Logs | Do not log PATs, remote URLs with embedded credentials, tokens, or secrets. |
+| Decrypt | Only decrypt within the worker/service when needed for Git operations. |
 
-Environment variable đề xuất: `GODFORGE_ENCRYPTION_KEY`.
+Proposed environment variable: `GODFORGE_ENCRYPTION_KEY`.
 
-## 6.6 Secret management
+## 6.6 Secret Management
 
-- Không commit secret vào repo.
-- Tách config dev/staging/prod.
-- Secret production phải được cấp qua secret manager hoặc biến môi trường an toàn.
-- Rotate key/credential phải có quy trình rõ ràng.
-- Log scrubber phải loại bỏ token, password, PAT và authorization header.
+- Do not commit secrets into the repository.
+- Separate dev/staging/prod configurations.
+- Production secrets must be provided via a secret manager or secure environment variables.
+- Key/credential rotation must have a clear process.
+- Log scrubbers must filter out tokens, passwords, PATs, and authorization headers.
 
-## 6.7 Rate limiting
+## 6.7 Rate Limiting
 
-| Endpoint/Nhóm | Limit | Window |
+| Endpoint/Group | Limit | Window |
 | --- | --- | --- |
-| `/api/v1/auth/login` | 10 requests | 1 phút / IP |
-| `/api/v1/auth/refresh` | 20 requests | 1 phút / IP |
-| General API | 100 requests | 1 phút / user |
-| Search | 30 requests | 1 phút / user |
-| Git operations | 10 requests | 1 phút / user |
+| `/api/v1/auth/login` | 10 requests | 1 minute / IP |
+| `/api/v1/auth/refresh` | 20 requests | 1 minute / IP |
+| General API | 100 requests | 1 minute / user |
+| Search | 30 requests | 1 minute / user |
+| Git operations | 10 requests | 1 minute / user |
 
-Brute-force protection: sau 5 lần login sai liên tiếp, account bị khóa 15 phút.
+Brute-force protection: After 5 consecutive failed logins, the account is locked for 15 minutes.
 
-## 6.8 Input validation
+## 6.8 Input Validation
 
-| Input | Quy định |
+| Input | Policy |
 | --- | --- |
-| Repository URL | Chỉ HTTPS trong MVP; validate scheme, host, length và deny private/reserved network mặc định, chỉ cho phép override bằng allowlist ở môi trường dev/staging. |
-| File path | Normalize path, reject absolute path, `..`, symlink escape và path ngoài workspace. |
-| Git arguments | Không tạo shell command từ raw string; dùng structured args. |
-| Search query | Max 200 ký tự, parameterized query. |
-| Pagination | `pageSize` tối đa 100. |
-| Worker message | Validate schema version, job id, project id, correlation id, input hash và attempt count. |
-| Godot file | Giới hạn kích thước, timeout parse, không execute script. |
+| Repository URL | HTTPS only in MVP; validate scheme, host, length, and deny private/reserved networks by default. Allow overrides only via an allowlist in dev/staging environments. |
+| File path | Normalize paths; reject absolute paths, `..`, symlink escapes, and paths outside the workspace. |
+| Git arguments | Do not build shell commands from raw strings; use structured arguments. |
+| Search query | Maximum 200 characters, parameterized queries. |
+| Pagination | Maximum `pageSize` is 100. |
+| Worker message | Validate schema version, job ID, project ID, correlation ID, input hash, and attempt count. |
+| Godot file | Apply size limits and parse timeouts; do not execute scripts. |
 
-## 6.9 Audit logging
+## 6.9 Audit Logging
 
-Mọi thao tác quan trọng phải ghi activity/audit log:
+All critical operations must record an activity/audit log:
 
 - Login success/failure, logout.
 - User created, role changed, member added/removed.
@@ -140,28 +140,28 @@ Mọi thao tác quan trọng phải ghi activity/audit log:
 - Repository connected/credential updated/disconnected.
 - Git commit/push/pull/merge.
 - Job started/retrying/completed/failed/cancelled/timeout/dead-lettered.
-- Permission denied ở các hành động nhạy cảm nếu cấu hình audit bật.
+- Permission denied on sensitive actions if audit policy is enabled.
 
-Activity log phải có `correlation_id`, actor, project nếu có, action, target và metadata đã sanitize.
+Activity logs must include a `correlation_id`, actor, project (if applicable), action, target, and sanitized metadata.
 
-## 6.10 Không expose thông tin nội bộ
+## 6.10 No Internal Information Exposure
 
-API response và UI không được hiển thị:
+API responses and the UI must not expose:
 
-- Server filesystem path.
-- Credential, token, password, invite token.
-- Stack trace production.
-- Raw Git stderr/stdout chứa secret hoặc path nội bộ.
-- Connection string, broker URL, MinIO key.
-- Worker internal exception đầy đủ.
+- Server filesystem paths.
+- Credentials, tokens, passwords, or invite tokens.
+- Production stack traces.
+- Raw Git stderr/stdout containing secrets or internal paths.
+- Connection strings, broker URLs, or MinIO keys.
+- Full internal worker exceptions.
 
-## 6.11 Network security
+## 6.11 Network Security
 
-- Public API phải dùng HTTPS/TLS 1.2+.
-- PostgreSQL, Redis, RabbitMQ, MinIO và workers nằm trong private container network.
-- Không expose DB/Redis/RabbitMQ ra public.
-- CORS allowlist theo môi trường.
-- Security headers tối thiểu:
+- Public APIs must use HTTPS/TLS 1.2+.
+- PostgreSQL, Redis, RabbitMQ, MinIO, and workers must reside in a private container network.
+- Do not expose DB/Redis/RabbitMQ to the public internet.
+- Implement CORS allowlist based on the environment.
+- Minimum security headers:
 
 ```text
 X-Content-Type-Options: nosniff
@@ -171,19 +171,19 @@ Content-Security-Policy: default-src 'self'
 Referrer-Policy: strict-origin-when-cross-origin
 ```
 
-## 6.12 Threat model tối thiểu
+## 6.12 Minimum Threat Model
 
-| Threat | Rủi ro | Biện pháp kiểm soát | Test/Verification |
+| Threat | Risk | Control Measures | Test/Verification |
 | --- | --- | --- | --- |
-| Git credential leak | PAT bị lộ qua DB, API response, log hoặc exception. | Mã hóa credential, mask response, log scrubber, không log Authorization/PAT, secret rotation. | Security test kiểm tra DB không có plaintext PAT và log không chứa token mẫu. |
-| Git command injection | User input như branch/path/message bị chèn vào Git command. | Không ghép command string; validate branch/path; truyền argument dạng structured; deny ký tự/path nguy hiểm. | Test branch/path malicious và xác nhận không execute ngoài ý định. |
-| SSRF qua repository URL | Clone/fetch tới IP nội bộ hoặc metadata service. | Chỉ HTTPS, validate host, deny private/reserved IP mặc định, allowlist provider nếu cần. | Test URL private IP, localhost, link-local bị reject. |
-| Path traversal khi đọc repo | User yêu cầu path `../` hoặc symlink để đọc file ngoài workspace. | Normalize path, reject absolute/parent traversal, kiểm tra resolved path nằm trong workspace, xử lý symlink an toàn. | Test path traversal và symlink escape. |
-| Malicious Godot file | File `.tscn`, `.tres`, `.gd` gây crash parser, resource exhaustion hoặc exploit parser. | Không execute script, size limit, timeout, parser isolation, partial failure, retry phân loại. | Fuzz/fixture file corrupt, file lớn và encoding lạ. |
-| Permission bypass | User đọc scene/diff/notification/activity của project không thuộc quyền. | Server-side RBAC, project scope mọi query, audit denied, integration tests theo role. | Test cross-project IDOR cho API chính. |
-| Token theft | Access/refresh token bị đánh cắp và reuse. | Access token ngắn hạn, refresh rotation, revoke, HTTPS, rate limit, audit login/refresh bất thường. | Test refresh token reuse bị revoke/deny. |
+| Git credential leak | PAT exposed via DB, API response, logs, or exceptions. | Encrypt credentials, mask responses, implement log scrubbers, prevent logging of Authorization/PAT, secret rotation. | Security tests verifying the DB has no plaintext PATs and logs do not contain sample tokens. |
+| Git command injection | User input such as branch/path/message injected into Git commands. | Do not concatenate command strings; validate branches/paths; pass structured arguments; deny dangerous characters/paths. | Test malicious branches/paths to confirm no unintended execution. |
+| SSRF via repository URL | Clone/fetch against internal IPs or metadata services. | Require HTTPS, validate host, deny private/reserved IPs by default, use provider allowlists if necessary. | Test rejecting private IPs, localhost, and link-local URLs. |
+| Path traversal when reading repo | User requests `../` or symlinks to read files outside the workspace. | Normalize paths, reject absolute/parent traversals, ensure resolved paths remain within the workspace, handle symlinks safely. | Test path traversal and symlink escape vulnerabilities. |
+| Malicious Godot file | `.tscn`, `.tres`, `.gd` files causing parser crashes, resource exhaustion, or parser exploitation. | Do not execute scripts, enforce size limits and timeouts, isolate the parser, support partial failures and categorized retries. | Fuzz/fixture testing with corrupt files, large files, and unusual encodings. |
+| Permission bypass | User reads scenes/diffs/notifications/activities of unauthorized projects. | Server-side RBAC, project-scoped queries, audit denied actions, role-based integration tests. | Cross-project IDOR tests for main APIs. |
+| Token theft | Access/refresh tokens stolen and reused. | Short-lived access tokens, refresh rotation, revocation, HTTPS, rate limits, audit anomalous logins/refreshes. | Test that reused refresh tokens are revoked/denied. |
 
-## 6.13 Quyết định MVP
+## 6.13 MVP Decisions
 
-- Repository URL tới private/reserved network bị chặn mặc định ở mọi môi trường; dev/staging chỉ được mở bằng allowlist cấu hình rõ ràng.
-- Dev dùng user secrets hoặc environment variables. Production dùng secret manager của hạ tầng triển khai; nếu chưa có secret manager riêng, environment injection của nền tảng deploy là yêu cầu tối thiểu.
+- Repository URLs pointing to private/reserved networks are blocked by default across all environments; dev/staging environments require explicit allowlist configurations.
+- Devs must use user secrets or environment variables. Production must use the deployment infrastructure's secret manager; if one is not available, environment variable injection by the deployment platform is the absolute minimum requirement.

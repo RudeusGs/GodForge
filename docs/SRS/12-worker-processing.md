@@ -1,12 +1,12 @@
 # 12. Worker Processing
 
-## Mục tiêu
+## Purpose
 
-Worker Processing định nghĩa queue, job lifecycle, retry, DLQ, timeout, idempotency, progress, cancellation, repository lock và metrics cho các tác vụ async của GodForge.
+Worker Processing defines the queues, job lifecycle, retries, DLQ (Dead-Letter Queue), timeouts, idempotency, progress tracking, cancellation, repository locks, and metrics for asynchronous tasks in GodForge.
 
-## Queue types
+## Queue Types
 
-| Queue | Producer | Consumer | Message chính |
+| Queue | Producer | Consumer | Main Message |
 | --- | --- | --- | --- |
 | `repository.clone` | Repository Service | Clone/Git Worker | `RepositoryCloneRequested` |
 | `repository.sync` | Repository/Git Service | Git Worker | `RepositorySyncRequested` |
@@ -14,126 +14,126 @@ Worker Processing định nghĩa queue, job lifecycle, retry, DLQ, timeout, idem
 | `metadata.analyze` | Project Service, Parser Worker | Analyze Worker | `AnalyzeRequested` |
 | `diff.scene` | Diff Service | Diff Worker | `DiffRequested` |
 | `preview.asset` | Metadata Service | Preview Worker | `PreviewRequested` |
-| `notification.dispatch` | Domain services/workers | Notification Worker nếu tách riêng | `NotificationDispatchRequested` |
+| `notification.dispatch` | Domain services/workers | Notification Worker (if separate) | `NotificationDispatchRequested` |
 
-## Message contract tối thiểu
+## Minimum Message Contract
 
-Mỗi message phải có:
+Each message must contain:
 
 - `schemaVersion`
 - `messageId`
 - `jobId`
 - `correlationId`
 - `projectId`
-- `repositoryId` nếu áp dụng
-- `actorId` nếu do user trigger
+- `repositoryId` (if applicable)
+- `actorId` (if user-triggered)
 - `createdAt`
 - `attemptCount`
 - `inputHash`
-- payload theo job type
+- payload per job type
 
-## Job lifecycle
+## Job Lifecycle
 
 Canonical job status values: `queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`.
 
-| State | Ý nghĩa | Transition hợp lệ |
+| State | Meaning | Valid Transitions |
 | --- | --- | --- |
-| `queued` | Job đã tạo và publish queue. | `running`, `cancelled`, `failed` |
-| `running` | Worker đang xử lý. | `completed`, `failed`, `retrying`, `cancelled`, `timeout` |
-| `retrying` | Job lỗi tạm thời và chờ retry. | `queued`, `failed`, `dead_lettered` |
-| `completed` | Job thành công. | Terminal |
-| `failed` | Job lỗi không retry hoặc hết retry. | Terminal hoặc manual retry nếu policy cho phép |
-| `cancelled` | Job bị hủy trước hoặc trong xử lý an toàn. | Terminal |
-| `timeout` | Job vượt timeout đã cấu hình và worker dừng/rollback an toàn. | Terminal hoặc manual retry nếu policy cho phép |
-| `dead_lettered` | Message chuyển DLQ sau poison message, schema lỗi hoặc retry exhaustion cần inspect. | Manual inspect/requeue |
+| `queued` | Job created and published to queue. | `running`, `cancelled`, `failed` |
+| `running` | Worker is processing the job. | `completed`, `failed`, `retrying`, `cancelled`, `timeout` |
+| `retrying` | Job encountered a transient error and is awaiting retry. | `queued`, `failed`, `dead_lettered` |
+| `completed` | Job succeeded. | Terminal |
+| `failed` | Job failed without retry or exhausted retries. | Terminal or manual retry if policy allows |
+| `cancelled` | Job was cancelled before or during safe processing. | Terminal |
+| `timeout` | Job exceeded configured timeout and worker stopped/rolled back safely. | Terminal or manual retry if policy allows |
+| `dead_lettered` | Message moved to DLQ due to poison message, schema error, or retry exhaustion needing inspection. | Manual inspect/requeue |
 
-## Retry policy
+## Retry Policy
 
-| Loại lỗi | Retry | Ghi chú |
+| Error Type | Retry | Notes |
 | --- | --- | --- |
-| Network tạm thời khi clone/fetch | Có | Exponential backoff, giới hạn attempt. |
-| DB/MinIO/RabbitMQ tạm lỗi | Có | Retry nếu operation idempotent. |
-| Credential sai | Không | Yêu cầu user cập nhật credential. |
-| Repository URL invalid | Không | Validation error. |
-| File Godot syntax lỗi | Không retry ở job-level | Ghi warning ở file-level, tiếp tục nếu partial mode. |
-| Payload message sai schema | Không | Chuyển DLQ. |
-| Timeout lặp lại | Có giới hạn | Ghi `timeout`; sau giới hạn chuyển `dead_lettered` hoặc `failed` theo queue policy. |
+| Transient network error during clone/fetch | Yes | Exponential backoff, limited attempts. |
+| DB/MinIO/RabbitMQ transient error | Yes | Retry if operation is idempotent. |
+| Invalid credential | No | Requires user to update the credential. |
+| Invalid repository URL | No | Validation error. |
+| Godot file syntax error | No at job-level | Log warning at file-level, continue if in partial mode. |
+| Message payload schema error | No | Move to DLQ. |
+| Repeated timeout | Limited | Mark as `timeout`; after limit move to `dead_lettered` or `failed` based on queue policy. |
 
-## Dead-letter queue
+## Dead-Letter Queue (DLQ)
 
-- Mỗi queue chính phải có DLQ tương ứng.
-- DLQ record/message phải giữ `messageId`, `jobId`, `correlationId`, error code, attempt count và payload đã sanitize.
-- Khi message vào DLQ, job liên quan phải chuyển `dead_lettered` nếu không còn retry tự động.
-- Không chứa plaintext credential.
-- Vận hành có thể inspect và requeue thủ công sau khi sửa nguyên nhân.
+- Every main queue must have a corresponding DLQ.
+- DLQ records/messages must retain `messageId`, `jobId`, `correlationId`, error code, attempt count, and sanitized payload.
+- When a message enters the DLQ, the associated job must transition to `dead_lettered` if no automatic retries remain.
+- Must not contain plaintext credentials.
+- Operations can manually inspect and requeue messages after fixing the root cause.
 
-## Timeout
+## Timeouts
 
-| Job type | Timeout đề xuất |
+| Job Type | Recommended Timeout |
 | --- | --- |
-| Clone repo < 500MB | 5 phút, cấu hình tăng theo repo size. |
-| Fetch/sync | 2 phút, tùy remote. |
-| Parse | Theo số file; default 10 phút cho project vừa. |
-| Analyze | 5 phút cho project vừa. |
-| Scene diff | 30 giây đến 2 phút tùy scene size. |
-| Preview | Timeout ngắn, 30-60 giây. |
+| Clone repo < 500MB | 5 minutes, scaling with repo size config. |
+| Fetch/sync | 2 minutes, depending on remote. |
+| Parse | Based on file count; default 10 mins for medium project. |
+| Analyze | 5 minutes for medium project. |
+| Scene diff | 30 seconds to 2 minutes depending on scene size. |
+| Preview | Short timeout, 30-60 seconds. |
 
 ## Idempotency
 
-| Worker | Idempotency key | Quy định |
+| Worker | Idempotency Key | Policy |
 | --- | --- | --- |
-| Clone Worker | repository id + remote URL + branch + input hash | Nếu workspace đã đúng commit/state, không clone lại. |
-| Parser Worker | project id + repository id + commit hash + file hash | Upsert metadata; không duplicate scene/node/asset. |
-| Analyze Worker | project id + metadata version + rule version | Không ghi report nếu metadata version mới hơn đã active. |
-| Diff Worker | project id + scene path + base revision + target revision | Cache hit trả result cũ nếu còn hợp lệ. |
-| Preview Worker | metadata version + entity hash | Không tạo duplicate artifact. |
+| Clone Worker | repository id + remote URL + branch + input hash | If workspace is already at the correct commit/state, do not clone again. |
+| Parser Worker | project id + repository id + commit hash + file hash | Upsert metadata; do not duplicate scenes/nodes/assets. |
+| Analyze Worker | project id + metadata version + rule version | Do not write report if a newer metadata version is already active. |
+| Diff Worker | project id + scene path + base revision + target revision | Cache hit returns the old result if still valid. |
+| Preview Worker | metadata version + entity hash | Do not create duplicate artifacts. |
 
-## Progress update
+## Progress Updates
 
-- `jobs.progress` là số 0-100.
-- Worker cập nhật progress theo batch, không spam DB quá dày.
-- SignalR gửi `JobProgressUpdate` cho project room.
-- Job detail endpoint là nguồn sự thật nếu SignalR bị mất kết nối.
+- `jobs.progress` is a number from 0-100.
+- Workers update progress in batches to avoid spamming the DB.
+- SignalR sends `JobProgressUpdate` to the project room.
+- The job detail endpoint is the source of truth if SignalR disconnects.
 
 ## Cancellation
 
-- User `developer+` có thể cancel job nếu job type hỗ trợ.
-- Cancel clone/Git operation chỉ được thực hiện nếu có thể dừng an toàn.
-- Worker phải kiểm tra cancellation token giữa các batch.
-- Job cancel không được để repository lock treo.
+- Users with `developer+` can cancel jobs if the job type supports it.
+- Canceling clone/Git operations is only executed if it can stop safely.
+- Workers must check cancellation tokens between batches.
+- A cancelled job must not leave a repository lock hanging.
 
-## Repository lock
+## Repository Locks
 
 - Lock key: `lock:repo:{repository_id}`.
-- TTL mặc định: 5 phút hoặc theo job type.
-- Thao tác cần lock: clone/fetch, commit, push, pull, merge, checkout, diff nếu cần checkout workspace mutable.
-- Lock owner/correlation id lưu để debug.
-- Nếu không acquire được lock, API trả 423 hoặc job retry tùy loại.
+- Default TTL: 5 minutes or per job type.
+- Operations requiring locks: clone/fetch, commit, push, pull, merge, checkout, diff (if checkout requires a mutable workspace).
+- Lock owner/correlation ID is saved for debugging.
+- If lock acquisition fails, the API returns 423 or the job retries depending on the type.
 
-## Error handling
+## Error Handling
 
-- Lỗi async phải lưu vào `jobs.error_code`, `jobs.error_message` đã sanitize.
-- Worker log chi tiết kỹ thuật với correlation id, nhưng không log secret.
-- User-facing error phải ngắn gọn và có hành động tiếp theo.
-- Partial parse được phép nếu lỗi file-level không làm mất tính nhất quán metadata.
+- Async errors must be saved to `jobs.error_code` and `jobs.error_message` (sanitized).
+- Workers log detailed technical information with the correlation ID, but do not log secrets.
+- User-facing errors must be concise and suggest next actions.
+- Partial parsing is allowed if file-level errors do not break metadata consistency.
 
-## Worker metrics
+## Worker Metrics
 
-| Metric | Mô tả |
+| Metric | Description |
 | --- | --- |
-| `job_duration_seconds` | Thời gian xử lý job theo type/status. |
-| `job_queue_depth` | Số message chờ theo queue. |
-| `job_retry_total` | Số retry theo type/error. |
-| `job_dead_letter_total` | Số message vào DLQ. |
-| `job_progress_update_total` | Số lần cập nhật progress. |
-| `repository_lock_wait_seconds` | Thời gian chờ lock. |
-| `repository_lock_timeout_total` | Số lần lock timeout/fail. |
-| `worker_active_jobs` | Số job đang chạy theo worker. |
+| `job_duration_seconds` | Job processing time by type/status. |
+| `job_queue_depth` | Number of waiting messages per queue. |
+| `job_retry_total` | Number of retries by type/error. |
+| `job_dead_letter_total` | Number of messages sent to DLQ. |
+| `job_progress_update_total` | Number of progress updates. |
+| `repository_lock_wait_seconds` | Time spent waiting for locks. |
+| `repository_lock_timeout_total` | Number of lock timeouts/failures. |
+| `worker_active_jobs` | Number of currently running jobs per worker. |
 
-## Deployment model for MVP
+## Deployment Model for MVP
 
-- Tài liệu này gọi tên các **logical workers** (Clone Worker, Parser Worker, Analyze Worker, v.v.).
-- Trong giai đoạn MVP, tất cả các logical workers này có thể được triển khai (deploy) chung bên trong một shared host project duy nhất là `GodForge.Worker` để đơn giản hóa vận hành.
-- Tuy nhiên, mỗi hàng đợi (queue) **vẫn phải map với một consumer/handler độc lập** bên trong codebase ngay cả khi chúng chạy chung một process.
-- Kiến trúc nội bộ phải đảm bảo rằng trong tương lai, chúng ta có thể dễ dàng tách từng consumer ra thành các worker services riêng biệt mà không làm thay đổi message contracts hay phải viết lại logic nghiệp vụ.
-- Về cấu hình retry: mặc định 3 lần với exponential backoff cho lỗi tạm thời; từng queue có thể override bằng cấu hình.
+- This document refers to **logical workers** (Clone Worker, Parser Worker, Analyze Worker, etc.).
+- During the MVP phase, all these logical workers may be deployed together within a single shared host project, `GodForge.Worker`, to simplify operations.
+- However, each queue **must still map to an independent consumer/handler** within the codebase, even if they run in the same process.
+- The internal architecture must ensure that in the future, each consumer can be easily split into its own separate worker service without altering message contracts or rewriting business logic.
+- Default retry configuration: 3 attempts with exponential backoff for transient errors; individual queues may override this via configuration.

@@ -1,46 +1,191 @@
 ---
 name: debug-issue
-description: Skill for systematically debugging and fixing issues in the GodForge backend. Covers reading logs, tracing correlation IDs, identifying root causes in the correct architectural layer, and writing regression tests.
+description: Skill for systematically debugging and fixing issues in the GodForge backend. Use when investigating API, worker, Git, parser, analyzer, metadata, RBAC, database, or background-job failures. Covers SRS-first diagnosis, correlation-id tracing, structured logs, architectural layer ownership, root-cause analysis, safe fixes, regression tests, and verification without leaking secrets or hiding failures.
 ---
 
 # Debug Issue
 
-Skill hướng dẫn quy trình debug và fix bug trong GodForge Backend.
+Use this skill to debug and fix GodForge backend issues without violating the SRS architecture, security, observability, or testing conventions.
 
-## Quy trình debug
+## Core Principle
 
-### 1. Thu thập thông tin
-- Đọc error message và correlation ID.
-- Xác định layer nào gây lỗi: Domain, Application, Infrastructure, API.
-- Kiểm tra logs (Serilog structured logs) nếu có.
+Always debug from the externally visible failure back to the owning layer. Do not patch the nearest symptom. Preserve module boundaries, keep controllers thin, keep business rules in Application/Domain, and keep infrastructure concerns in Infrastructure/engines/workers.
 
-### 2. Xác định phạm vi ảnh hưởng
-- Bug ở Domain logic → fix trong `GodForge.Domain`.
-- Bug ở business flow → fix trong `GodForge.Application`.
-- Bug ở DB query, external service → fix trong `GodForge.Infrastructure`.
-- Bug ở request/response mapping → fix trong `GodForge.Api`.
+## 1. Capture the Failure Context
 
-### 3. Kiểm tra trước khi sửa
-- Đọc lại SRS functional requirement liên quan (acceptance criteria).
-- Xem có unit test nào đang cover case này không.
-- Nếu có test đang pass sai → fix test trước.
+Collect the minimum facts before changing code:
 
-### 4. Fix bug
-- Sửa ở đúng layer (KHÔNG sửa ở layer sai cho tiện).
-- Thêm hoặc cập nhật unit test để cover bug đã fix.
-- Đảm bảo fix không break acceptance criteria khác.
+- User-visible symptom, endpoint/job/action, environment, and reproduction steps.
+- HTTP status, application error code, and `correlationId`.
+- Actor/user id, project id, repository id, branch/revision, job id, and event id when applicable.
+- Whether the failure is synchronous API, asynchronous worker, Git operation, parser/analyzer/diff, metadata/search, notification, or activity log.
+- Expected behavior from the relevant SRS functional requirement, workflow, acceptance criteria, NFR, API contract, or error catalog.
 
-### 5. Verify
-- Chạy `dotnet build` — không có warning.
-- Chạy `dotnet test` — tất cả tests pass.
-- Test thủ công với API nếu cần.
+For API errors, use the response `correlationId` to find request logs. For async failures, trace the job record, job logs, emitted events, worker attempts, DLQ status, and persisted job `error_code`.
 
-### 6. Commit
-- Dùng type `fix(scope): mô tả ngắn gọn`.
-- Ví dụ: `fix(auth): prevent token reuse after refresh rotation`
+## 2. Trace Through Observability Data
 
-## Lưu ý quan trọng
-- KHÔNG fix bug bằng cách thêm try-catch để swallow exception.
-- KHÔNG fix bug ở Controller nếu root cause ở Application/Domain.
-- KHÔNG disable warning để "fix" compiler error.
-- KHÔNG sửa test để test pass thay vì sửa code.
+Use structured logs and metrics; avoid relying only on raw text search.
+
+Required trace fields:
+
+- Request logs: timestamp, method, path, status, duration, user id, project id, correlation id.
+- Job logs: job id, job type, state, attempt, duration, worker id, correlation id.
+- Git logs: operation, repository id, branch, sanitized stderr, result, correlation id.
+- Security logs: permission denied, token revoked, suspicious rate, failed login.
+- Domain audit logs: actor, action, target, before/after summary, timestamp, status, correlation id.
+
+Never log or expose:
+
+- Access tokens, refresh tokens, passwords, Git credentials, credential-bearing remote URLs.
+- Full repository file content, large stdout/stderr, stack traces in API responses, or sensitive artifact payloads.
+
+Production default should remain `Information` for lifecycle logs and `Warning`/`Error` for abnormal events. Enable debug logs only temporarily and only after confirming they do not leak secrets.
+
+## 3. Classify the Owning Layer
+
+Map the bug to the layer that owns the failing responsibility.
+
+| Symptom | Primary owner | Typical fix location |
+|---|---|---|
+| Wrong invariant, invalid state transition, permission rule, role rule | Domain/Application | `GodForge.Domain` or `GodForge.Application` |
+| Request validation, authorization orchestration, command/query flow | Application | handlers, validators, policies |
+| Incorrect response shape, route binding, DTO mapping, HTTP status | API | controllers, contracts, filters/middleware |
+| DB query, EF mapping, transaction, migration, external storage | Infrastructure | repositories, EF configuration, persistence services |
+| Git command, conflict handling, workspace isolation, lock behavior | Git Engine / Infrastructure | Git engine, repository lock, Git service adapter |
+| Parser/analyzer/diff algorithm output | Core Engine / Worker | parser/analyzer/diff engine and worker orchestration |
+| Job timeout, retry, heartbeat, DLQ, idempotency | Worker/Application | worker host, job service, queue consumer |
+| Cache staleness or dashboard/search inconsistency | Application/Infrastructure | cache invalidation, events, read model |
+| Missing or unsafe logs/audit | Application/Infrastructure | logging middleware, audit service, activity writer |
+
+Do not fix a domain/application bug inside a controller for convenience. Do not place business rules in workers just because the failure occurred during a job; workers should call the same application/domain logic used by API entry points.
+
+## 4. Check SRS and Acceptance Criteria First
+
+Before writing the fix:
+
+1. Locate the related SRS section: functional requirement, workflow, API endpoint, error catalog, event catalog, component boundary, logging strategy, security model, or NFR.
+2. Identify the expected success path, error path, permission rule, and audit/logging requirement.
+3. Confirm whether the problem is a code defect, outdated test, missing requirement, or ambiguous specification.
+4. If the SRS and implementation disagree, treat the SRS as the source of truth unless the user explicitly asks to revise the SRS.
+
+Common SRS checks:
+
+- Every protected operation must enforce JWT and RBAC server-side.
+- Every important state-changing operation must write activity log for success and failure.
+- Every backend error must carry a correlation id.
+- Async jobs must persist status, progress/heartbeat, timeout/error code, and retry/DLQ outcome.
+- Heavy tasks such as clone, parse, analyze, diff, and preview must not block HTTP request handling.
+- Git operations must use repository locking and must not auto-resolve conflicts without explicit policy/user confirmation.
+- Metadata-not-ready must be distinguished from an empty search/list result.
+
+## 5. Reproduce With the Smallest Failing Case
+
+Create a deterministic reproduction before fixing:
+
+- For API bugs: call the exact endpoint with minimal body/query/headers and capture response + correlation id.
+- For authorization bugs: test both an allowed actor and a denied actor in the same project scope.
+- For job bugs: enqueue or invoke the same job with the original project id, input hash, revision, attempt count, and correlation id where possible.
+- For Git bugs: use a small test repository fixture that reproduces branch/conflict/lock behavior.
+- For parser/analyzer/diff bugs: add a minimal `.tscn`, `.tres`, `.gd`, or metadata fixture that exposes the issue.
+- For DB bugs: reproduce with a transaction-scoped integration test or containerized PostgreSQL when behavior depends on SQL semantics.
+
+If the bug cannot be reproduced, improve observability first or add a failing characterization test around the suspected boundary.
+
+## 6. Fix Safely in the Correct Layer
+
+Apply the smallest fix that corrects root cause and preserves SRS behavior.
+
+Do:
+
+- Keep controller logic limited to request/response orchestration.
+- Put business decisions in Domain/Application.
+- Put persistence, external service, Git, Redis, RabbitMQ, MinIO, and EF details in Infrastructure.
+- Keep core engines deterministic and return structured results with warnings, error codes, duration, and metric tags.
+- Propagate correlation id through API, Application, events, jobs, engines, and logs.
+- Sanitize external command output before returning or logging it.
+- Preserve idempotency for jobs using job id and input hash.
+- Use retry with backoff only for transient errors; send poison messages to DLQ instead of retrying forever.
+
+Do not:
+
+- Swallow exceptions with broad `try/catch` blocks.
+- Convert real failures into successful empty results.
+- Disable warnings or tests to make the build pass.
+- Return stack traces or internal exception details to clients.
+- Log secrets, raw tokens, or credential-bearing Git URLs.
+- Auto-resolve Git conflicts or overwrite repository state without explicit policy and confirmation.
+- Break module dependency direction or introduce circular references.
+
+## 7. Update Tests as Regression Proof
+
+Every bug fix must add or update tests that fail before the fix and pass after it.
+
+Choose the right test level:
+
+- Domain unit test for invariants, permissions, state transitions, value objects.
+- Application handler test for business flow, RBAC, validation, activity log, event publishing, job creation.
+- API integration test for route, auth, response envelope, error code, correlation id, and status code.
+- Infrastructure integration test for EF/PostgreSQL behavior, transactions, indexes, queries, Redis locks, MinIO artifacts.
+- Worker test for job state transitions, retry/backoff, heartbeat, timeout, DLQ, idempotency.
+- Engine fixture test for Git/parser/analyzer/diff deterministic outputs.
+- Security regression test for access denial, project scoping, token handling, or unsafe logging.
+
+Test both the success path and the failure path if the bug involves permissions, async jobs, Git conflicts, parse errors, or error responses.
+
+## 8. Verify Locally
+
+Run verification appropriate to the changed area:
+
+```bash
+dotnet format --verify-no-changes
+dotnet build --no-restore
+dotnet test --no-build
+```
+
+When the fix touches PostgreSQL, Redis, RabbitMQ, MinIO, Git workspaces, or workers, also run the relevant integration test suite or Docker Compose scenario.
+
+Manual verification checklist:
+
+- API response uses the standard success/error envelope.
+- Error response includes safe `code`, `message`, `correlationId`, and safe `details` only.
+- Activity log records actor, action, target, status, timestamp, and correlation id.
+- Job state is correct after success/failure/cancel/timeout.
+- No secret appears in logs, response body, activity log, or persisted job error details.
+- Metrics/logs allow tracing the same correlation id across request, job, event, engine, and worker.
+
+## 9. Commit and Document the Fix
+
+Use Conventional Commits:
+
+```text
+fix(scope): short description
+```
+
+Examples:
+
+```text
+fix(auth): prevent refresh token reuse after rotation
+fix(git): preserve repository lock on failed pull
+fix(worker): move poison analyze jobs to dlq after max attempts
+fix(metadata): distinguish metadata-not-ready from empty search results
+```
+
+In the PR or implementation notes, include:
+
+- Root cause.
+- SRS requirement or acceptance criteria verified.
+- Reproduction steps.
+- Tests added/updated.
+- Operational notes, migrations, config changes, or dashboard/log queries if relevant.
+
+## Quick Checklist
+
+- [ ] Captured correlation id, actor, project/repository/job context.
+- [ ] Read the related SRS requirement, workflow, API contract, NFR, or error catalog.
+- [ ] Identified the correct owning layer.
+- [ ] Reproduced the bug with the smallest failing case.
+- [ ] Fixed root cause without hiding failures or leaking secrets.
+- [ ] Added regression tests at the correct level.
+- [ ] Verified build, tests, response format, logs, audit, and job state.
+- [ ] Used `fix(scope): ...` commit format.

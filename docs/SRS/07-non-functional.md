@@ -2,23 +2,23 @@
 
 ## 7.1 Performance
 
-| ID | Yêu cầu | Metric mục tiêu | Điều kiện đo |
+| ID | Requirement | Target Metric | Measurement Condition |
 | --- | --- | --- | --- |
-| NFR-01 | API CRUD phản hồi nhanh | P95 < 500ms | Không bao gồm job async và external Git network. |
-| NFR-02 | Dashboard cache hit | P95 < 500ms | Redis cache sẵn sàng. |
-| NFR-03 | Dashboard cache miss | P95 < 2s | Project vừa, metadata đã có trong DB. |
-| NFR-04 | Search | P95 < 1.5s | Query <= 200 ký tự, pageSize <= 20, project vừa. |
-| NFR-05 | Scene/Asset listing | P95 < 1s | Metadata đã parse, query phân trang. |
-| NFR-06 | Git status/history | P95 < 1s | Repository local workspace ready, repo vừa. |
-| NFR-07 | Clone repo nhỏ/vừa | Repo < 500MB hoàn thành < 5 phút | Phụ thuộc network Git provider. |
-| NFR-08 | Parse job | 100 scenes hoàn thành < 2 phút | Incremental parse nhanh hơn full parse. |
-| NFR-09 | Analyze job | Project nhỏ < 1 phút, project vừa < 5 phút | Sau parse thành công. |
-| NFR-10 | Scene diff | P95 < 30s nếu cần compute; cache hit < 500ms | Scene vừa, hai revision đọc được. |
-| NFR-11 | Queue lag | P95 thời gian chờ queue < 60s | Tải bình thường, worker pool đủ cấu hình. |
+| NFR-01 | Fast CRUD API response | P95 < 500ms | Excludes async jobs and external Git network. |
+| NFR-02 | Dashboard cache hit | P95 < 500ms | Redis cache ready. |
+| NFR-03 | Dashboard cache miss | P95 < 2s | Medium project, metadata already in DB. |
+| NFR-04 | Search | P95 < 1.5s | Query <= 200 chars, pageSize <= 20, medium project. |
+| NFR-05 | Scene/Asset listing | P95 < 1s | Metadata parsed, paginated query. |
+| NFR-06 | Git status/history | P95 < 1s | Local repository workspace ready, medium repo. |
+| NFR-07 | Clone small/medium repo | Repo < 500MB completes < 5 mins | Depends on Git provider network. |
+| NFR-08 | Parse job | 100 scenes complete < 2 mins | Incremental parse is faster than full parse. |
+| NFR-09 | Analyze job | Small project < 1 min, medium project < 5 mins | After successful parse. |
+| NFR-10 | Scene diff | P95 < 30s if computation needed; cache hit < 500ms | Medium scene, both revisions readable. |
+| NFR-11 | Queue lag | P95 queue wait time < 60s | Normal load, adequately configured worker pool. |
 
 ## 7.2 Capacity / Scalability
 
-| ID | Metric | Target MVP |
+| ID | Metric | MVP Target |
 | --- | --- | --- |
 | NFR-12 | Concurrent users | 50 |
 | NFR-13 | Total projects | 100 |
@@ -30,110 +30,110 @@
 
 Scaling strategy:
 
-- API stateless để có thể scale ngang.
-- Worker scale theo queue depth và job type.
-- PostgreSQL ưu tiên index/query tuning trước read replicas.
-- Redis dùng cache/lock/rate limit; có thể cluster khi cần.
-- MinIO lưu artifact lớn để tránh phình database.
+- API is stateless to allow horizontal scaling.
+- Workers scale according to queue depth and job type.
+- PostgreSQL prioritizes index/query tuning before read replicas.
+- Redis is used for cache/locks/rate limiting; can be clustered if needed.
+- MinIO stores large artifacts to prevent database bloat.
 
 ## 7.3 Reliability
 
-| ID | Yêu cầu | Metric/Quy định |
+| ID | Requirement | Metric/Policy |
 | --- | --- | --- |
 | NFR-19 | API availability non-production/demo | >= 95% |
-| NFR-20 | RTO | < 4 giờ cho database/core service trong môi trường đồ án/staging. |
-| NFR-21 | RPO | < 1 giờ cho PostgreSQL core data nếu backup/WAL hỗ trợ. |
-| NFR-22 | Worker retry | Retry lỗi tạm thời qua status `retrying`; không retry vô hạn lỗi validation/credential. |
-| NFR-23 | DLQ | Poison message hoặc timeout lặp lại phải chuyển `dead_lettered`/DLQ sau khi hết retry theo policy. |
-| NFR-24 | Idempotency | Retry job không tạo duplicate metadata/notification hoặc ghi đè metadata mới hơn. |
-| NFR-25 | Repository lock | Mutating Git operations phải có lock TTL và release an toàn. |
+| NFR-20 | RTO | < 4 hours for database/core services in project/staging environment. |
+| NFR-21 | RPO | < 1 hour for PostgreSQL core data if supported by backup/WAL. |
+| NFR-22 | Worker retry | Retry transient errors via `retrying` status; do not infinitely retry validation/credential errors. |
+| NFR-23 | DLQ | Poison messages or recurring timeouts must move to `dead_lettered`/DLQ after retry policy exhaustion. |
+| NFR-24 | Idempotency | Job retries must not create duplicate metadata/notifications or overwrite newer metadata. |
+| NFR-25 | Repository lock | Mutating Git operations must have a lock TTL and safe release mechanisms. |
 
 ## 7.4 Observability
 
 ### Logging
 
-- Log dạng JSON structured.
-- Fields bắt buộc: `timestamp`, `level`, `message`, `correlationId`, `sourceContext`.
-- Nếu có: `userId`, `projectId`, `jobId`, `repositoryId`.
-- Không log password, token, credential, Authorization header hoặc plaintext PAT.
+- Logs in structured JSON format.
+- Mandatory fields: `timestamp`, `level`, `message`, `correlationId`, `sourceContext`.
+- If applicable: `userId`, `projectId`, `jobId`, `repositoryId`.
+- Do not log passwords, tokens, credentials, Authorization headers, or plaintext PATs.
 
 ### Metrics
 
-| Metric | Mô tả |
+| Metric | Description |
 | --- | --- |
 | `http_request_duration_seconds` | API latency histogram. |
-| `http_requests_total` | Request count theo route/status. |
+| `http_requests_total` | Request count by route/status. |
 | `active_connections` | SignalR active connections. |
 | `job_duration_seconds` | Worker job duration. |
-| `job_queue_depth` | Số job chờ theo queue. |
-| `job_retry_total` | Số retry theo job type. |
-| `job_dead_letter_total` | Số message vào DLQ. |
-| `db_connection_pool_size` | DB pool usage. |
-| `cache_hit_ratio` | Redis cache hit/miss. |
-| `repository_lock_contention_total` | Số lần lock fail/contended. |
+| `job_queue_depth` | Number of pending jobs per queue. |
+| `job_retry_total` | Number of retries per job type. |
+| `job_dead_letter_total` | Number of messages sent to DLQ. |
+| `db_connection_pool_size` | DB connection pool usage. |
+| `cache_hit_ratio` | Redis cache hits/misses. |
+| `repository_lock_contention_total` | Number of lock failures/contentions. |
 
 ### Alerting
 
-- API 5xx rate > 1% trong 5 phút.
-- Queue depth vượt ngưỡng theo worker pool.
-- Job failure rate tăng bất thường.
-- DB/Redis/RabbitMQ/MinIO unavailable.
-- DLQ có message mới.
-- Disk/storage artifact vượt ngưỡng.
+- API 5xx rate > 1% within 5 minutes.
+- Queue depth exceeds threshold for the worker pool.
+- Job failure rate spikes abnormally.
+- DB/Redis/RabbitMQ/MinIO becomes unavailable.
+- New messages arrive in DLQ.
+- Disk/storage artifacts exceed thresholds.
 
 ## 7.5 Backup / Restore
 
-| ID | Dữ liệu | Chính sách |
+| ID | Data | Policy |
 | --- | --- | --- |
-| NFR-26 | PostgreSQL Core Schema | Backup thường xuyên nhất; ưu tiên restore trước metadata. |
-| NFR-27 | PostgreSQL Metadata Schema | Backup định kỳ hoặc regenerate từ repository nếu chấp nhận thời gian phục hồi. |
-| NFR-28 | MinIO artifacts | Backup bucket theo retention; diff/preview có thể TTL. |
-| NFR-29 | Redis | Không yêu cầu backup cho cache/lock; session/token tùy cấu hình. |
-| NFR-30 | RabbitMQ | Durable queue cho job quan trọng; DLQ giữ đủ lâu để điều tra. |
+| NFR-26 | PostgreSQL Core Schema | Backed up most frequently; prioritize restore before metadata. |
+| NFR-27 | PostgreSQL Metadata Schema | Periodic backup or regenerate from repository if acceptable recovery time allows. |
+| NFR-28 | MinIO artifacts | Backup buckets according to retention; diffs/previews may have a TTL. |
+| NFR-29 | Redis | No backup required for cache/locks; sessions/tokens depend on configuration. |
+| NFR-30 | RabbitMQ | Durable queues for critical jobs; DLQ kept long enough for investigation. |
 
-Restore drill tối thiểu phải kiểm tra PostgreSQL và MinIO trên staging hoặc môi trường tương đương.
+Restore drills must test PostgreSQL and MinIO on staging or an equivalent environment at a minimum.
 
 ## 7.6 Maintainability
 
-| ID | Yêu cầu | Quy định |
+| ID | Requirement | Policy |
 | --- | --- | --- |
-| NFR-31 | Architecture | Backend giữ tách biệt domain/application/infrastructure; worker không bypass business rules. |
-| NFR-32 | API versioning | Public endpoint dùng `/api/v1`; breaking change cần version mới hoặc migration rõ ràng. |
-| NFR-33 | Database migration | Schema change qua migration có review; không sửa DB production thủ công. |
-| NFR-34 | Error contract | Error code ổn định để UI/QA/test automation dựa vào. |
-| NFR-35 | Documentation | Requirement change phải cập nhật functional docs, traceability và testing docs. |
-| NFR-36 | Code quality | Không hardcode secret/config; lint/test theo convention dự án. |
+| NFR-31 | Architecture | Backend maintains strict separation of domain/application/infrastructure; workers do not bypass business rules. |
+| NFR-32 | API versioning | Public endpoints use `/api/v1`; breaking changes require a new version or clear migration path. |
+| NFR-33 | Database migration | Schema changes via reviewed migrations; no manual modifications to production DB. |
+| NFR-34 | Error contract | Stable error codes for UI/QA/test automation reliance. |
+| NFR-35 | Documentation | Requirement changes must update functional docs, traceability, and testing docs. |
+| NFR-36 | Code quality | No hardcoded secrets/configs; lint/test according to project conventions. |
 
 ## 7.7 Compatibility
 
-| ID | Yêu cầu | Quy định |
+| ID | Requirement | Policy |
 | --- | --- | --- |
-| NFR-37 | Godot version | Ưu tiên Godot 4.x. |
-| NFR-38 | File format | Parser hỗ trợ `.tscn`, `.tres`, `.res`, `.gd` ở mức metadata cần cho SRS. |
-| NFR-39 | Browser | Frontend hỗ trợ browser hiện đại: Chromium, Firefox, Edge bản còn được hỗ trợ. |
-| NFR-40 | Repository | MVP hỗ trợ Git HTTPS repository; SSH ngoài phạm vi hiện tại. |
+| NFR-37 | Godot version | Prioritize Godot 4.x. |
+| NFR-38 | File format | Parser supports `.tscn`, `.tres`, `.res`, `.gd` at the metadata level required for SRS. |
+| NFR-39 | Browser | Frontend supports modern browsers: supported versions of Chromium, Firefox, Edge. |
+| NFR-40 | Repository | MVP supports Git HTTPS repositories; SSH is out of current scope. |
 
 ## 7.8 Security NFR
 
-| ID | Yêu cầu | Metric/Quy định |
+| ID | Requirement | Metric/Policy |
 | --- | --- | --- |
 | NFR-41 | Password hashing | bcrypt cost >= 12. |
-| NFR-42 | Token lifetime | Access token 15 phút, refresh token 7 ngày. |
-| NFR-43 | Secret handling | Không plaintext credential trong DB/log/API. |
-| NFR-44 | RBAC | 100% API project-scoped phải có permission test. |
-| NFR-45 | Input validation | Repository URL, file path, search query và worker message validate server-side. |
-| NFR-46 | Error sanitization | Production error không có stack trace/internal path. |
+| NFR-42 | Token lifetime | Access token 15 minutes, refresh token 7 days. |
+| NFR-43 | Secret handling | No plaintext credentials in DB/logs/APIs. |
+| NFR-44 | RBAC | 100% of project-scoped APIs must have permission tests. |
+| NFR-45 | Input validation | Repository URLs, file paths, search queries, and worker messages are validated server-side. |
+| NFR-46 | Error sanitization | Production errors contain no stack traces/internal paths. |
 
-## 7.9 Testing quality targets
+## 7.9 Testing Quality Targets
 
-| ID | Yêu cầu | Target |
+| ID | Requirement | Target |
 | --- | --- | --- |
-| NFR-47 | Unit test | Domain logic, validators, permission checker và parser rules quan trọng. |
-| NFR-48 | Integration test | Critical path API + DB + Redis/RabbitMQ/MinIO khi có thể. |
-| NFR-49 | Security test | Auth, RBAC, input validation, secret leakage và path traversal. |
-| NFR-50 | Performance test | Dashboard, search, parse/analyze, scene diff với dataset đại diện. |
+| NFR-47 | Unit test | Domain logic, validators, permission checkers, and critical parser rules. |
+| NFR-48 | Integration test | Critical path API + DB + Redis/RabbitMQ/MinIO where applicable. |
+| NFR-49 | Security test | Auth, RBAC, input validation, secret leakage, and path traversal. |
+| NFR-50 | Performance test | Dashboard, search, parse/analyze, scene diff using representative datasets. |
 
-## 7.10 Quyết định MVP
+## 7.10 MVP Decisions
 
-- Mục tiêu mặc định cho MVP/staging: uptime tối thiểu 95%, RTO dưới 4 giờ, RPO dưới 1 giờ cho PostgreSQL core data nếu backup/WAL hỗ trợ.
-- Frontend hỗ trợ các browser hiện đại còn được vendor hỗ trợ: Chromium/Chrome, Edge và Firefox. Compatibility chi tiết có thể siết lại khi bước sang production.
+- Default targets for MVP/staging: minimum 95% uptime, RTO under 4 hours, RPO under 1 hour for PostgreSQL core data if supported by backup/WAL.
+- Frontend supports modern browsers maintained by their vendors: Chromium/Chrome, Edge, and Firefox. Detailed compatibility requirements can be tightened as production nears.

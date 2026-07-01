@@ -1,76 +1,76 @@
 # Search
 
-## Mục tiêu
+## Purpose
 
-Search giúp user tìm nhanh project, scene, node, asset, script và commit trong phạm vi họ có quyền truy cập.
+Search helps users quickly find projects, scenes, nodes, assets, scripts, and commits within the scope they are authorized to access.
 
-## Tác nhân
+## Actors
 
 - Project Admin
 - Developer
 - Reviewer/QA
 - Viewer
 
-## Phạm vi
+## Scope
 
-- Full-text search metadata và project fields.
-- Filter theo project, type và thời gian.
+- Full-text search on metadata and project fields.
+- Filter by project, type, and date.
 - Pagination.
-- RBAC filtering bắt buộc.
-- Không search nội dung source code đầy đủ ngoài metadata đã parse trong phạm vi hiện tại.
+- Mandatory RBAC filtering.
+- Full source code content search (beyond parsed metadata) is out of scope.
 
-## Yêu cầu chức năng
+## Functional Requirements
 
-| ID | Tên yêu cầu | Mô tả | Priority | Actor |
+| ID | Requirement Name | Description | Priority | Actor |
 | --- | --- | --- | --- | --- |
-| FR-15 | Tìm kiếm | Tìm project, scene, node, asset, script và commit theo quyền. | Should | Viewer+ |
-| BR-17 | RBAC search | Search result chỉ chứa dữ liệu thuộc project user có quyền. | Must | System |
-| BR-18 | Query sanitization | Query tối đa 200 ký tự và sanitize/parameterize để chống injection. | Must | System |
+| FR-15 | Search | Find projects, scenes, nodes, assets, scripts, and commits according to permissions. | Should | Viewer+ |
+| BR-17 | RBAC Search | Search results only include data from projects the user is authorized for. | Must | System |
+| BR-18 | Query Sanitization | Queries are capped at 200 characters and sanitized/parameterized to prevent injection. | Must | System |
 
-## Luồng xử lý chính
+## Main Workflow
 
-1. User nhập query và filter.
-2. API validate query length, page size và filter.
-3. Backend xác định project scope user được xem.
-4. Search query chạy trên PostgreSQL full-text/search index hoặc metadata query tối ưu.
-5. API trả kết quả phân trang và facets nếu có.
+1. User enters a query and filters.
+2. API validates query length, page size, and filters.
+3. Backend determines the project scope the user is allowed to view.
+4. Search query runs on PostgreSQL full-text/search indexes or optimized metadata queries.
+5. API returns paginated results and facets if available.
 
-## Ngoại lệ / lỗi
+## Exceptions / Errors
 
-| Tình huống | HTTP Status | Error Code | Hành vi |
+| Situation | HTTP Status | Error Code | Behavior |
 | --- | --- | --- | --- |
-| Query rỗng hoặc quá dài | 400 | `VALIDATION_ERROR` | Trả field error. |
-| Project filter ngoài quyền | 403/empty | `FORBIDDEN` | Không trả dữ liệu project đó. |
-| Page size vượt giới hạn | 400 | `VALIDATION_ERROR` | Max page size 100. |
-| Search index chưa sẵn sàng | 200 degraded | `SEARCH_INDEX_NOT_READY` | Có thể fallback metadata query hoặc empty state. |
+| Query empty or too long | 400 | `VALIDATION_ERROR` | Return field error. |
+| Project filter outside permissions | 403 / empty | `FORBIDDEN` | Do not return data for that project. |
+| Page size exceeds limit | 400 | `VALIDATION_ERROR` | Max page size is 100. |
+| Search index not ready | 200 degraded | `SEARCH_INDEX_NOT_READY` | Fallback to metadata queries or empty state. |
 
 ## Acceptance Criteria
 
-- AC-21: Tìm kiếm `Player` trả về scene, node hoặc script chứa `Player` trong phạm vi quyền.
-- AC-22: User không có quyền project A thì kết quả không chứa data từ project A.
-- AC-23: Kết quả được phân trang đúng.
+- AC-21: Searching for `Player` returns scenes, nodes, or scripts containing `Player` within authorized scopes.
+- AC-22: If a user lacks permission for Project A, the results will not contain data from Project A.
+- AC-23: Results are paginated correctly.
 
-## API liên quan
+## Related API
 
-| Method | Path | Permission | Request chính | Response chính | Error chính |
+| Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/search` | Authenticated | q, type, projectId, page, pageSize | Search results, pagination | `VALIDATION_ERROR` |
 | GET | `/api/v1/projects/{id}/scenes` | `viewer+` | search/filter | Scene results | `FORBIDDEN` |
 | GET | `/api/v1/projects/{id}/assets` | `viewer+` | search/filter | Asset results | `FORBIDDEN` |
 | GET | `/api/v1/projects/{id}/git/commits` | `viewer+` | author/date/search | Commit results | `REPO_NOT_READY` |
 
-## Database liên quan
+## Related Database Tables
 
-| Bảng | Vai trò |
+| Table | Role |
 | --- | --- |
-| `projects` | Project name/slug search. |
-| `project_members` | RBAC scope. |
-| `scenes`, `scene_nodes` | Scene/node search. |
-| `assets`, `scripts`, `resources` | Metadata search. |
-| `repositories` | Commit history scope và repo state. |
+| `projects` | Project name/slug searches. |
+| `project_members` | RBAC scope limits. |
+| `scenes`, `scene_nodes` | Scene/node searches. |
+| `assets`, `scripts`, `resources` | Metadata searches. |
+| `repositories` | Commit history scopes and repo states. |
 
-## Ghi chú bảo mật / phân quyền
+## Security / Authorization Notes
 
-- Query phải dùng parameterized SQL hoặc ORM expression an toàn.
-- Search result phải filter theo permission trước khi trả client.
-- Không trả snippet chứa secret hoặc server path.
+- Queries must use parameterized SQL or safe ORM expressions.
+- Search results must be filtered by permission before being returned to the client.
+- Snippets containing secrets or internal server paths must not be returned.

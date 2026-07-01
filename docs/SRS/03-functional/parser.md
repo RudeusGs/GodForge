@@ -1,101 +1,101 @@
 # Parser / Metadata
 
-## Mục tiêu
+## Purpose
 
-Module Parser trích xuất metadata từ repository Godot để các module Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff và Project Health sử dụng mà không phải parse realtime.
+The Parser module extracts metadata from Godot repositories for use by the Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff, and Project Health modules without requiring real-time parsing.
 
-## Tác nhân
+## Actors
 
 - Developer
 - Project Admin
 - Worker/System
 
-## Phạm vi
+## Scope
 
-- Parse `.tscn` scene file.
-- Parse `.tres`/`.res` resource file ở mức metadata cần thiết.
-- Parse `.gd` script file ở mức class, extends, preload/load và thống kê cơ bản.
-- Nhận diện asset files phổ biến.
-- Ghi metadata vào Metadata Schema.
-- Hỗ trợ incremental parse dựa trên file hash.
+- Parse `.tscn` scene files.
+- Parse `.tres`/`.res` resource files to extract necessary metadata.
+- Parse `.gd` script files to extract classes, extends, preload/load, and basic statistics.
+- Detect common asset files.
+- Save metadata to the Metadata Schema.
+- Support incremental parsing based on file hashes.
 
-## Yêu cầu chức năng
+## Functional Requirements
 
-| ID | Tên yêu cầu | Mô tả | Priority | Actor |
+| ID | Requirement Name | Description | Priority | Actor |
 | --- | --- | --- | --- | --- |
-| FR-08 | Scene parser | Worker parse `.tscn`, `.tres`, `.gd` và asset metadata từ repository workspace. | Must | Developer, Worker |
-| BR-41 | Isolate file lỗi | Lỗi parse một file không được làm fail toàn bộ job nếu partial mode có thể tiếp tục. | Must | Worker |
-| BR-42 | Async parse | Parse job chạy qua RabbitMQ Worker. | Must | System |
-| BR-43 | Incremental parse | File không đổi theo hash không cần parse lại. | Should | Worker |
-| BR-44 | Metadata tái tạo | Parser output ghi vào Metadata Schema và có thể regenerate từ repository. | Must | Worker |
+| FR-08 | Scene Parser | Worker parses `.tscn`, `.tres`, `.gd`, and asset metadata from the repository workspace. | Must | Developer, Worker |
+| BR-41 | Isolate File Errors | A parsing error on a single file must not fail the entire job if partial mode can continue. | Must | Worker |
+| BR-42 | Async Parsing | Parsing jobs run through RabbitMQ Workers. | Must | System |
+| BR-43 | Incremental Parsing | Unchanged files (based on hash) do not need to be re-parsed. | Should | Worker |
+| BR-44 | Reproducible Metadata | Parser output is saved to the Metadata Schema and can be regenerated from the repository. | Must | Worker |
 
-## Luồng xử lý chính
+## Main Workflow
 
-1. User hoặc hệ thống trigger parse/analyze.
-2. API kiểm tra project có repository ready và actor có quyền `developer+`.
-3. API tạo job `parse` và publish message vào RabbitMQ.
-4. Parser Worker lấy snapshot theo branch/commit để tránh branch head thay đổi giữa job.
-5. Worker quét file `.tscn`, `.tres`, `.res`, `.gd` và asset files.
-6. Worker tính file hash, bỏ qua file không đổi nếu incremental parse.
-7. Worker parse metadata và upsert vào các bảng `scenes`, `scene_nodes`, `assets`, `scripts`, `resources`, `dependencies`.
-8. Worker cập nhật progress qua job record và SignalR.
-9. Hoàn tất job, gửi notification và có thể trigger analyze nếu setting bật.
+1. User or system triggers a parse/analyze job.
+2. API verifies that the project has a ready repository and the actor has `developer+` permission.
+3. API creates a `parse` job and publishes a message to RabbitMQ.
+4. Parser Worker takes a snapshot by branch/commit to avoid branch head changes during the job.
+5. Worker scans for `.tscn`, `.tres`, `.res`, `.gd`, and asset files.
+6. Worker calculates file hashes, skipping unchanged files for incremental parsing.
+7. Worker parses metadata and upserts into `scenes`, `scene_nodes`, `assets`, `scripts`, `resources`, and `dependencies` tables.
+8. Worker updates progress via the job record and SignalR.
+9. Upon completion, the job sends a notification and may trigger an analyze job if configured.
 
-## Dữ liệu parser cần trích xuất
+## Extracted Parser Data
 
-| Loại file | Metadata |
+| File Type | Metadata |
 | --- | --- |
-| `.tscn` | Scene name/path, format version, node count, node tree, script path, groups, signals, properties quan trọng. |
-| `.tres`/`.res` | Resource path, resource type, properties chính, external reference. |
-| `.gd` | Script path, `class_name`, `extends`, preload/load dependency, line count. |
-| Asset | Path, filename, asset type, file size, MIME/dimension nếu có, hash và thumbnail path nếu sinh preview. |
+| `.tscn` | Scene name/path, format version, node count, node tree, script paths, groups, signals, important properties. |
+| `.tres`/`.res` | Resource path, resource type, key properties, external references. |
+| `.gd` | Script path, `class_name`, `extends`, preload/load dependencies, line count. |
+| Asset | Path, filename, asset type, file size, MIME/dimensions if available, hash, and thumbnail path if generating a preview. |
 
-## Ngoại lệ / lỗi
+## Exceptions / Errors
 
-| Tình huống | Job/API | Error Code | Hành vi |
+| Situation | Job/API | Error Code | Behavior |
 | --- | --- | --- | --- |
-| Repository chưa kết nối | 400 | `REPO_NOT_CONNECTED` | Không tạo parse job. |
-| Repository chưa ready | 400 | `REPO_NOT_READY` | Yêu cầu clone/sync trước. |
-| File `.tscn` corrupt | File warning | `PARSE_INVALID_SCENE` | Skip file, lưu warning, tiếp tục file khác nếu có thể. |
-| File quá lớn | File warning | `PARSE_FILE_TOO_LARGE` | Skip file theo giới hạn cấu hình. |
-| Encoding không hỗ trợ | File warning | `PARSE_ENCODING_UNSUPPORTED` | Detect/fallback, nếu fail thì skip. |
-| DB tạm lỗi | Job retry | `JOB_TRANSIENT_FAILURE` | Retry theo worker policy. |
+| Repository not connected | 400 | `REPO_NOT_CONNECTED` | Do not create a parse job. |
+| Repository not ready | 400 | `REPO_NOT_READY` | Require clone/sync first. |
+| Corrupt `.tscn` file | File warning | `PARSE_INVALID_SCENE` | Skip file, log a warning, continue with other files if possible. |
+| File too large | File warning | `PARSE_FILE_TOO_LARGE` | Skip file based on configured limits. |
+| Unsupported encoding | File warning | `PARSE_ENCODING_UNSUPPORTED` | Detect/fallback, skip if failed. |
+| Temporary DB error | Job retry | `JOB_TRANSIENT_FAILURE` | Retry according to worker policy. |
 
 ## Acceptance Criteria
 
-- AC-53: Parse project 100 scenes ghi đủ scenes và node tree vào DB.
-- AC-54: Một file `.tscn` corrupt bị skip, các file hợp lệ vẫn parse thành công.
-- AC-55: Re-parse project chỉ parse file thay đổi dựa trên hash.
-- AC-56: Parse job hiển thị progress realtime.
+- AC-53: Parsing a project with 100 scenes saves all scenes and node trees to the DB.
+- AC-54: A corrupt `.tscn` file is skipped, while valid files are successfully parsed.
+- AC-55: Re-parsing a project only parses files that have changed based on their hash.
+- AC-56: Parse jobs display progress in real-time.
 
-## API liên quan
+## Related API
 
-| Method | Path | Permission | Request chính | Response chính | Error chính |
+| Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/projects/{id}/parse` | `developer+` | branch/commit/options | `202` job parse | `REPO_NOT_READY` |
+| POST | `/api/v1/projects/{id}/parse` | `developer+` | branch/commit/options | `202` parse job | `REPO_NOT_READY` |
 | GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | job id | Job status/progress | `JOB_NOT_FOUND` |
 | GET | `/api/v1/projects/{id}/scenes` | `viewer+` | pagination/filter | Parsed scenes | `METADATA_NOT_READY` |
 | GET | `/api/v1/projects/{id}/assets` | `viewer+` | pagination/filter | Parsed assets | `METADATA_NOT_READY` |
 | GET | `/api/v1/projects/{id}/scripts` | `viewer+` | pagination/filter | Parsed scripts | `METADATA_NOT_READY` |
 | GET | `/api/v1/projects/{id}/resources` | `viewer+` | pagination/filter | Parsed resources | `METADATA_NOT_READY` |
 
-## Database liên quan
+## Related Database Tables
 
-| Bảng | Vai trò |
+| Table | Role |
 | --- | --- |
-| `jobs` | Lưu trạng thái parse job, progress, error và correlation id. |
-| `repositories` | Cung cấp workspace path, default branch và repository state. |
-| `scenes` | Lưu metadata scene `.tscn`. |
-| `scene_nodes` | Lưu node tree của scene. |
-| `assets` | Lưu metadata asset và thumbnail reference. |
-| `scripts` | Lưu metadata `.gd`. |
-| `resources` | Lưu metadata `.tres`/`.res`. |
-| `dependencies` | Lưu dependency phát hiện trong parse. |
+| `jobs` | Stores parse job status, progress, errors, and correlation id. |
+| `repositories` | Provides workspace path, default branch, and repository state. |
+| `scenes` | Stores `.tscn` scene metadata. |
+| `scene_nodes` | Stores the node tree for scenes. |
+| `assets` | Stores asset metadata and thumbnail references. |
+| `scripts` | Stores `.gd` metadata. |
+| `resources` | Stores `.tres`/`.res` metadata. |
+| `dependencies` | Stores dependencies discovered during parsing. |
 
-## Ghi chú bảo mật / phân quyền
+## Security / Authorization Notes
 
-- Parser chỉ đọc trong workspace đã normalize; không theo symlink/path vượt root.
-- File path trả về client là path tương đối trong repository, không phải server path.
-- Malicious Godot file phải được xử lý như input không tin cậy: giới hạn kích thước, timeout, memory guard và không execute script.
-- Parser không chạy GDScript.
-- Job result phải filter theo project permission.
+- The parser must only read within the normalized workspace; do not follow symlinks or paths escaping the root.
+- File paths returned to the client are repository-relative, not absolute server paths.
+- Malicious Godot files must be handled as untrusted input: apply size limits, timeouts, memory guards, and do not execute scripts.
+- The parser does not run GDScript.
+- Job results must be filtered by project permissions.

@@ -1,181 +1,181 @@
 # 8. Workflows
 
-## Mục tiêu
+## Purpose
 
-Tài liệu này mô tả các workflow nghiệp vụ chính của GodForge để thống nhất hành vi giữa UI, API, worker, database, notification và activity log.
+This document outlines the main business workflows of GodForge to ensure consistent behavior across UI, API, workers, databases, notifications, and activity logs.
 
 ## WF-01 Login / Refresh Session
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | User nhập email/password tại màn hình Login. |
-| 2 | API validate input, rate limit và account status. |
-| 3 | Auth Service kiểm tra bcrypt password hash. |
-| 4 | Nếu hợp lệ, API phát access token và refresh token. |
-| 5 | Refresh token được lưu dạng hash trong `refresh_tokens`. |
-| 6 | API ghi `user.login.success`; lỗi ghi `user.login.failed`. |
-| 7 | Khi access token hết hạn, client gọi refresh để lấy token pair mới. |
-| 8 | Refresh token cũ bị revoke theo rotation policy. |
+| 1 | User enters email/password on the Login screen. |
+| 2 | API validates input, rate limits, and account status. |
+| 3 | Auth Service verifies bcrypt password hash. |
+| 4 | If valid, API issues an access token and a refresh token. |
+| 5 | Refresh token is stored as a hash in `refresh_tokens`. |
+| 6 | API records `user.login.success`; errors record `user.login.failed`. |
+| 7 | Upon access token expiration, client calls refresh to obtain a new token pair. |
+| 8 | Old refresh token is revoked according to rotation policy. |
 
-Điểm kiểm soát: không tiết lộ user tồn tại, không log token/password, có correlation id.
+Control Point: Do not reveal user existence; do not log tokens/passwords; use correlation ID.
 
 ## WF-02 Create Project
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | User chọn tạo project. |
-| 2 | Nhập name, description, Godot version và visibility. |
-| 3 | API validate tên unique, role và input. |
-| 4 | Project Service tạo `projects`, `project_settings` và membership `project_owner`. |
-| 5 | Activity Log ghi `project.created`. |
-| 6 | UI chuyển đến Project Dashboard với empty state yêu cầu kết nối repository. |
+| 1 | User chooses to create a project. |
+| 2 | Enters name, description, Godot version, and visibility. |
+| 3 | API validates unique name, role, and inputs. |
+| 4 | Project Service creates `projects`, `project_settings`, and `project_owner` membership. |
+| 5 | Activity Log records `project.created`. |
+| 6 | UI navigates to Project Dashboard showing an empty state, prompting repository connection. |
 
-Điểm kiểm soát: creator luôn là owner; project mới chưa có repository/metadata.
+Control Point: Creator is always owner; new project lacks repository/metadata.
 
 ## WF-03 Connect Repository
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Project Admin mở Repository Settings. |
-| 2 | Nhập HTTPS remote URL, default branch và PAT. |
-| 3 | API validate URL, quyền và project chưa có repository active. |
-| 4 | Credential được mã hóa và lưu dưới dạng `credential_ref`. |
-| 5 | API tạo clone job và trả 202. |
-| 6 | Notification/Activity ghi `repo.connected` hoặc error nếu thất bại. |
+| 1 | Project Admin opens Repository Settings. |
+| 2 | Enters HTTPS remote URL, default branch, and PAT. |
+| 3 | API validates URL, permissions, and ensures project has no active repository. |
+| 4 | Credential is encrypted and stored as a `credential_ref`. |
+| 5 | API creates clone job and returns 202. |
+| 6 | Notification/Activity records `repo.connected` or error if failed. |
 
-Điểm kiểm soát: không lưu/log PAT plaintext; URL phải chống SSRF theo policy.
+Control Point: Do not store/log PAT in plaintext; URL must prevent SSRF based on policy.
 
 ## WF-04 Initial Clone And Analyze
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Clone Worker nhận `RepositoryCloneRequested`. |
-| 2 | Worker acquire repository lock. |
-| 3 | Worker clone/fetch repository vào workspace. |
-| 4 | Worker cập nhật `repositories.clone_status` và job progress. |
-| 5 | Nếu clone thành công, hệ thống trigger parse/analyze ban đầu theo settings. |
-| 6 | Parser Worker tạo metadata; Analyze Worker tạo health report. |
-| 7 | Dashboard cache invalidated/rebuilt; user nhận notification. |
+| 1 | Clone Worker receives `RepositoryCloneRequested`. |
+| 2 | Worker acquires repository lock. |
+| 3 | Worker clones/fetches repository into workspace. |
+| 4 | Worker updates `repositories.clone_status` and job progress. |
+| 5 | If clone succeeds, system triggers initial parse/analyze based on settings. |
+| 6 | Parser Worker creates metadata; Analyze Worker creates health report. |
+| 7 | Dashboard cache is invalidated/rebuilt; user receives a notification. |
 
-Điểm kiểm soát: clone lỗi auth không retry vô hạn; network lỗi có thể retry.
+Control Point: Clone auth failures do not retry infinitely; network failures may retry.
 
 ## WF-05 Git Commit And Push
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Developer mở Git UI và xem status. |
-| 2 | Chọn files để stage. |
-| 3 | Nhập commit message tối thiểu 5 ký tự. |
-| 4 | API kiểm tra staged files và acquire repository lock. |
-| 5 | Git Service tạo commit, release lock và ghi `git.commit`. |
-| 6 | User chọn push. |
-| 7 | API acquire lock, push remote và xử lý non-fast-forward nếu có. |
-| 8 | Sau push thành công, hệ thống có thể trigger parse/analyze theo settings. |
+| 1 | Developer opens Git UI and views status. |
+| 2 | Selects files to stage. |
+| 3 | Enters commit message (minimum 5 characters). |
+| 4 | API verifies staged files and acquires repository lock. |
+| 5 | Git Service creates commit, releases lock, and records `git.commit`. |
+| 6 | User selects push. |
+| 7 | API acquires lock, pushes to remote, and handles non-fast-forward scenarios. |
+| 8 | Upon successful push, system may trigger parse/analyze depending on settings. |
 
-Điểm kiểm soát: không push khi có conflict chưa resolve; lock TTL tránh deadlock.
+Control Point: Do not push when unresolved conflicts exist; lock TTL prevents deadlocks.
 
 ## WF-06 Pull With Conflict
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Developer chọn pull. |
-| 2 | API kiểm tra quyền, repository ready và acquire lock. |
-| 3 | Git Service chạy pull. |
-| 4 | Nếu conflict, API trả danh sách conflict files và trạng thái conflict. |
-| 5 | UI cho user chọn accept ours/theirs hoặc manual resolve theo phạm vi Git UI. |
-| 6 | Sau resolve, user stage và commit merge. |
-| 7 | Activity ghi `git.pull` và `git.merge` nếu có. |
+| 1 | Developer selects pull. |
+| 2 | API verifies permissions, repository readiness, and acquires lock. |
+| 3 | Git Service executes pull. |
+| 4 | If conflicts arise, API returns a list of conflicted files and conflict state. |
+| 5 | UI lets user select accept ours/theirs or manually resolve according to Git UI scope. |
+| 6 | After resolving, user stages and commits the merge. |
+| 7 | Activity records `git.pull` and `git.merge` if applicable. |
 
-Điểm kiểm soát: GodForge không tự động resolve conflict.
+Control Point: GodForge does not automatically resolve conflicts.
 
 ## WF-07 Parse Project
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Developer trigger parse hoặc hệ thống trigger sau clone/push. |
-| 2 | API tạo parse job. |
-| 3 | Parser Worker lấy snapshot theo commit/branch. |
-| 4 | Worker parse `.tscn`, `.tres`, `.res`, `.gd` và asset files. |
-| 5 | Worker ghi metadata và progress. |
-| 6 | Lỗi từng file được isolate nếu có thể. |
-| 7 | Job hoàn tất gửi notification. |
+| 1 | Developer triggers parse or system triggers after clone/push. |
+| 2 | API creates parse job. |
+| 3 | Parser Worker takes snapshot by commit/branch. |
+| 4 | Worker parses `.tscn`, `.tres`, `.res`, `.gd`, and asset files. |
+| 5 | Worker saves metadata and progress. |
+| 6 | Individual file errors are isolated when possible. |
+| 7 | Completed job sends notification. |
 
-Điểm kiểm soát: parser không execute script và không đọc ngoài workspace.
+Control Point: Parser does not execute scripts and cannot read outside workspace.
 
 ## WF-08 View Scene
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | User mở Scene Explorer. |
-| 2 | API trả danh sách scene theo permission. |
-| 3 | User chọn scene. |
-| 4 | API trả scene detail và node tree từ metadata. |
-| 5 | UI hiển thị tree, node detail, search/filter và breadcrumb. |
+| 1 | User opens Scene Explorer. |
+| 2 | API returns scene list based on permissions. |
+| 3 | User selects a scene. |
+| 4 | API returns scene details and node tree from metadata. |
+| 5 | UI displays tree, node detail, search/filter, and breadcrumb. |
 
-Điểm kiểm soát: nếu chưa parse, UI hiển thị empty state và action parse cho Developer+.
+Control Point: If unparsed, UI shows empty state and trigger parse action for Developer+.
 
 ## WF-09 View Asset Usage
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | User mở Asset Explorer. |
-| 2 | API trả asset list. |
-| 3 | User chọn asset. |
-| 4 | API trả asset metadata và usage từ `dependencies`. |
-| 5 | UI hiển thị asset detail, thumbnail/fallback, usage và warning unused/missing nếu có. |
+| 1 | User opens Asset Explorer. |
+| 2 | API returns asset list. |
+| 3 | User selects an asset. |
+| 4 | API returns asset metadata and usage from `dependencies`. |
+| 5 | UI displays asset detail, thumbnail/fallback, usage, and warnings for unused/missing. |
 
-Điểm kiểm soát: unused asset có thể false positive với dynamic load.
+Control Point: Unused assets may have false positives with dynamic loading.
 
 ## WF-10 Generate Dependency Graph
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | User mở Dependency Graph. |
-| 2 | API đọc `dependencies` và metadata nodes theo project. |
-| 3 | UI render graph bằng layout client-side. |
-| 4 | User filter theo type/depth/root. |
-| 5 | Cyclic dependency được highlight và liên kết health issue nếu có. |
+| 1 | User opens Dependency Graph. |
+| 2 | API reads project `dependencies` and metadata nodes. |
+| 3 | UI renders graph using client-side layout. |
+| 4 | User filters by type/depth/root. |
+| 5 | Cyclic dependencies are highlighted and linked to health issues if any. |
 
-Điểm kiểm soát: giới hạn depth/response size để tránh tải quá lớn.
+Control Point: Limit depth/response size to avoid huge payloads.
 
 ## WF-11 Run Health Analysis
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Developer trigger analyze. |
-| 2 | API kiểm tra parse đã hoàn thành. |
-| 3 | Analyze Worker đọc metadata và chạy health rules. |
-| 4 | Worker lưu `health_reports` và `health_issues`. |
-| 5 | Redis dashboard cache được cập nhật/invalidate. |
-| 6 | Critical issue tạo notification. |
+| 1 | Developer triggers analyze. |
+| 2 | API verifies parse completion. |
+| 3 | Analyze Worker reads metadata and runs health rules. |
+| 4 | Worker saves `health_reports` and `health_issues`. |
+| 5 | Redis dashboard cache is updated/invalidated. |
+| 6 | Critical issues generate notifications. |
 
-Điểm kiểm soát: health report lưu history, không ghi đè report cũ.
+Control Point: Health reports retain history, do not overwrite old reports.
 
 ## WF-12 View Scene Diff
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Reviewer chọn scene và hai revision. |
-| 2 | API validate path/revision và kiểm tra diff cache. |
-| 3 | Nếu cache hit, API trả diff result. |
-| 4 | Nếu cache miss, API tạo diff job. |
-| 5 | Diff Worker parse hai version và tạo node/property diff. |
-| 6 | UI hiển thị added/removed/modified/moved nodes và summary. |
+| 1 | Reviewer selects a scene and two revisions. |
+| 2 | API validates path/revision and checks diff cache. |
+| 3 | If cache hit, API returns diff result. |
+| 4 | If cache miss, API creates diff job. |
+| 5 | Diff Worker parses both versions and creates node/property diff. |
+| 6 | UI displays added/removed/modified/moved nodes and summary. |
 
-Điểm kiểm soát: scene-aware diff chỉ áp dụng `.tscn`; file khác fallback text diff.
+Control Point: Scene-aware diff only applies to `.tscn`; other files fallback to text diff.
 
 ## WF-13 Notification And Activity Log
 
-| Bước | Mô tả |
+| Step | Description |
 | --- | --- |
-| 1 | Domain event hoặc worker result phát sinh. |
-| 2 | Notification Service xác định recipient theo membership/settings. |
-| 3 | Activity Log ghi action nếu là sự kiện audit. |
-| 4 | Notification lưu DB và gửi SignalR nếu user online. |
-| 5 | User mở Notification Center hoặc Activity Log để xem lịch sử. |
+| 1 | Domain event or worker result occurs. |
+| 2 | Notification Service determines recipients by membership/settings. |
+| 3 | Activity Log records action if it's an audit event. |
+| 4 | Notification saved to DB and sent via SignalR if user is online. |
+| 5 | User opens Notification Center or Activity Log to view history. |
 
-Điểm kiểm soát: metadata log phải sanitize và không chứa credential/token.
+Control Point: Logged metadata must be sanitized and contain no credentials/tokens.
 
-## Quyết định MVP
+## MVP Decisions
 
-- Manual conflict resolve trong MVP xử lý ngoài GodForge: user resolve trong local/Git tool khác rồi refresh repository status trong GodForge. Upload file đã sửa qua UI là hướng mở rộng sau MVP.
+- Manual conflict resolution in MVP is handled outside GodForge: the user resolves conflicts in a local tool/Git client and refreshes the repository status in GodForge. Uploading modified files via UI is a post-MVP expansion.

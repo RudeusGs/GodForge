@@ -1,44 +1,44 @@
 # GodForge SRS
 
-`docs/SRS` là nguồn tài liệu chính cho Software Requirements Specification của GodForge. Luồng duy trì SRS dạng Word đã được thay thế bằng Markdown trong repo để dễ review, versioning, traceability và cập nhật cùng mã nguồn.
+`docs/SRS` is the primary documentation source for the GodForge Software Requirements Specification. The Word-based SRS maintenance flow has been replaced with Markdown in the repository for easier reviewing, versioning, traceability, and updating alongside the source code.
 
-File Word `SRS_GodForge.docx`, nếu vẫn còn trong repo, chỉ được xem là tài liệu tham chiếu/archive. Không cập nhật nội dung chính trong Word.
+The Word file `SRS_GodForge.docx`, if still present in the repository, is considered only a reference/archive document. Do not update the primary content in the Word file.
 
-## Cấu trúc tài liệu
+## Document Structure
 
-| Đường dẫn | Nội dung |
+| Path | Content |
 | --- | --- |
-| `00-overview.md` | Tổng quan sản phẩm, mục tiêu, vai trò người dùng. |
-| `01-scope.md` | Phạm vi bao gồm, loại trừ, ranh giới và giới hạn MVP. |
-| `02-architecture.md` | Kiến trúc web nhiều lớp, async workers và nguyên tắc thiết kế. |
-| `03-functional/` | Yêu cầu chức năng theo module. |
-| `04-database.md` | PostgreSQL schema, Redis, MinIO và quy tắc dữ liệu. |
-| `05-api.md` | REST API `/api/v1`, response/error format và endpoint catalog. |
+| `00-overview.md` | Product overview, goals, user roles. |
+| `01-scope.md` | Included/excluded scope, boundaries, and MVP limits. |
+| `02-architecture.md` | Multi-tier web architecture, async workers, and design principles. |
+| `03-functional/` | Functional requirements by module. |
+| `04-database.md` | PostgreSQL schema, Redis, MinIO, and data rules. |
+| `05-api.md` | REST API `/api/v1`, response/error formats, and endpoint catalog. |
 | `06-security.md` | Authentication, RBAC, secret handling, threat model. |
 | `07-non-functional.md` | Performance, reliability, scalability, observability, maintainability. |
-| `08-workflows.md` | Workflow nghiệp vụ chính. |
-| `09-ui-ux.md` | Màn hình, navigation, states và role-based visibility. |
-| `10-traceability.md` | Mapping requirement với API, database, UI và test case. |
-| `11-testing-acceptance.md` | Test strategy, acceptance, DoD và test case format. |
-| `12-worker-processing.md` | Queue, job lifecycle, retry, DLQ, idempotency và worker metrics. |
-| `13-deployment-operations.md` | Local/dev/prod deployment, monitoring, backup, incident và DR. |
+| `08-workflows.md` | Primary business workflows. |
+| `09-ui-ux.md` | Screens, navigation, states, and role-based visibility. |
+| `10-traceability.md` | Requirement mapping to APIs, database, UI, and test cases. |
+| `11-testing-acceptance.md` | Test strategy, acceptance criteria, DoD, and test case format. |
+| `12-worker-processing.md` | Queues, job lifecycle, retries, DLQ, idempotency, and worker metrics. |
+| `13-deployment-operations.md` | Local/dev/prod deployment, monitoring, backups, incidents, and DR. |
 
-## Quy định cập nhật
+## Update Rules
 
-- Viết bằng tiếng Việt, rõ ràng, kỹ thuật và nhất quán.
-- Không thêm tính năng ngoài phạm vi SRS nếu chưa có quyết định sản phẩm.
-- Khi thêm hoặc sửa requirement, phải cập nhật:
-  - file module tương ứng trong `03-functional/`;
+- Write in clear, technical, and consistent English.
+- Do not add features outside the SRS scope without product decisions.
+- When adding or modifying a requirement, you must update:
+  - the corresponding module file in `03-functional/`;
   - `10-traceability.md`;
-  - `11-testing-acceptance.md` hoặc test case liên quan.
-- Giữ ID yêu cầu ổn định nếu requirement vẫn cùng ý nghĩa: `FR-xx`, `NFR-xx`, `BR-xx`, `AC-xx`.
-- Nếu đổi API contract, cập nhật `05-api.md` và traceability.
-- Nếu đổi schema, cập nhật `04-database.md`, traceability và testing.
-- Nếu đổi worker/job behavior, cập nhật `12-worker-processing.md` và các workflow liên quan.
-- Nếu thông tin chưa đủ chắc chắn, ghi một mục xác nhận ngắn gọn ở file liên quan.
+  - `11-testing-acceptance.md` or related test cases.
+- Keep requirement IDs stable if the requirement retains the same meaning: `FR-xx`, `NFR-xx`, `BR-xx`, `AC-xx`.
+- If API contracts change, update `05-api.md` and traceability.
+- If schemas change, update `04-database.md`, traceability, and testing.
+- If worker/job behaviors change, update `12-worker-processing.md` and related workflows.
+- If information is uncertain, add a brief confirmation note in the relevant file.
 
-## Quy tắc review
+## Review Rules
 
-- Mỗi PR thay đổi docs SRS phải kiểm tra tên sản phẩm là `GodForge`.
-- Không dùng placeholder cho nội dung có thể suy ra từ SRS; ghi rõ các quyết định còn thiếu trong mục xác nhận.
-- Không xóa nội dung có giá trị từ SRS gốc; nếu nội dung trùng thì gộp lại gọn hơn.
+- Every PR changing SRS docs must ensure the product name is `GodForge`.
+- Do not use placeholders for content that can be inferred from the SRS; explicitly state any missing decisions in a confirmation section.
+- Do not delete valuable content from the original SRS; if content overlaps, merge it more concisely.

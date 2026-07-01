@@ -1,83 +1,83 @@
 # 11. Testing & Acceptance
 
-## Test strategy
+## Test Strategy
 
-GodForge áp dụng test strategy theo risk-based testing: các luồng bảo mật, RBAC, Git operation, parser/analyzer worker và data integrity được ưu tiên cao hơn UI phụ trợ.
+GodForge applies a risk-based testing strategy: security flows, RBAC, Git operations, parser/analyzer workers, and data integrity are prioritized over secondary UI features.
 
-## Test levels
+## Test Levels
 
-| Loại test | Phạm vi | Ví dụ |
+| Type | Scope | Examples |
 | --- | --- | --- |
-| Unit test | Domain logic, validators, permission checker, parser/analyzer rule thuần. | Password policy, project name validation, health score formula. |
-| Integration test | API + database, Redis lock, RabbitMQ message, MinIO artifact, Git repository giả lập. | Connect repository tạo job, parse ghi metadata, lock Git operation. |
-| API test | Contract `/api/v1`, response/error/pagination/job format. | Login error format, project pagination, async job response. |
-| Worker test | Parser, Analyzer, Diff, Preview worker lifecycle. | Retry transient DB error, DLQ poison message, idempotent parse. |
-| Security test | Auth, RBAC, input validation, secret leakage, path traversal, SSRF. | Cross-project IDOR, malicious repo URL, path `../`. |
-| Performance test | Dashboard, search, parse/analyze, scene diff, queue lag. | Dashboard p95, parse 100 scenes, diff scene vừa. |
-| E2E test | Workflow chính qua UI/API. | Create project -> connect repo -> analyze -> view dashboard. |
-| UAT | Nghiệm thu theo vai trò. | Reviewer xem diff; Developer commit/push; Viewer readonly. |
+| Unit test | Domain logic, validators, permission checkers, pure parser/analyzer rules. | Password policy, project name validation, health score formula. |
+| Integration test | API + database, Redis locks, RabbitMQ messages, MinIO artifacts, mocked Git repositories. | Connect repository creates job, parse writes metadata, lock Git operation. |
+| API test | `/api/v1` contracts, responses/errors/pagination/job formats. | Login error format, project pagination, async job responses. |
+| Worker test | Parser, Analyzer, Diff, Preview worker lifecycles. | Retry transient DB error, DLQ poison messages, idempotent parsing. |
+| Security test | Auth, RBAC, input validation, secret leakage, path traversal, SSRF. | Cross-project IDOR, malicious repo URLs, `../` paths. |
+| Performance test | Dashboard, search, parse/analyze, scene diff, queue lag. | Dashboard P95, parsing 100 scenes, medium scene diff. |
+| E2E test | Primary workflows via UI/API. | Create project -> connect repo -> analyze -> view dashboard. |
+| UAT | Role-based acceptance. | Reviewer views diff; Developer commits/pushes; Viewer is readonly. |
 
-## Test case format chuẩn
+## Standard Test Case Format
 
-| Trường | Mô tả |
+| Field | Description |
 | --- | --- |
-| ID | Mã test case, ví dụ `TC-AUTH-001`. |
-| Requirement | Requirement ID được kiểm thử. |
-| Preconditions | Dữ liệu/trạng thái cần có trước test. |
-| Steps | Các bước thực hiện. |
-| Expected result | Kết quả mong đợi. |
+| ID | Test case code, e.g., `TC-AUTH-001`. |
+| Requirement | The requirement ID being tested. |
+| Preconditions | Necessary data/state before testing. |
+| Steps | Execution steps. |
+| Expected result | Expected outcome. |
 | Priority | High/Medium/Low. |
 
-## Test cases tối thiểu
+## Minimum Test Cases
 
 | ID | Requirement | Preconditions | Steps | Expected result | Priority |
 | --- | --- | --- | --- | --- | --- |
-| TC-AUTH-001 | FR-01 | User active tồn tại. | Login đúng, refresh token, logout. | Nhận token, refresh rotation hoạt động, logout revoke token. | High |
-| TC-AUTH-002 | FR-02 | Project có owner/admin. | Invite member, đổi role, thử xóa owner cuối. | Role cập nhật đúng; owner cuối không bị xóa. | High |
-| TC-PROJ-001 | FR-03 | User authenticated. | Create/update/delete/restore project. | CRUD đúng quyền, soft-delete và restore đúng. | High |
-| TC-PROJ-MEMBER-001 | FR-03.1 | Project có owner/admin và user invite. | List/add/update/remove member, thử remove owner cuối. | Membership/RBAC đúng; owner cuối không bị xóa; activity ghi. | High |
-| TC-REPO-001 | FR-04 | Project chưa có repo. | Connect repository URL/PAT hợp lệ. | Credential mã hóa, clone job tạo, activity ghi. | High |
-| TC-GIT-001 | FR-05 | Repo ready có file thay đổi. | Status, stage, commit, push. | Git state đúng, lock hoạt động, activity ghi. | High |
-| TC-GIT-002 | FR-06 | Repo có commit history. | Xem list/detail/filter. | Commit list/detail đúng, phân trang đúng. | Medium |
-| TC-GIT-003 | FR-07 | Repo ready. | Tạo branch, checkout dirty tree, merge. | Branch tạo được, checkout dirty bị chặn, merge theo quyền. | Medium |
-| TC-PARSE-001 | FR-08 | Repo Godot fixture. | Trigger parse. | Metadata ghi đúng, file corrupt không crash job. | High |
-| TC-SCENE-001 | FR-09 | Metadata scene đã parse. | Mở scene, click node, search. | Tree/detail/search đúng. | Medium |
-| TC-ASSET-001 | FR-10 | Metadata asset đã parse. | Mở asset, xem usage. | Detail/usage/warning đúng. | Medium |
-| TC-GRAPH-001 | FR-11 | Analyze hoàn thành. | Mở graph, filter, focus node. | Nodes/edges/filter/cycle đúng. | Medium |
-| TC-HEALTH-001 | FR-12 | Metadata có missing resource fixture. | Trigger analyze. | Report score/issues đúng, notification critical. | High |
-| TC-DIFF-001 | FR-13 | Hai revision scene khác nhau. | Tạo scene diff. | Node/property diff đúng, cache hit nhanh. | High |
-| TC-DASH-001 | FR-14 | Project có metadata/jobs/activity. | Mở dashboard. | Summary đúng, cache hit đạt target. | Medium |
-| TC-SEARCH-001 | FR-15 | User có quyền project A, không có quyền project B. | Search keyword có ở cả hai project. | Chỉ trả result project A. | High |
-| TC-NOTIF-001 | FR-16 | Job hoàn thành. | Xem notification, mark read. | Notification realtime/persisted, unread count giảm. | Medium |
-| TC-SETTINGS-001 | FR-17 | Project Admin và Developer. | Admin đổi setting; Developer thử đổi setting. | Admin thành công, Developer 403. | Medium |
-| TC-SETTINGS-002 | FR-17.2 | User authenticated. | Xem và đổi user settings. | Settings lưu đúng user, không ảnh hưởng user khác. | Medium |
-| TC-ACTIVITY-001 | FR-18 | Project có activity. | Xem activity theo project và system admin view. | Project member thấy log đúng scope; system admin thấy toàn cục. | High |
-| TC-JOB-001 | NFR-23 | Queue test có transient error, poison message và timeout fixture. | Trigger job, simulate retry, timeout, retry exhaustion và DLQ. | Status đi đúng lifecycle `queued`/`running`/`retrying`/`timeout`/`dead_lettered`; DLQ giữ payload sanitized. | High |
-| TC-SEC-001 | Security NFR | Có user nhiều project. | Thử cross-project IDOR, path traversal, malicious repo URL. | Request bị reject/forbidden, không leak dữ liệu. | High |
-| TC-PERF-001 | Performance NFR | Dataset đại diện. | Đo dashboard/search/parse/diff. | Đạt mục tiêu NFR hoặc ghi rõ deviation. | Medium |
+| TC-AUTH-001 | FR-01 | Active user exists. | Proper login, refresh token, logout. | Receives tokens, refresh rotation works, logout revokes tokens. | High |
+| TC-AUTH-002 | FR-02 | Project has owner/admin. | Invite member, change role, attempt to remove last owner. | Role updates correctly; last owner is not removed. | High |
+| TC-PROJ-001 | FR-03 | Authenticated user. | Create/update/delete/restore project. | CRUD respects permissions, soft-delete and restore work correctly. | High |
+| TC-PROJ-MEMBER-001 | FR-03.1 | Project has owner/admin and an invited user. | List/add/update/remove member, try removing last owner. | Membership/RBAC correct; last owner retained; activity logged. | High |
+| TC-REPO-001 | FR-04 | Project without repo. | Connect valid repository URL/PAT. | Credential encrypted, clone job created, activity logged. | High |
+| TC-GIT-001 | FR-05 | Ready repo with changed files. | Status, stage, commit, push. | Correct Git state, lock functions, activity logged. | High |
+| TC-GIT-002 | FR-06 | Repo with commit history. | View list/detail/filter. | Correct commit list/detail, correct pagination. | Medium |
+| TC-GIT-003 | FR-07 | Ready repo. | Create branch, checkout dirty tree, merge. | Branch created, dirty checkout blocked, merge respects permissions. | Medium |
+| TC-PARSE-001 | FR-08 | Godot fixture repo. | Trigger parse. | Metadata written correctly, corrupt files do not crash job. | High |
+| TC-SCENE-001 | FR-09 | Parsed scene metadata. | Open scene, click node, search. | Correct tree/detail/search. | Medium |
+| TC-ASSET-001 | FR-10 | Parsed asset metadata. | Open asset, view usage. | Correct detail/usage/warnings. | Medium |
+| TC-GRAPH-001 | FR-11 | Completed analysis. | Open graph, filter, focus node. | Correct nodes/edges/filters/cycles. | Medium |
+| TC-HEALTH-001 | FR-12 | Metadata with missing resource fixture. | Trigger analyze. | Correct report score/issues, critical notification generated. | High |
+| TC-DIFF-001 | FR-13 | Two different scene revisions. | Generate scene diff. | Correct node/property diff, fast cache hit. | High |
+| TC-DASH-001 | FR-14 | Project with metadata/jobs/activity. | Open dashboard. | Correct summary, cache hits target. | Medium |
+| TC-SEARCH-001 | FR-15 | User has permission for project A, not B. | Search keyword present in both. | Only returns project A results. | High |
+| TC-NOTIF-001 | FR-16 | Completed job. | View notification, mark read. | Realtime/persisted notification, unread count decreases. | Medium |
+| TC-SETTINGS-001 | FR-17 | Project Admin and Developer. | Admin changes setting; Developer tries. | Admin succeeds, Developer receives 403. | Medium |
+| TC-SETTINGS-002 | FR-17.2 | Authenticated user. | View and change user settings. | Settings correctly saved per user, independent of others. | Medium |
+| TC-ACTIVITY-001 | FR-18 | Project with activity. | View activity by project and system admin view. | Project member sees appropriate scope; system admin sees global view. | High |
+| TC-JOB-001 | NFR-23 | Test queue with transient error, poison message, and timeout fixture. | Trigger job, simulate retry, timeout, retry exhaustion, and DLQ. | Status transitions correctly (`queued`/`running`/`retrying`/`timeout`/`dead_lettered`); DLQ retains sanitized payload. | High |
+| TC-SEC-001 | Security NFR | User with multiple projects. | Attempt cross-project IDOR, path traversal, malicious repo URL. | Requests rejected/forbidden, no data leaked. | High |
+| TC-PERF-001 | Performance NFR | Representative dataset. | Measure dashboard/search/parse/diff. | Meets NFR targets or clearly notes deviations. | Medium |
 
-## UAT checklist
+## UAT Checklist
 
-- System Admin quản lý user và xem system activity.
-- Project Admin tạo project, mời member, kết nối repository và cấu hình settings.
-- Developer thao tác Git, trigger parse/analyze và xem metadata.
-- Reviewer/QA xem commit history, scene diff và health report.
-- Viewer xem readonly dashboard, scene, asset, graph và activity được phép.
-- Notification và activity log phản ánh đúng các workflow chính.
+- System Admin manages users and views system activity.
+- Project Admin creates projects, invites members, connects repositories, and configures settings.
+- Developer performs Git operations, triggers parse/analyze, and views metadata.
+- Reviewer/QA views commit history, scene diffs, and health reports.
+- Viewer accesses readonly dashboards, scenes, assets, graphs, and permitted activities.
+- Notifications and activity logs accurately reflect primary workflows.
 
 ## Definition of Done
 
-- Requirement `Must` có implementation và test tương ứng hoặc exception được phê duyệt.
-- API response/error format đúng `05-api.md`.
-- RBAC được kiểm thử với ít nhất Viewer, Developer, Project Admin và System Admin.
-- Không có secret trong log, DB plaintext hoặc API response.
-- Worker job có retry/DLQ/idempotency theo `12-worker-processing.md`.
-- Docs SRS, traceability và testing được cập nhật khi requirement đổi.
+- `Must` requirements have implementations and corresponding tests, unless an approved exception exists.
+- API responses/error formats match `05-api.md`.
+- RBAC is tested with at least Viewer, Developer, Project Admin, and System Admin roles.
+- No secrets exist in logs, plaintext DBs, or API responses.
+- Worker jobs have retry/DLQ/idempotency handling as per `12-worker-processing.md`.
+- SRS docs, traceability, and testing documents are updated when requirements change.
 
-## Sign-off criteria
+## Sign-off Criteria
 
-- Không còn bug critical/high chưa xử lý.
-- Security tests trọng yếu đạt.
-- Performance mục tiêu chính đạt hoặc có biên bản chấp nhận deviation.
-- UAT checklist được xác nhận bởi stakeholder phù hợp.
-- Release checklist vận hành, backup/restore và monitoring hoàn tất.
+- No unhandled critical/high bugs remain.
+- Key security tests pass.
+- Primary performance targets are met or deviations are formally accepted.
+- UAT checklist is confirmed by appropriate stakeholders.
+- Release checklist covering operations, backup/restore, and monitoring is complete.

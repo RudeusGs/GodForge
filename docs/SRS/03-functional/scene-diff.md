@@ -1,93 +1,93 @@
 # Scene Diff
 
-## Mục tiêu
+## Purpose
 
-Scene Diff so sánh thay đổi scene Godot theo cấu trúc node/property thay vì chỉ text diff, giúp reviewer hiểu thay đổi `.tscn` chính xác hơn.
+The Scene Diff module compares changes in Godot scenes based on node/property structures rather than just text diffs, helping reviewers understand `.tscn` changes more accurately.
 
-## Tác nhân
+## Actors
 
 - Developer
 - Reviewer/QA
 - Viewer
 
-## Phạm vi
+## Scope
 
-- So sánh scene giữa hai commit hoặc hai branch tip.
-- Hiển thị added, removed, modified, moved và unchanged nodes.
-- Hiển thị property-level diff.
-- Cache diff artifact trong MinIO.
-- Fallback text diff cho file không phải `.tscn`.
+- Compare scenes between two commits or branch tips.
+- Display added, removed, modified, moved, and unchanged nodes.
+- Display property-level diffs.
+- Cache diff artifacts in MinIO.
+- Fallback to text diff for non-`.tscn` files.
 
-## Yêu cầu chức năng
+## Functional Requirements
 
-| ID | Tên yêu cầu | Mô tả | Priority | Actor |
+| ID | Requirement Name | Description | Priority | Actor |
 | --- | --- | --- | --- | --- |
-| FR-13 | Scene Diff Viewer | So sánh scene theo cấu trúc giữa hai revision. | Must | Viewer+ |
-| BR-58 | Diff cache | Diff được cache bằng key gồm scene path và hai revision. | Should | Worker |
-| BR-59 | Cache expiry | Diff cache expire sau 7 ngày hoặc khi re-analyze nếu không còn hợp lệ. | Should | System |
-| BR-60 | Scope `.tscn` | Scene-aware diff chỉ áp dụng cho `.tscn`; file khác dùng text diff. | Must | System |
-| BR-61 | Async diff | Diff chạy async và trả 202 nếu cần compute. | Must | Worker |
+| FR-13 | Scene Diff Viewer | Compare scenes structurally between two revisions. | Must | Viewer+ |
+| BR-58 | Diff Cache | Diffs are cached using a key comprising the scene path and two revisions. | Should | Worker |
+| BR-59 | Cache Expiry | Diff cache expires after 7 days or upon re-analysis if invalidated. | Should | System |
+| BR-60 | `.tscn` Scope | Scene-aware diffing only applies to `.tscn` files; other files use text diffs. | Must | System |
+| BR-61 | Async Diff | Diffs run asynchronously and return 202 if computation is needed. | Must | Worker |
 
-## Luồng xử lý chính
+## Main Workflow
 
-1. User chọn scene path và hai revision: commit hoặc branch.
-2. API kiểm tra quyền và validate scene path trong repository.
-3. Nếu diff artifact đã cache và còn hợp lệ, API trả kết quả nhanh.
-4. Nếu chưa cache, API tạo diff job và trả `202 Accepted`.
-5. Diff Worker lấy hai version của file `.tscn`.
-6. Worker parse node tree/property của hai version.
-7. Worker tạo diff summary, node-level diff và property-level diff.
-8. Kết quả được lưu MinIO và trả cho UI khi job hoàn thành.
+1. User selects a scene path and two revisions (commit or branch).
+2. API checks permissions and validates the scene path within the repository.
+3. If the diff artifact is already cached and valid, the API returns the result quickly.
+4. If not cached, the API creates a diff job and returns `202 Accepted`.
+5. Diff Worker retrieves the two versions of the `.tscn` file.
+6. Worker parses the node tree/properties of both versions.
+7. Worker generates a diff summary, node-level diff, and property-level diff.
+8. The result is saved to MinIO and returned to the UI when the job completes.
 
-## Hiển thị diff
+## Diff Display
 
-| Loại thay đổi | Hiển thị |
+| Change Type | Display |
 | --- | --- |
-| Added nodes | Highlight xanh, hiển thị node info mới. |
-| Removed nodes | Highlight đỏ, hiển thị node info trước khi xóa. |
-| Modified nodes | Highlight vàng, hiển thị property changes. |
-| Moved nodes | Hiển thị parent path cũ và mới. |
-| Unchanged nodes | Mặc định collapsed hoặc làm mờ. |
+| Added nodes | Highlighted green, showing the new node info. |
+| Removed nodes | Highlighted red, showing the node info before deletion. |
+| Modified nodes | Highlighted yellow, showing property changes. |
+| Moved nodes | Shows old and new parent paths. |
+| Unchanged nodes | Collapsed or dimmed by default. |
 
-## Ngoại lệ / lỗi
+## Exceptions / Errors
 
-| Tình huống | HTTP Status / Job State | Error Code | Hành vi |
+| Situation | HTTP Status / Job State | Error Code | Behavior |
 | --- | --- | --- | --- |
-| Scene path không thuộc project | 400/403 | `PATH_NOT_ALLOWED` | Từ chối request. |
-| Revision không tồn tại | 404 | `REVISION_NOT_FOUND` | Không tạo diff. |
-| File không phải `.tscn` | 200 | `TEXT_DIFF_FALLBACK` | Trả text diff nếu hỗ trợ. |
-| Parse một revision thất bại | Job failed/degraded | `DIFF_PARSE_FAILED` | Trả lỗi rõ ràng hoặc fallback nếu có thể. |
-| Cache artifact mất | 202 | `DIFF_CACHE_MISS` | Tạo lại diff job. |
+| Scene path not in project | 400/403 | `PATH_NOT_ALLOWED` | Deny request. |
+| Revision not found | 404 | `REVISION_NOT_FOUND` | Do not create diff. |
+| Non-`.tscn` file | 200 | `TEXT_DIFF_FALLBACK` | Return text diff if supported. |
+| Parsing one revision fails | Job failed/degraded | `DIFF_PARSE_FAILED` | Return clear error or fallback if possible. |
+| Cache artifact missing | 202 | `DIFF_CACHE_MISS` | Recreate the diff job. |
 
 ## Acceptance Criteria
 
-- AC-75: So sánh hai commit của cùng scene hiển thị node-level diff.
-- AC-76: Node được thêm highlight xanh và hiển thị full info.
-- AC-77: Property changed hiển thị old value và new value.
-- AC-78: Diff đã cache trả response nhanh dưới 500ms.
-- AC-79: File non-tscn fallback text diff.
+- AC-75: Comparing two commits of the same scene displays a node-level diff.
+- AC-76: Added nodes are highlighted green and display full information.
+- AC-77: Changed properties show old value and new value.
+- AC-78: Cached diffs return a fast response in under 500ms.
+- AC-79: Non-tscn files fallback to text diff.
 
-## API liên quan
+## Related API
 
-| Method | Path | Permission | Request chính | Response chính | Error chính |
+| Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/projects/{id}/diff/scene` | `viewer+` | scenePath, commitA/branchA, commitB/branchB | Diff job hoặc cached result | `REVISION_NOT_FOUND`, `PATH_NOT_ALLOWED` |
+| POST | `/api/v1/projects/{id}/diff/scene` | `viewer+` | scenePath, commitA/branchA, commitB/branchB | Diff job or cached result | `REVISION_NOT_FOUND`, `PATH_NOT_ALLOWED` |
 | GET | `/api/v1/projects/{id}/diff/{diffId}` | `viewer+` | diff id | Diff result | `DIFF_NOT_FOUND` |
 | GET | `/api/v1/projects/{id}/git/commits/{hash}/diff` | `viewer+` | commit hash | File diff summary | `COMMIT_NOT_FOUND` |
 
-## Database liên quan
+## Related Database Tables
 
-| Bảng | Vai trò |
+| Table | Role |
 | --- | --- |
-| `jobs` | Diff job lifecycle, progress và error. |
-| `repositories` | Repository workspace và default branch. |
-| `scenes` | Scene metadata hiện hành, path validation. |
-| `activities` | Ghi scene diff request nếu policy yêu cầu audit. |
-| MinIO `diff-artifacts` | Lưu diff result/cache. |
+| `jobs` | Diff job lifecycle, progress, and errors. |
+| `repositories` | Repository workspace and default branch. |
+| `scenes` | Current scene metadata, path validation. |
+| `activities` | Logs scene diff requests if audit policy requires it. |
+| MinIO `diff-artifacts` | Stores diff results/cache. |
 
-## Ghi chú bảo mật / phân quyền
+## Security / Authorization Notes
 
-- Scene path phải normalize và nằm trong repository workspace.
-- Diff result có thể chứa metadata source; phải kiểm tra quyền project khi đọc artifact.
-- Không expose server path hoặc raw Git stderr.
-- Diff Worker không execute nội dung scene/script.
+- Scene paths must be normalized and reside within the repository workspace.
+- Diff results may contain source metadata; project permissions must be verified when reading artifacts.
+- Do not expose server paths or raw Git stderr.
+- The Diff Worker must not execute scene/script contents.

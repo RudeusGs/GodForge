@@ -1,79 +1,79 @@
 # Scene Explorer
 
-## Mục tiêu
+## Purpose
 
-Scene Explorer hiển thị cấu trúc scene Godot dưới dạng cây node tương tác, giúp user hiểu scene mà không cần mở Godot Editor.
+The Scene Explorer displays Godot scene structures as interactive node trees, helping users understand scenes without opening the Godot Editor.
 
-## Tác nhân
+## Actors
 
 - Developer
 - Reviewer/QA
 - Viewer
 
-## Phạm vi
+## Scope
 
-- Danh sách scene đã parse.
-- Tree view của node trong scene.
-- Node detail panel gồm properties, script, signals, groups.
-- Search/filter node theo tên và type.
-- Breadcrumb từ root đến node đang chọn.
-- Không chỉnh sửa scene.
+- List of parsed scenes.
+- Tree view of nodes in a scene.
+- Node detail panel showing properties, scripts, signals, and groups.
+- Search/filter nodes by name and type.
+- Breadcrumbs from the root to the selected node.
+- Direct editing of scenes is out of scope.
 
-## Yêu cầu chức năng
+## Functional Requirements
 
-| ID | Tên yêu cầu | Mô tả | Priority | Actor |
+| ID | Requirement Name | Description | Priority | Actor |
 | --- | --- | --- | --- | --- |
-| FR-09 | Scene Explorer | Hiển thị scene tree và chi tiết node từ metadata đã parse. | Must | Viewer+ |
-| BR-45 | Không parse realtime | Scene Explorer đọc Metadata Schema, không parse file theo request UI. | Must | System |
-| BR-46 | Scene chưa parse | Scene chưa có metadata hiển thị trạng thái rỗng và nút trigger parse nếu user có quyền. | Must | Viewer+, Developer |
+| FR-09 | Scene Explorer | Display scene trees and node details from parsed metadata. | Must | Viewer+ |
+| BR-45 | No Realtime Parse | Scene Explorer reads from the Metadata Schema; it does not parse files on UI request. | Must | System |
+| BR-46 | Unparsed Scenes | Scenes without metadata display an empty state and a trigger parse button if authorized. | Must | Viewer+, Developer |
 
-## Luồng xử lý chính
+## Main Workflow
 
-1. User mở danh sách scene của project.
-2. Frontend gọi API scenes với pagination/filter.
-3. User chọn scene.
-4. API trả scene detail và node tree từ `scenes`/`scene_nodes`.
-5. User click node để xem properties, script, signals, groups và children count.
-6. User search/filter node; UI highlight kết quả và giữ context tree.
+1. User opens the project's scene list.
+2. Frontend calls the scenes API with pagination/filters.
+3. User selects a scene.
+4. API returns scene details and the node tree from `scenes`/`scene_nodes`.
+5. User clicks a node to view properties, scripts, signals, groups, and children count.
+6. User searches/filters nodes; UI highlights results and retains tree context.
 
-## Ngoại lệ / lỗi
+## Exceptions / Errors
 
-| Tình huống | HTTP Status | Error Code | Hành vi |
+| Situation | HTTP Status | Error Code | Behavior |
 | --- | --- | --- | --- |
-| Project chưa parse | 409/200 empty | `METADATA_NOT_READY` | Hiển thị empty state và action parse nếu có quyền. |
-| Scene không tồn tại | 404 | `SCENE_NOT_FOUND` | Không trả path nội bộ. |
-| User không có quyền | 403 | `FORBIDDEN` | Không trả metadata. |
-| Node quá lớn | 200 | `PARTIAL_NODE_TREE` | Có thể phân trang/lazy load node con nếu cần. |
+| Project not parsed | 409 / 200 empty | `METADATA_NOT_READY` | Display empty state and parse action if authorized. |
+| Scene not found | 404 | `SCENE_NOT_FOUND` | Do not return internal paths. |
+| User lacks permission | 403 | `FORBIDDEN` | Do not return metadata. |
+| Node tree too large | 200 | `PARTIAL_NODE_TREE` | Paginate/lazy load child nodes if necessary. |
 
 ## Acceptance Criteria
 
-- AC-57: Mở scene viewer hiển thị node tree đúng cấu trúc.
-- AC-58: Click node hiển thị properties, script và signals.
-- AC-59: Tìm kiếm `Button` highlight node type/name phù hợp.
-- AC-60: Scene chưa parse hiển thị thông báo và nút trigger parse cho Developer+.
+- AC-57: Opening the scene viewer displays the node tree in the correct structure.
+- AC-58: Clicking a node displays its properties, scripts, and signals.
+- AC-59: Searching for `Button` highlights matching node types/names.
+- AC-60: Unparsed scenes display a message and a trigger parse button for Developer+.
 
-## API liên quan
+## Related API
 
-| Method | Path | Permission | Request chính | Response chính | Error chính |
+| Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/scenes` | `viewer+` | pagination, search | Scene list | `METADATA_NOT_READY` |
 | GET | `/api/v1/projects/{id}/scenes/{sceneId}` | `viewer+` | scene id | Scene detail + summary | `SCENE_NOT_FOUND` |
 | GET | `/api/v1/projects/{id}/scenes/{sceneId}/nodes` | `viewer+` | tree/flat, search, type | Node tree/list | `SCENE_NOT_FOUND` |
 | POST | `/api/v1/projects/{id}/parse` | `developer+` | options | Parse job | `REPO_NOT_READY` |
 
-## Database liên quan
+## Related Database Tables
 
-| Bảng | Vai trò |
+| Table | Role |
 | --- | --- |
 | `scenes` | Scene metadata, path, name, node count, file hash. |
 | `scene_nodes` | Node tree, node type, parent path, properties, script path, groups. |
-| `scripts` | Script detail khi node gắn `.gd`. |
-| `dependencies` | Resource/script reference liên quan scene. |
-| `jobs` | Parse job state cho empty/loading state. |
+| `scripts` | Script details when a node attaches `.gd`. |
+| `dependencies` | Resource/script references associated with the scene. |
+| `jobs` | Parse job states for empty/loading UI states. |
 
-## Ghi chú bảo mật / phân quyền
+## Security / Authorization Notes
 
-- Scene path trả về là repository-relative path.
-- User không có project membership không được biết scene tồn tại.
-- Properties có thể chứa path/resource name nhạy cảm theo project; phải filter theo RBAC.
-- Scene Explorer không cung cấp edit operation.
+- Scene paths returned are repository-relative paths.
+- Users without project membership must not know if a scene exists.
+- Properties may contain sensitive paths/resource names depending on the project; these must be filtered by RBAC.
+- The Scene Explorer does not provide edit operations.

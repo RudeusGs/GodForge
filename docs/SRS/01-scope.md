@@ -1,64 +1,77 @@
-# 1. Phạm vi hệ thống
+# 1. System Scope
 
-## Phạm vi bao gồm
+## Included Scope
 
-GodForge bao gồm các năng lực sau trong phạm vi SRS hiện tại:
+GodForge includes the following capabilities in the current SRS scope.
 
-| Nhóm phạm vi | Nội dung |
+| Scope Area | Included Capabilities |
 | --- | --- |
-| Authentication/RBAC | Đăng nhập, đăng xuất, refresh token, invite user, quản lý role hệ thống và role trong project. |
-| Project Management | Tạo, xem, cập nhật, xóa mềm, khôi phục project, quản lý thành viên và project settings. |
-| Repository/Git | Kết nối repository HTTPS, clone/fetch, status, stage/unstage, commit, push, pull, branch, merge và commit history. |
-| Parser/Metadata | Parse `.tscn`, `.tres`, `.gd`, asset files; lưu scene, node, asset, script, resource và dependency metadata. |
-| Analyzer/Health | Xây dependency graph, chạy health rules, tính health score và lưu health report/history. |
-| Explorer/Visualization | Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff Viewer và Dashboard. |
-| Collaboration/Audit | Notification, Activity Log, job status realtime qua SignalR và correlation id cho truy vết. |
-| Operations | Logging, monitoring, backup/restore, deployment, worker processing, retry, DLQ và data retention. |
+| Authentication and RBAC | Login, logout, token refresh, invitation flow, user profile management, system roles, project roles, and server-side authorization checks for every protected API and worker-triggering action. |
+| Project Management | Create, view, update, soft-delete, restore, search, and configure Godot projects; manage project members, roles, visibility, default branch, analysis settings, retention settings, and project status. |
+| Repository and Git | Connect HTTPS Git repositories, securely store credential references, clone/fetch repositories, inspect working tree status, stage/unstage files, commit, push, pull, create/switch/delete branches, merge branches, and view commit history. |
+| Parser and Metadata | Parse `.tscn`, `.tres`, `.res` where supported, `.gd`, and asset files; extract scenes, nodes, resources, scripts, asset metadata, references, dependencies, parse status, and parse errors. |
+| Analyzer and Project Health | Build dependency graphs, detect cyclic or broken dependencies, run health rules, calculate health score, store health reports/history, and provide issue severity, location, and suggestions. |
+| Explorer and Visualization | Provide Dashboard, Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff Viewer, health report views, commit detail views, and search/navigation across project metadata. |
+| Collaboration, Audit, and Notifications | Record Activity Log entries for important successful and failed actions, create in-app notifications, expose job status and progress through SignalR, and preserve correlation IDs for traceability. |
+| Async Worker Processing | Process long-running work through RabbitMQ workers, including clone, fetch, parse, analyze, scene diff, preview, notification dispatch, retry handling, timeout handling, DLQ inspection, and idempotent reprocessing. |
+| Operations and Observability | Provide structured logging, metrics, health checks, backup/restore support, deployment guidance, data retention, repository lock behavior, and operational diagnostics. |
 
-## Phạm vi loại trừ
+## Out of Scope
 
-GodForge **không** làm các việc sau trong phạm vi hiện tại:
+GodForge does **not** provide the following capabilities in the current version.
 
-- Không thay thế **Godot Editor**.
-- Không cung cấp scene editor hoặc visual editor để sửa trực tiếp scene Godot.
-- Không cung cấp code editor, IDE hoặc refactoring tool.
-- Không chạy game, debug game hoặc profiler runtime.
-- Không export build, ký build hoặc phát hành game.
-- Không tự động sửa code, resource hoặc scene khi phát hiện lỗi health.
-- Không hỗ trợ Git SSH trong MVP; repository connection dùng HTTPS và token.
-- Không triển khai plugin marketplace, AI assistant, desktop client hoặc Godot plugin trong phạm vi bắt buộc.
+- It does not replace the Godot Editor.
+- It does not provide a browser-based scene editor or visual editor for directly editing Godot scenes.
+- It does not provide a browser-based code editor, IDE, debugger, profiler, or refactoring tool.
+- It does not run games, debug runtime gameplay, profile game performance, export builds, sign builds, or publish games.
+- It does not automatically modify source code, resources, or scenes to fix health issues without explicit future product approval.
+- It does not support Git SSH in the MVP; repository connection uses HTTPS and token-based authentication.
+- It does not provide plugin marketplace, AI assistant, desktop client, MCP server, or Godot editor plugin as required MVP capabilities.
+- It does not expose server-side repository workspace paths to users or clients.
+- It does not store Git credentials in plain text or return secrets through API responses.
 
-## Ranh giới hệ thống
+## System Boundary
 
-| Ranh giới | Quy định |
+| Boundary | Rule |
 | --- | --- |
-| Repository workspace | Repository được clone vào server-side workspace do backend/worker quản lý. User không truy cập path nội bộ. |
-| Metadata | Metadata được sinh từ repository và có thể tái tạo. Core data như user, project, membership, credential reference và activity là nguồn sự thật nghiệp vụ. |
-| Git operations | Thao tác ghi Git phải đi qua Git Service/Worker, có distributed lock và audit log. |
-| Credentials | Git token được mã hóa, không trả về API response và không xuất hiện trong log. |
-| Async processing | Clone, parse, analyze, diff và preview chạy qua RabbitMQ workers khi có khả năng tốn thời gian. |
-| External systems | SMTP/email, remote Git provider và object storage là dependency bên ngoài hoặc hạ tầng, không làm thay đổi phạm vi sản phẩm. |
+| Client boundary | Users interact with GodForge through the web frontend. The frontend calls REST APIs under `/api/v1` and receives normalized success/error responses. |
+| API boundary | API endpoints handle authentication, authorization, request validation, response shaping, and lightweight orchestration only. Controllers must not contain business logic or perform direct database, Git, Redis, RabbitMQ, or MinIO operations. |
+| Async boundary | Long-running work such as clone, fetch, parse, analyze, scene diff, and preview must run through jobs and workers when it can exceed normal request latency. The API should create a durable job record and return `202 Accepted` with `jobId` for asynchronous operations. |
+| Repository workspace | Repositories are cloned into server-side workspaces managed by backend services/workers. Users must never access internal repository paths directly. |
+| Metadata boundary | Metadata is derived from repository content and can be regenerated. Core business data such as users, projects, memberships, credential references, activities, notifications, and jobs is the source of truth for application behavior. |
+| Job state boundary | PostgreSQL is the source of truth for job state, progress, terminal status, error code, timestamps, and correlation ID. RabbitMQ is a delivery mechanism, not the authoritative job store. |
+| Git operation boundary | Write or conflict-prone Git operations must go through Git service/worker logic, acquire a distributed repository lock with an owner token, respect cancellation/timeout rules, and record activity logs. |
+| Credential boundary | Git credentials and tokens must be encrypted or stored through a secret manager reference. Secrets must not appear in API responses, logs, activity logs, job payloads, or exception messages. |
+| External systems | Remote Git providers, SMTP/email, object storage, Redis, RabbitMQ, monitoring tools, and deployment infrastructure are external dependencies. Their failures must be handled gracefully and surfaced through actionable errors. |
 
-## Vai trò và quyền tổng quan
+## Roles and Access Scope
 
-| Vai trò | Phạm vi quyền |
+| Role | Access Scope |
 | --- | --- |
-| System Admin | Quản lý user toàn hệ thống, xem/khôi phục project, cấu hình hệ thống và bypass project-level RBAC khi cần vận hành. |
-| Organization Owner | Vai trò nghiệp vụ cho chủ nhóm/tổ chức; trong MVP ánh xạ về `project_owner` hoặc `project_admin` theo từng project. |
-| Project Admin | Quản lý project, members, repository settings, project settings và các hành động quản trị project. |
-| Developer | Thực hiện Git operations, trigger parse/analyze, xem metadata, dependency, health và diff. |
-| Reviewer/QA | Xem commit history, scene diff, health report, dependency và activity phục vụ review/QA. |
-| Viewer | Xem readonly dashboard, scene, asset, graph, health, notification cá nhân và activity được phép. |
+| System Admin | Manage users and system configuration, inspect audit/operational data, perform recovery operations, and bypass project-level RBAC only for explicit administrative purposes. |
+| Organization Owner | Business role representing a team or organization owner. In the MVP, this is mapped to project-level `project_owner` or `project_admin`; no standalone organization entity/API is required. |
+| Project Admin | Manage project settings, members, repository settings, analysis settings, retention settings, and administrative project actions. |
+| Developer | Use Git operations according to granted permissions, trigger parse/analyze jobs, inspect metadata, view dependency/health data, and review scene diffs. |
+| Reviewer / QA | View commit history, scene diff, dependency graph, health reports, activities, and review-relevant metadata. Write access is limited to review/QA actions explicitly allowed by RBAC. |
+| Viewer | Read-only access to permitted project dashboard, scenes, assets, dependency graph, health report, personal notifications, and visible activity entries. |
 
-## Giới hạn phiên bản 1.0
+All API queries and commands must enforce server-side RBAC using the authenticated user, project scope, target resource, and required permission. UI role visibility is not a security boundary.
 
-- Ưu tiên Godot 4.x.
-- Ưu tiên repository HTTPS.
-- Quy mô MVP hướng đến nhóm nhỏ hoặc môi trường đồ án: khoảng 50 concurrent users, 100 projects, repository tối đa 2 GB.
-- Metadata cũ có thể được xóa theo retention để tiết kiệm lưu trữ.
-- Một project có một repository chính trong phạm vi MVP.
+## Version 1.0 Limits
 
-## Quyết định MVP
+- Godot 4.x is the primary target.
+- HTTPS Git repositories are the primary repository integration path.
+- The MVP is designed for small teams or academic/project environments: approximately 50 concurrent users, 100 projects, and repositories up to 2 GB.
+- One project has one primary repository in the MVP.
+- Metadata retention may be shorter than core business data retention because metadata can be regenerated from the repository.
+- Large metadata views such as scene nodes, assets, dependency graph, commit history, and activity log should support pagination, filtering, lazy loading, or clustering where applicable.
+- Heavy operations must be asynchronous when needed to protect API latency and reliability.
 
-- Chưa triển khai organization entity/API riêng trong MVP.
-- Project soft-delete giữ 30 ngày trước khi eligible hard-delete; giá trị này cấu hình được theo môi trường nhưng default là 30 ngày.
+## MVP Decisions
+
+- No standalone organization database model or organization API is implemented in the MVP.
+- `Organization Owner` remains a business/documentation role and is mapped to project-level ownership or administration.
+- Project soft-delete keeps project data for 30 days before it becomes eligible for hard-delete. The default retention is 30 days and should be configurable per environment.
+- Invite and notification capabilities prioritize in-app notifications and setup tokens. SMTP/email delivery is optional when infrastructure is available.
+- A shared `GodForge.Worker` host may be used for MVP deployment simplicity, but each queue must still have separate consumer and handler/service abstractions so logical workers can be split later.
+- Completion notifications/events must only be emitted after durable output and job state have been committed.

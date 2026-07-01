@@ -1,22 +1,22 @@
 # 5. API
 
-## 5.1 Tiêu chuẩn API
+## 5.1 API Standards
 
-GodForge sử dụng REST API triển khai dưới prefix `/api/v1`.
+GodForge uses a REST API implemented under the `/api/v1` prefix.
 
-| Quy ước | Giá trị |
+| Convention | Value |
 | --- | --- |
 | Base URL | `/api/v1` |
 | Format | `application/json` |
 | Authentication | `Authorization: Bearer {accessToken}` |
-| Correlation | Header `X-Correlation-Id`; server tạo nếu client không gửi |
+| Correlation | Header `X-Correlation-Id`; server generates if client does not send |
 | Time format | ISO 8601 UTC |
 | Pagination | Offset-based `page`, `pageSize` |
 | Max pageSize | 100 |
 
-## 5.2 Response format
+## 5.2 Response Format
 
-### Thành công
+### Success
 
 ```json
 {
@@ -42,22 +42,22 @@ GodForge sử dụng REST API triển khai dưới prefix `/api/v1`.
 }
 ```
 
-### Lỗi
+### Error
 
 ```json
 {
   "error": {
     "code": "PROJECT_NOT_FOUND",
-    "message": "Project không tồn tại hoặc bạn không có quyền truy cập.",
+    "message": "Project does not exist or you do not have access.",
     "correlationId": "abc-123",
     "details": [
-      { "field": "name", "message": "Tên project đã tồn tại." }
+      { "field": "name", "message": "Project name already exists." }
     ]
   }
 }
 ```
 
-### Async job
+### Async Job
 
 ```json
 {
@@ -74,33 +74,33 @@ GodForge sử dụng REST API triển khai dưới prefix `/api/v1`.
 
 Canonical job status values returned by async APIs and SignalR events: `queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`.
 
-## 5.3 Quy tắc API
+## 5.3 API Rules
 
-- API không trả stack trace, server workspace path, credential, token hoặc raw command output chứa secret.
-- Validation error trả 400 với `details[]`.
-- Permission denied trả 403; resource ngoài quyền có thể trả 404 nếu cần tránh lộ sự tồn tại.
-- Async operation trả 202 khi job được tạo.
-- Error code dùng `SCREAMING_SNAKE_CASE` và ổn định để UI/QA có thể xử lý.
+- The API does not return stack traces, server workspace paths, credentials, tokens, or raw command output containing secrets.
+- Validation errors return 400 with `details[]`.
+- Permission denied returns 403; accessing resources outside of permissions may return 404 to avoid exposing their existence.
+- Async operations return 202 when the job is created.
+- Error codes use `SCREAMING_SNAKE_CASE` and are stable for UI/QA handling.
 
-## 5.4 Endpoint catalog
+## 5.4 Endpoint Catalog
 
 ### Auth
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/auth/login` | Anonymous | `email`, `password` | Access token, refresh token, expiresIn, user | `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `ACCOUNT_DISABLED` |
-| POST | `/api/v1/auth/refresh` | Refresh token | `refreshToken` | Access token mới, refresh token mới | `TOKEN_EXPIRED`, `TOKEN_REVOKED` |
+| POST | `/api/v1/auth/refresh` | Refresh token | `refreshToken` | New access token, new refresh token | `TOKEN_EXPIRED`, `TOKEN_REVOKED` |
 | POST | `/api/v1/auth/logout` | Authenticated | `refreshToken` | Logout success | `INVALID_TOKEN` |
 | POST | `/api/v1/auth/setup-password` | Invite token | `token`, `password` | Account activated | `INVITE_TOKEN_EXPIRED`, `VALIDATION_ERROR` |
 
 ### Users
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/users` | `system_admin` | `page`, `pageSize`, `search`, `status` | User list | `FORBIDDEN` |
 | POST | `/api/v1/users` | `system_admin` | `email`, `displayName`, `systemRole` | User invited | `EMAIL_ALREADY_EXISTS`, `VALIDATION_ERROR` |
-| GET | `/api/v1/users/{id}` | `system_admin` hoặc self | user id | User detail | `USER_NOT_FOUND`, `FORBIDDEN` |
-| PUT | `/api/v1/users/{id}` | `system_admin` hoặc self | displayName, avatarUrl | User updated | `FORBIDDEN`, `VALIDATION_ERROR` |
+| GET | `/api/v1/users/{id}` | `system_admin` or self | user id | User detail | `USER_NOT_FOUND`, `FORBIDDEN` |
+| PUT | `/api/v1/users/{id}` | `system_admin` or self | displayName, avatarUrl | User updated | `FORBIDDEN`, `VALIDATION_ERROR` |
 | PUT | `/api/v1/users/{id}/status` | `system_admin` | status | User status updated | `USER_NOT_FOUND`, `VALIDATION_ERROR` |
 | GET | `/api/v1/users/me` | Authenticated | none | Current user | `INVALID_TOKEN` |
 | PUT | `/api/v1/users/me/settings` | Authenticated | theme, notification prefs | User settings updated | `VALIDATION_ERROR` |
@@ -108,7 +108,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Projects
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects` | Authenticated | pagination, search, status | Projects visible to user | `FORBIDDEN` |
 | POST | `/api/v1/projects` | Authenticated | name, description, godotVersion, visibility | Project created | `PROJECT_NAME_EXISTS`, `VALIDATION_ERROR` |
@@ -120,7 +120,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Members
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/members` | Project member | pagination | Member list | `FORBIDDEN` |
 | POST | `/api/v1/projects/{id}/members` | `project_admin+` | email, role | Member invited/added | `USER_NOT_FOUND`, `ALREADY_MEMBER`, `FORBIDDEN` |
@@ -129,7 +129,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Repositories
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/projects/{id}/repository` | `project_admin+` | remoteUrl, personalAccessToken, defaultBranch | Clone job | `INVALID_REPO_URL`, `REPO_ALREADY_CONNECTED` |
 | GET | `/api/v1/projects/{id}/repository` | Project member | none | Repository detail, masked credential state | `REPO_NOT_CONNECTED` |
@@ -139,7 +139,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Git
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/git/status` | `developer+` | branch optional | Working tree status | `REPO_NOT_READY`, `FORBIDDEN` |
 | POST | `/api/v1/projects/{id}/git/stage` | `developer+` | file paths | Stage result | `PATH_NOT_ALLOWED`, `REPO_LOCKED` |
@@ -158,7 +158,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Scenes
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/scenes` | `viewer+` | search, page, pageSize | Scene list | `METADATA_NOT_READY` |
 | GET | `/api/v1/projects/{id}/scenes/{sceneId}` | `viewer+` | scene id | Scene detail | `SCENE_NOT_FOUND` |
@@ -166,7 +166,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Assets
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/assets` | `viewer+` | type, search, usage, page | Asset list | `METADATA_NOT_READY` |
 | GET | `/api/v1/projects/{id}/assets/{assetId}` | `viewer+` | asset id | Asset detail and usage | `ASSET_NOT_FOUND` |
@@ -175,13 +175,13 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Dependencies
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/dependencies` | `viewer+` | root, depth, type | Graph nodes/edges | `ANALYZE_REQUIRED`, `DEPENDENCY_ROOT_NOT_FOUND` |
 
 ### Health
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/projects/{id}/parse` | `developer+` | branch, commit, options | Parse job | `REPO_NOT_READY`, `REPO_NOT_CONNECTED` |
 | POST | `/api/v1/projects/{id}/analyze` | `developer+` | branch, commit, options | Analyze job | `PARSE_REQUIRED`, `REPO_NOT_READY` |
@@ -191,14 +191,14 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Diff
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/projects/{id}/diff/scene` | `viewer+` | scenePath, commitA/branchA, commitB/branchB | Diff job hoặc cached result | `REVISION_NOT_FOUND`, `PATH_NOT_ALLOWED`, `DIFF_PARSE_FAILED` |
+| POST | `/api/v1/projects/{id}/diff/scene` | `viewer+` | scenePath, commitA/branchA, commitB/branchB | Diff job or cached result | `REVISION_NOT_FOUND`, `PATH_NOT_ALLOWED`, `DIFF_PARSE_FAILED` |
 | GET | `/api/v1/projects/{id}/diff/{diffId}` | `viewer+` | diff id | Diff result | `DIFF_NOT_FOUND` |
 
 ### Jobs
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/jobs` | Project member | type, status (`queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`), page | Job list | `FORBIDDEN` |
 | GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | job id | Job detail/progress | `JOB_NOT_FOUND` |
@@ -206,7 +206,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Notifications
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/notifications` | Authenticated | unread, page | Notification list | `FORBIDDEN` |
 | GET | `/api/v1/notifications/unread-count` | Authenticated | none | Unread count | `FORBIDDEN` |
@@ -215,14 +215,14 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Activities
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/activities` | Project member | action, user, page | Project activity log | `FORBIDDEN` |
 | GET | `/api/v1/activities` | `system_admin` | action, project, user, page | System activity log | `FORBIDDEN` |
 
 ### Settings
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects/{id}/settings` | `project_admin+` | none | Project settings | `FORBIDDEN` |
 | PUT | `/api/v1/projects/{id}/settings` | `project_admin+` | autoParseOnPush, autoAnalyzeOnParse, health schedule, notification prefs | Settings updated | `VALIDATION_ERROR`, `FORBIDDEN` |
@@ -231,7 +231,7 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 ### Search
 
-| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| Method | Path | Permission | Request body/query | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/search` | Authenticated | q, projectId, type, page, pageSize | Search results/facets | `VALIDATION_ERROR`, `FORBIDDEN` |
 
@@ -239,12 +239,12 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 
 Realtime hub: `/hubs/godforge`.
 
-| Direction | Event | Payload | Mô tả |
+| Direction | Event | Payload | Description |
 | --- | --- | --- | --- |
-| Client -> Server | `JoinProject` | `{ "projectId": "uuid" }` | Subscribe updates của project. |
-| Client -> Server | `LeaveProject` | `{ "projectId": "uuid" }` | Unsubscribe project. |
-| Server -> Client | `JobProgressUpdate` | jobId, progress, status | Cập nhật job progress. |
-| Server -> Client | `JobCompleted` | jobId, type, result summary | Job hoàn thành. |
-| Server -> Client | `JobFailed` | jobId, type, errorCode, message | Job thất bại. |
-| Server -> Client | `NotificationReceived` | notification | Notification mới. |
-| Server -> Client | `RepoStatusChanged` | repositoryId, status | Repository status thay đổi. |
+| Client -> Server | `JoinProject` | `{ "projectId": "uuid" }` | Subscribe to project updates. |
+| Client -> Server | `LeaveProject` | `{ "projectId": "uuid" }` | Unsubscribe from project. |
+| Server -> Client | `JobProgressUpdate` | jobId, progress, status | Update job progress. |
+| Server -> Client | `JobCompleted` | jobId, type, result summary | Job completed. |
+| Server -> Client | `JobFailed` | jobId, type, errorCode, message | Job failed. |
+| Server -> Client | `NotificationReceived` | notification | New notification. |
+| Server -> Client | `RepoStatusChanged` | repositoryId, status | Repository status changed. |

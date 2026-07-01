@@ -1,8 +1,8 @@
 # 10. Traceability
 
-## Mục tiêu
+## Purpose
 
-Traceability mapping giúp đảm bảo mỗi requirement có API, database, UI và test case tương ứng. Khi thêm/sửa requirement, phải cập nhật bảng này và `11-testing-acceptance.md`.
+Traceability mapping ensures that each requirement has corresponding API, database, UI, and test case representations. When requirements are added or modified, update this table and `11-testing-acceptance.md`.
 
 | Requirement ID | Module | API | Database | UI Screen | Test Case |
 | --- | --- | --- | --- | --- | --- |
@@ -32,9 +32,9 @@ Traceability mapping giúp đảm bảo mỗi requirement có API, database, UI 
 | NFR-23 | Worker Retry/DLQ | Job status APIs, worker queue consumers | `jobs.status`, RabbitMQ DLQ | Jobs, Operations | TC-JOB-001 |
 | NFR-41..NFR-46 | Security | Auth, project-scoped APIs | `users`, `refresh_tokens`, `activities` | All protected screens | TC-SEC-001 |
 
-## Quy định duy trì
+## Maintenance Rules
 
-- Requirement mới phải có ít nhất một API hoặc workflow nếu là yêu cầu user-facing.
-- Requirement liên quan dữ liệu phải cập nhật bảng/schema trong `04-database.md`.
-- Requirement liên quan UI phải có màn hình hoặc state trong `09-ui-ux.md`.
-- Requirement `Must` phải có test case ưu tiên cao trong `11-testing-acceptance.md`.
+- New requirements must have at least one API or workflow if they are user-facing.
+- Data-related requirements must update tables/schemas in `04-database.md`.
+- UI-related requirements must have screens or states in `09-ui-ux.md`.
+- `Must` requirements must have high-priority test cases in `11-testing-acceptance.md`.

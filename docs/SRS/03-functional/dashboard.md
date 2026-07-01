@@ -1,94 +1,94 @@
 # Dashboard
 
-## Mục tiêu
+## Purpose
 
-Dashboard cung cấp tổng quan có thể hành động về project: health score, repository status, metadata summary, job gần đây, issue nghiêm trọng và activity mới.
+The Dashboard provides an actionable overview of the project: health score, repository status, metadata summary, recent jobs, critical issues, and recent activities.
 
-## Tác nhân
+## Actors
 
 - Project Admin
 - Developer
 - Reviewer/QA
 - Viewer
 
-## Phạm vi
+## Scope
 
 - Project summary.
-- Health score và top health issues.
+- Health score and top health issues.
 - Repository status.
 - Recent jobs.
 - Activity feed.
 - Notification/job status integration.
-- Không thực hiện chỉnh sửa dữ liệu trực tiếp ngoài navigation/action link.
+- Does not perform direct data modifications other than navigation/action links.
 
-## Yêu cầu chức năng
+## Functional Requirements
 
-| ID | Tên yêu cầu | Mô tả | Priority | Actor |
+| ID | Requirement Name | Description | Priority | Actor |
 | --- | --- | --- | --- | --- |
-| FR-14 | Dashboard | Hiển thị thống kê, health score, repository status, job gần đây và activity mới. | Must | Viewer+ |
-| BR-14 | Cache-first | Dashboard ưu tiên Redis cache với TTL 5 phút. | Should | System |
-| BR-15 | Cache miss rebuild | Cache miss thì query DB và rebuild cache. | Should | System |
-| BR-16 | Permission scoped | Dashboard chỉ hiển thị dữ liệu user có quyền xem. | Must | System |
+| FR-14 | Dashboard | Display statistics, health score, repository status, recent jobs, and new activities. | Must | Viewer+ |
+| BR-14 | Cache-first | The dashboard prioritizes Redis cache with a 5-minute TTL. | Should | System |
+| BR-15 | Cache Miss Rebuild | On cache miss, query the DB and rebuild the cache. | Should | System |
+| BR-16 | Permission Scoped | The dashboard only displays data the user is authorized to view. | Must | System |
 
-## Luồng xử lý chính
+## Main Workflow
 
-1. User mở project dashboard.
-2. API kiểm tra project membership.
-3. API đọc dashboard cache từ Redis.
-4. Nếu cache miss, API query PostgreSQL và rebuild cache.
-5. API trả project summary, health, repo status, jobs, activity và top issues.
-6. Frontend subscribe SignalR để nhận job progress và notification mới.
+1. User opens the project dashboard.
+2. API verifies project membership.
+3. API reads the dashboard cache from Redis.
+4. On a cache miss, the API queries PostgreSQL and rebuilds the cache.
+5. API returns the project summary, health, repo status, jobs, activities, and top issues.
+6. Frontend subscribes to SignalR to receive job progress and new notifications.
 
-## Dữ liệu hiển thị
+## Displayed Data
 
-| Mục | Mô tả | Nguồn |
+| Item | Description | Source |
 | --- | --- | --- |
-| Project Summary | Tổng scene, asset, script, resource. | Redis/PostgreSQL metadata |
-| Health Score | Điểm 0-100 và trend gần nhất. | `health_reports`, Redis |
-| Repository Status | Branch hiện tại, commit mới nhất, sync/clone status. | `repositories`, Git workspace |
-| Recent Jobs | 10 job gần nhất, status, type, duration. | `jobs` |
-| Activity Feed | 20 hoạt động gần nhất. | `activities` |
+| Project Summary | Total scenes, assets, scripts, resources. | Redis/PostgreSQL metadata |
+| Health Score | 0-100 score and latest trend. | `health_reports`, Redis |
+| Repository Status | Current branch, latest commit, sync/clone status. | `repositories`, Git workspace |
+| Recent Jobs | Last 10 jobs, status, type, duration. | `jobs` |
+| Activity Feed | Last 20 activities. | `activities` |
 | Health Issues | Top critical/warning issues. | `health_issues`, Redis |
 
-## Ngoại lệ / lỗi
+## Exceptions / Errors
 
-| Tình huống | HTTP Status | Error Code | Hành vi |
+| Situation | HTTP Status | Error Code | Behavior |
 | --- | --- | --- | --- |
-| Project chưa có repository | 200 | `REPO_NOT_CONNECTED` | Hiển thị empty state connect repository. |
-| Chưa có metadata | 200 | `METADATA_NOT_READY` | Hiển thị action parse/analyze nếu có quyền. |
-| Cache lỗi | 200/ degraded | `CACHE_UNAVAILABLE` | Fallback query DB và ghi log warning. |
-| User không có quyền | 403 | `FORBIDDEN` | Không trả dashboard data. |
+| Project lacks repository | 200 | `REPO_NOT_CONNECTED` | Display empty state to connect repository. |
+| No metadata | 200 | `METADATA_NOT_READY` | Display parse/analyze action if authorized. |
+| Cache error | 200 / degraded | `CACHE_UNAVAILABLE` | Fallback to DB query and log a warning. |
+| User lacks permission | 403 | `FORBIDDEN` | Do not return dashboard data. |
 
 ## Acceptance Criteria
 
-- AC-18: Mở dashboard hiển thị đủ summary, health, repo status, recent jobs, activity và top issues trong P95 dưới 2 giây.
-- AC-19: Cache hit trả response dưới 500ms.
-- AC-20: User chỉ thấy dữ liệu project được phân quyền.
+- AC-18: Opening the dashboard displays the full summary, health, repo status, recent jobs, activities, and top issues with a P95 under 2 seconds.
+- AC-19: A cache hit returns a response in under 500ms.
+- AC-20: Users only see data for projects they are authorized to access.
 
-## API liên quan
+## Related API
 
-| Method | Path | Permission | Request chính | Response chính | Error chính |
+| Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{id}/dashboard` | `viewer+` | time range optional | Dashboard summary | `FORBIDDEN` |
+| GET | `/api/v1/projects/{id}/dashboard` | `viewer+` | optional time range | Dashboard summary | `FORBIDDEN` |
 | GET | `/api/v1/projects/{id}/jobs` | Project member | pagination | Recent jobs | `FORBIDDEN` |
 | GET | `/api/v1/projects/{id}/activities` | Project member | pagination | Activity feed | `FORBIDDEN` |
 | GET | `/api/v1/projects/{id}/health` | `viewer+` | none | Latest health report | `HEALTH_NOT_READY` |
 
-## Database liên quan
+## Related Database Tables
 
-| Bảng | Vai trò |
+| Table | Role |
 | --- | --- |
-| `projects` | Project summary và health score cache. |
+| `projects` | Project summary and health score cache. |
 | `repositories` | Repository status. |
-| `jobs` | Recent jobs và trạng thái job. |
+| `jobs` | Recent jobs and job status. |
 | `activities` | Activity feed. |
-| `notifications` | Unread indicator nếu hiển thị. |
-| `health_reports`, `health_issues` | Health score và top issues. |
+| `notifications` | Unread indicator if displayed. |
+| `health_reports`, `health_issues` | Health score and top issues. |
 | `scenes`, `assets`, `scripts`, `resources` | Metadata counts. |
 | Redis | Dashboard cache. |
 
-## Ghi chú bảo mật / phân quyền
+## Security / Authorization Notes
 
-- Dashboard là aggregation nhiều nguồn nên tất cả query phải có project scope.
-- Không cache response chung giữa user có quyền khác nhau nếu payload có dữ liệu role-dependent.
-- Không hiển thị internal workspace path, credential hoặc raw exception.
+- The dashboard is an aggregation of multiple sources, so all queries must be project-scoped.
+- Do not share cache responses between users with different permissions if the payload contains role-dependent data.
+- Do not expose internal workspace paths, credentials, or raw exceptions.
