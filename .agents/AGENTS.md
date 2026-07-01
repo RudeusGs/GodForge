@@ -35,6 +35,18 @@ GodForge.Worker        ← phụ thuộc GodForge.Application + GodForge.Infrast
 - **TUYỆT ĐỐI KHÔNG** import EF Core, Redis, RabbitMQ, hoặc bất kỳ thư viện infrastructure nào trong GodForge.Domain hoặc GodForge.Application.
 - Infrastructure concerns phải ẩn sau interface được khai báo trong GodForge.Application.
 
+### Worker Architecture (MVP vs Scale)
+- Dự án `src/GodForge.Worker` hiện tại là một **shared worker host** (host chạy chung) dành cho giai đoạn MVP để đơn giản hóa deployment. Tuy nhiên, bên trong nó **PHẢI** được cấu trúc như nhiều logical workers độc lập để có thể tách ra thành các process riêng biệt trong tương lai khi cần scale.
+- Hệ thống bao gồm các logical workers (Consumers/Handlers) sau:
+  - Repository Clone Worker
+  - Repository Sync/Git Worker
+  - Metadata Parser Worker
+  - Metadata Analyzer Worker
+  - Scene Diff Worker
+  - Asset Preview Worker
+  - Notification Dispatch Worker (Optional cho MVP)
+- **BẮT BUỘC:** Mỗi hàng đợi (queue) phải có một Consumer class và Handler/Service abstraction riêng biệt.
+
 ---
 
 ## 📐 Coding Conventions
@@ -181,3 +193,4 @@ Format: `type(scope): subject`
 8. **KHÔNG** thêm NuGet package mới mà không giải thích lý do.
 9. **KHÔNG** trả entity trực tiếp qua API response. Phải map sang DTO.
 10. **KHÔNG** tạo circular dependency giữa các project.
+11. **KHÔNG** viết logic xử lý nghiệp vụ của worker trực tiếp trong `Program.cs` hay class host chung. Mọi logic phải đặt trong các thư mục `Consumers` và `Handlers` riêng biệt cho từng queue.

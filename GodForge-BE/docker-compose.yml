@@ -1,104 +1,111 @@
+# Note on MVP Deployment:
+# This compose file currently provisions infrastructure. The worker application 
+# can be deployed as a single GodForge.Worker container for MVP. 
+# However, the architecture supports running multiple worker replicas or 
+# specialized worker containers (per queue) when scaling is required.
+
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: godforge_user
-      POSTGRES_PASSWORD: godforge_password
-      POSTGRES_DB: godforge_db
-    volumes:
-      - godforge_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U godforge_user -d godforge_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - godforge_network
+    postgres:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_USER: godforge_user
+            POSTGRES_PASSWORD: godforge_password
+            POSTGRES_DB: godforge_db
+        volumes:
+            - godforge_postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U godforge_user -d godforge_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - godforge_network
 
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - godforge_redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - godforge_network
+    redis:
+        image: redis:7-alpine
+        volumes:
+            - godforge_redis_data:/data
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - godforge_network
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    environment:
-      RABBITMQ_DEFAULT_USER: godforge_user
-      RABBITMQ_DEFAULT_PASS: godforge_password
-    volumes:
-      - godforge_rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - godforge_network
+    rabbitmq:
+        image: rabbitmq:3-management-alpine
+        environment:
+            RABBITMQ_DEFAULT_USER: godforge_user
+            RABBITMQ_DEFAULT_PASS: godforge_password
+        volumes:
+            - godforge_rabbitmq_data:/var/lib/rabbitmq
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - godforge_network
 
-  minio:
-    image: minio/minio:latest
-    environment:
-      MINIO_ROOT_USER: godforge_user
-      MINIO_ROOT_PASSWORD: godforge_password
-    command: server /data --console-address ":9001"
-    volumes:
-      - godforge_minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - godforge_network
+    minio:
+        image: minio/minio:latest
+        environment:
+            MINIO_ROOT_USER: godforge_user
+            MINIO_ROOT_PASSWORD: godforge_password
+        command: server /data --console-address ":9001"
+        volumes:
+            - godforge_minio_data:/data
+        healthcheck:
+            test:
+                ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - godforge_network
 
-  # Observability
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - godforge_prometheus_data:/prometheus
-    networks:
-      - godforge_network
-    profiles:
-      - monitoring
+    # Observability
+    prometheus:
+        image: prom/prometheus:latest
+        volumes:
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml
+            - godforge_prometheus_data:/prometheus
+        networks:
+            - godforge_network
+        profiles:
+            - monitoring
 
-  grafana:
-    image: grafana/grafana:latest
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: godforge_password
-    volumes:
-      - godforge_grafana_data:/var/lib/grafana
-    networks:
-      - godforge_network
-    profiles:
-      - monitoring
+    grafana:
+        image: grafana/grafana:latest
+        environment:
+            GF_SECURITY_ADMIN_PASSWORD: godforge_password
+        volumes:
+            - godforge_grafana_data:/var/lib/grafana
+        networks:
+            - godforge_network
+        profiles:
+            - monitoring
 
-  loki:
-    image: grafana/loki:latest
-    command: -config.file=/etc/loki/local-config.yaml
-    volumes:
-      - godforge_loki_data:/loki
-    networks:
-      - godforge_network
-    profiles:
-      - monitoring
+    loki:
+        image: grafana/loki:latest
+        command: -config.file=/etc/loki/local-config.yaml
+        volumes:
+            - godforge_loki_data:/loki
+        networks:
+            - godforge_network
+        profiles:
+            - monitoring
 
 networks:
-  godforge_network:
-    driver: bridge
+    godforge_network:
+        driver: bridge
 
 volumes:
-  godforge_postgres_data:
-  godforge_redis_data:
-  godforge_rabbitmq_data:
-  godforge_minio_data:
-  godforge_prometheus_data:
-  godforge_grafana_data:
-  godforge_loki_data:
+    godforge_postgres_data:
+    godforge_redis_data:
+    godforge_rabbitmq_data:
+    godforge_minio_data:
+    godforge_prometheus_data:
+    godforge_grafana_data:
+    godforge_loki_data:

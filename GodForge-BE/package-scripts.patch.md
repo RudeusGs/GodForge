@@ -6,16 +6,16 @@ The tracked `package.json` should keep scripts like these:
 
 ```json
 {
-  "scripts": {
-    "prepare": "husky",
-    "format:docs": "prettier --write \"**/*.{json,md,yml,yaml}\"",
-    "format:docs:check": "prettier --check \"**/*.{json,md,yml,yaml}\"",
-    "dotnet:restore": "dotnet restore GodForge.Backend.sln",
-    "dotnet:build": "dotnet build GodForge.Backend.sln --no-restore",
-    "dotnet:test": "dotnet test GodForge.Backend.sln --no-build",
-    "dotnet:format:check": "dotnet format GodForge.Backend.sln --verify-no-changes --no-restore",
-    "validate": "npm run dotnet:restore && npm run dotnet:build && npm run dotnet:test && npm run dotnet:format:check"
-  }
+    "scripts": {
+        "prepare": "husky",
+        "format:docs": "prettier --write \"**/*.{json,md,yml,yaml}\"",
+        "format:docs:check": "prettier --check \"**/*.{json,md,yml,yaml}\"",
+        "dotnet:restore": "dotnet restore GodForge.Backend.sln",
+        "dotnet:build": "dotnet build GodForge.Backend.sln --no-restore",
+        "dotnet:test": "dotnet test GodForge.Backend.sln --no-build",
+        "dotnet:format:check": "dotnet format GodForge.Backend.sln --verify-no-changes --no-restore",
+        "validate": "npm run dotnet:restore && npm run dotnet:build && npm run dotnet:test && npm run dotnet:format:check"
+    }
 }
 ```
 

@@ -96,6 +96,13 @@ Invoke-DotNet add "$SrcDir/$WorkerProject/$WorkerProject.csproj" reference "$Src
 Invoke-DotNet add "$SrcDir/$WorkerProject/$WorkerProject.csproj" reference "$SrcDir/$InfrastructureProject/$InfrastructureProject.csproj"
 Invoke-DotNet sln $SolutionFile add "$SrcDir/$WorkerProject/$WorkerProject.csproj"
 
+$workerDirs = @("Consumers", "Handlers", "Queues", "Options", "HostedServices")
+foreach ($dir in $workerDirs) {
+    $dirPath = "$SrcDir/$WorkerProject/$dir"
+    New-Item -ItemType Directory -Force -Path $dirPath | Out-Null
+    New-Item -ItemType File -Force -Path "$dirPath/.gitkeep" | Out-Null
+}
+
 Write-Host "Creating Unit Tests project"
 Invoke-DotNet new xunit -n $UnitTestsProject -o "$TestsDir/$UnitTestsProject" --no-restore
 Use-CentralTargetFramework "$TestsDir/$UnitTestsProject/$UnitTestsProject.csproj"

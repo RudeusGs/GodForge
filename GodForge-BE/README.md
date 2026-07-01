@@ -56,6 +56,20 @@ From `GodForge-BE`:
 
 The scaffold generates a .NET 9 Clean Architecture solution with API, Worker, Domain, Application, Infrastructure, and UnitTests projects.
 
+**Worker Architecture Note (MVP vs Scale):**
+The `src/GodForge.Worker` project is a shared worker host designed to contain multiple logical workers. This simplifies the MVP deployment into a single process. However, to ensure we can split these into separate specialized worker services in the future without rewriting business logic, the internal structure must separate each queue into its own consumer:
+- `Consumers/RepositoryCloneConsumer.cs`
+- `Consumers/RepositorySyncConsumer.cs`
+- `Consumers/MetadataParseConsumer.cs`
+- `Consumers/MetadataAnalyzeConsumer.cs`
+- `Consumers/SceneDiffConsumer.cs`
+- `Consumers/AssetPreviewConsumer.cs`
+- `Consumers/NotificationDispatchConsumer.cs`
+- `Handlers/`
+- `Queues/`
+- `Options/`
+- `HostedServices/`
+
 ## Build And Test
 
 After scaffolding:

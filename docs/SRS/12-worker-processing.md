@@ -130,7 +130,10 @@ Canonical job status values: `queued`, `running`, `retrying`, `completed`, `fail
 | `repository_lock_timeout_total` | Số lần lock timeout/fail. |
 | `worker_active_jobs` | Số job đang chạy theo worker. |
 
-## Quyết định MVP
+## Deployment model for MVP
 
-- Retry mặc định 3 lần với exponential backoff cho lỗi tạm thời; từng queue có thể override bằng cấu hình.
-- MVP có thể dùng một worker host cấu hình nhiều consumer. Khi queue depth hoặc job duration vượt NFR, tách worker pool theo nhóm nặng/nhẹ.
+- Tài liệu này gọi tên các **logical workers** (Clone Worker, Parser Worker, Analyze Worker, v.v.).
+- Trong giai đoạn MVP, tất cả các logical workers này có thể được triển khai (deploy) chung bên trong một shared host project duy nhất là `GodForge.Worker` để đơn giản hóa vận hành.
+- Tuy nhiên, mỗi hàng đợi (queue) **vẫn phải map với một consumer/handler độc lập** bên trong codebase ngay cả khi chúng chạy chung một process.
+- Kiến trúc nội bộ phải đảm bảo rằng trong tương lai, chúng ta có thể dễ dàng tách từng consumer ra thành các worker services riêng biệt mà không làm thay đổi message contracts hay phải viết lại logic nghiệp vụ.
+- Về cấu hình retry: mặc định 3 lần với exponential backoff cho lỗi tạm thời; từng queue có thể override bằng cấu hình.
