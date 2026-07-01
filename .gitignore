@@ -1,0 +1,35 @@
+# Node.js
+node_modules/
+dist/
+build/
+npm-debug.log
+yarn-error.log
+
+# .NET
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+[Dd]ebug/
+[Rr]elease/
+
+# Visual Studio / Rider / VSCode
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+
+# OS & Temp
+.DS_Store
+Thumbs.db
+~$*
+*.tmp
+*.bak
+
+# Documentation Drafts / Binaries
+*.docx
+*.pdf
