@@ -43,8 +43,8 @@ Scaling strategy:
 | NFR-19 | API availability non-production/demo | >= 95% |
 | NFR-20 | RTO | < 4 giờ cho database/core service trong môi trường đồ án/staging. |
 | NFR-21 | RPO | < 1 giờ cho PostgreSQL core data nếu backup/WAL hỗ trợ. |
-| NFR-22 | Worker retry | Retry lỗi tạm thời; không retry vô hạn lỗi validation/credential. |
-| NFR-23 | DLQ | Poison message hoặc timeout lặp lại phải chuyển DLQ. |
+| NFR-22 | Worker retry | Retry lỗi tạm thời qua status `retrying`; không retry vô hạn lỗi validation/credential. |
+| NFR-23 | DLQ | Poison message hoặc timeout lặp lại phải chuyển `dead_lettered`/DLQ sau khi hết retry theo policy. |
 | NFR-24 | Idempotency | Retry job không tạo duplicate metadata/notification hoặc ghi đè metadata mới hơn. |
 | NFR-25 | Repository lock | Mutating Git operations phải có lock TTL và release an toàn. |
 

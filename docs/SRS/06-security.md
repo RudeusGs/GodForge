@@ -139,7 +139,7 @@ Mọi thao tác quan trọng phải ghi activity/audit log:
 - Project created/updated/deleted/restored.
 - Repository connected/credential updated/disconnected.
 - Git commit/push/pull/merge.
-- Job started/completed/failed.
+- Job started/retrying/completed/failed/cancelled/timeout/dead-lettered.
 - Permission denied ở các hành động nhạy cảm nếu cấu hình audit bật.
 
 Activity log phải có `correlation_id`, actor, project nếu có, action, target và metadata đã sanitize.

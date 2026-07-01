@@ -1,0 +1,22 @@
+{
+  "name": "godforge-backend-tooling",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "prepare": "husky",
+    "format:docs": "prettier --write \"**/*.{json,md,yml,yaml}\"",
+    "format:docs:check": "prettier --check \"**/*.{json,md,yml,yaml}\"",
+    "dotnet:restore": "dotnet restore GodForge.Backend.sln",
+    "dotnet:build": "dotnet build GodForge.Backend.sln --no-restore",
+    "dotnet:test": "dotnet test GodForge.Backend.sln --no-build",
+    "dotnet:format:check": "dotnet format GodForge.Backend.sln --verify-no-changes --no-restore",
+    "validate": "npm run dotnet:restore && npm run dotnet:build && npm run dotnet:test && npm run dotnet:format:check"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2"
+  }
+}

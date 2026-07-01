@@ -72,6 +72,8 @@ GodForge sử dụng REST API triển khai dưới prefix `/api/v1`.
 }
 ```
 
+Canonical job status values returned by async APIs and SignalR events: `queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`.
+
 ## 5.3 Quy tắc API
 
 - API không trả stack trace, server workspace path, credential, token hoặc raw command output chứa secret.
@@ -198,7 +200,7 @@ GodForge sử dụng REST API triển khai dưới prefix `/api/v1`.
 
 | Method | Path | Permission | Request body/query | Response chính | Error chính |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{id}/jobs` | Project member | type, status, page | Job list | `FORBIDDEN` |
+| GET | `/api/v1/projects/{id}/jobs` | Project member | type, status (`queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`), page | Job list | `FORBIDDEN` |
 | GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | job id | Job detail/progress | `JOB_NOT_FOUND` |
 | POST | `/api/v1/projects/{id}/jobs/{jobId}/cancel` | `developer+` | none | Job cancelled | `JOB_NOT_CANCELLABLE`, `FORBIDDEN` |
 

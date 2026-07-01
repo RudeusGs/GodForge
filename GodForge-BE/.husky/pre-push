@@ -3,33 +3,34 @@
 
 echo "Running backend pre-push validation..."
 
-npm run lint
+solution="GodForge.Backend.sln"
+
+if [ ! -f "$solution" ]; then
+  echo "$solution not found. Run ./scaffold.ps1 before enabling .NET pre-push validation."
+  exit 0
+fi
+
+dotnet restore "$solution"
 if [ $? -ne 0 ]; then
-  echo "Lint failed."
+  echo "Restore failed."
   exit 1
 fi
 
-npm run format:check
+dotnet build "$solution" --no-restore
 if [ $? -ne 0 ]; then
-  echo "Format check failed."
+  echo "Build failed."
   exit 1
 fi
 
-npm run typecheck
-if [ $? -ne 0 ]; then
-  echo "TypeScript check failed."
-  exit 1
-fi
-
-npm run test:ci
+dotnet test "$solution" --no-build
 if [ $? -ne 0 ]; then
   echo "Tests failed."
   exit 1
 fi
 
-npm run build
+dotnet format "$solution" --verify-no-changes --no-restore
 if [ $? -ne 0 ]; then
-  echo "Build failed."
+  echo "Format check failed."
   exit 1
 fi
 

@@ -188,7 +188,7 @@ Trạng thái tác vụ bất đồng bộ.
 | `id` | `uuid` | NO | `gen_random_uuid()` | PK | |
 | `project_id` | `uuid` | NO | | FK → `projects.id` ON DELETE CASCADE | |
 | `type` | `varchar(30)` | NO | | CHECK (`clone`, `fetch`, `parse`, `analyze`, `diff`, `preview`) | Loại job |
-| `status` | `varchar(20)` | NO | `'queued'` | CHECK (`queued`, `running`, `completed`, `failed`, `cancelled`) | |
+| `status` | `varchar(20)` | NO | `'queued'` | CHECK (`queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`) | Canonical lifecycle theo `12-worker-processing.md`. |
 | `progress` | `int` | NO | `0` | CHECK (0-100) | % hoàn thành |
 | `started_at` | `timestamptz` | YES | | | Bắt đầu xử lý |
 | `completed_at` | `timestamptz` | YES | | | Hoàn thành |

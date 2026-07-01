@@ -34,6 +34,8 @@ Mỗi message phải có:
 
 ## Job lifecycle
 
+Canonical job status values: `queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`.
+
 | State | Ý nghĩa | Transition hợp lệ |
 | --- | --- | --- |
 | `queued` | Job đã tạo và publish queue. | `running`, `cancelled`, `failed` |
@@ -42,7 +44,8 @@ Mỗi message phải có:
 | `completed` | Job thành công. | Terminal |
 | `failed` | Job lỗi không retry hoặc hết retry. | Terminal hoặc manual retry nếu policy cho phép |
 | `cancelled` | Job bị hủy trước hoặc trong xử lý an toàn. | Terminal |
-| `dead_lettered` | Message chuyển DLQ. | Manual inspect/requeue |
+| `timeout` | Job vượt timeout đã cấu hình và worker dừng/rollback an toàn. | Terminal hoặc manual retry nếu policy cho phép |
+| `dead_lettered` | Message chuyển DLQ sau poison message, schema lỗi hoặc retry exhaustion cần inspect. | Manual inspect/requeue |
 
 ## Retry policy
 
@@ -54,12 +57,13 @@ Mỗi message phải có:
 | Repository URL invalid | Không | Validation error. |
 | File Godot syntax lỗi | Không retry ở job-level | Ghi warning ở file-level, tiếp tục nếu partial mode. |
 | Payload message sai schema | Không | Chuyển DLQ. |
-| Timeout lặp lại | Có giới hạn | Sau giới hạn chuyển DLQ/failed. |
+| Timeout lặp lại | Có giới hạn | Ghi `timeout`; sau giới hạn chuyển `dead_lettered` hoặc `failed` theo queue policy. |
 
 ## Dead-letter queue
 
 - Mỗi queue chính phải có DLQ tương ứng.
 - DLQ record/message phải giữ `messageId`, `jobId`, `correlationId`, error code, attempt count và payload đã sanitize.
+- Khi message vào DLQ, job liên quan phải chuyển `dead_lettered` nếu không còn retry tự động.
 - Không chứa plaintext credential.
 - Vận hành có thể inspect và requeue thủ công sau khi sửa nguyên nhân.
 

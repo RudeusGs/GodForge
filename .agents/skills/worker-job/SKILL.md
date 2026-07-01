@@ -100,7 +100,7 @@ public class ParseJobHandler : IJobHandler<ParseJobMessage>
         }
         catch (Exception ex)
         {
-            // Mark failed
+            // Mark retrying/failed/dead_lettered according to retry policy
             _logger.LogError(ex, "Job {JobId} failed", message.JobId);
             job.MarkAsFailed(ex.Message, "JOB_PROCESSING_ERROR");
             await _jobRepository.SaveAsync(cancellationToken);
@@ -112,17 +112,18 @@ public class ParseJobHandler : IJobHandler<ParseJobMessage>
 
 ### 4. Job Lifecycle (State Machine)
 
-```
-queued → running → completed
-                 → failed
-                 → cancelled
-```
+Canonical lifecycle theo `docs/SRS/12-worker-processing.md`:
 
-- `queued`: Job đã tạo, đang chờ Worker pick up.
-- `running`: Worker đang xử lý. `progress` cập nhật 0-100.
-- `completed`: Hoàn thành thành công.
-- `failed`: Thất bại, `error_message` và `error_code` được ghi.
-- `cancelled`: User hủy job.
+| State | Ý nghĩa | Transition hợp lệ |
+| --- | --- | --- |
+| `queued` | Job đã tạo và publish queue. | `running`, `cancelled`, `failed` |
+| `running` | Worker đang xử lý. `progress` cập nhật 0-100. | `completed`, `failed`, `retrying`, `cancelled`, `timeout` |
+| `retrying` | Job lỗi tạm thời và chờ retry. | `queued`, `failed`, `dead_lettered` |
+| `completed` | Hoàn thành thành công. | Terminal |
+| `failed` | Thất bại không retry hoặc hết retry theo policy. | Terminal hoặc manual retry nếu policy cho phép |
+| `cancelled` | User hủy job trước hoặc trong xử lý an toàn. | Terminal |
+| `timeout` | Job vượt timeout cấu hình và worker dừng/rollback an toàn. | Terminal hoặc manual retry nếu policy cho phép |
+| `dead_lettered` | Message chuyển DLQ sau poison message, schema lỗi hoặc retry exhaustion cần inspect. | Manual inspect/requeue |
 
 ### 5. Progress Reporting via SignalR
 
@@ -144,16 +145,18 @@ public class ProgressReporter : IProgressReporter
 - **Idempotency:** Job phải idempotent. Nếu retry, kết quả phải giống lần đầu (upsert, không duplicate).
 - **Error isolation:** Lỗi 1 item (1 file, 1 scene) KHÔNG được crash toàn bộ job.
 - **Distributed Lock:** Job Git (clone, push, pull, merge) phải acquire Redis lock trước khi chạy.
-- **Retry:** Retry tối đa 3 lần với exponential backoff. Sau 3 lần → dead-letter queue.
+- **Retry:** Retry tối đa 3 lần với exponential backoff cho lỗi tạm thời. Khi retry, status chuyển `retrying`, sau đó quay lại `queued`.
+- **DLQ:** Poison message, schema lỗi hoặc retry exhaustion chuyển message vào DLQ và job sang `dead_lettered` nếu không còn retry tự động.
 - **Cancellation:** Hỗ trợ `CancellationToken` để user có thể cancel job đang chạy.
-- **Timeout:** Job phải có timeout hợp lý theo `docs/SRS/12-worker-processing.md` (clone theo repo size, fetch ngắn hơn clone, parse/analyze theo số file/graph size, diff thường 30 giây đến 2 phút, preview 30-60 giây).
+- **Timeout:** Job phải có timeout hợp lý theo `docs/SRS/12-worker-processing.md`; timeout phải ghi status `timeout` hoặc đi qua retry/DLQ nếu queue policy cho phép retry timeout.
 
 ## Checklist
 - [ ] Job message chứa đủ thông tin cần thiết (`schemaVersion`, `messageId`, `jobId`, `projectId`, `correlationId`, `createdAt`, `attemptCount`, `inputHash`).
-- [ ] Handler cập nhật job status đúng lifecycle.
+- [ ] Handler cập nhật job status đúng lifecycle: `queued`, `running`, `retrying`, `completed`, `failed`, `cancelled`, `timeout`, `dead_lettered`.
 - [ ] Progress được report qua SignalR.
 - [ ] Error isolation: 1 file lỗi không crash job.
-- [ ] Retry policy cấu hình.
+- [ ] Retry policy cấu hình, chuyển `retrying` trước khi requeue và `dead_lettered` khi vào DLQ.
 - [ ] CancellationToken được truyền và check.
-- [ ] Activity Log ghi `job.started`, `job.completed`, `job.failed`.
-- [ ] Notification gửi khi job completed/failed.
+- [ ] Timeout policy ghi `timeout` và release repository lock an toàn.
+- [ ] Activity Log ghi `job.started`, `job.retrying`, `job.completed`, `job.failed`, `job.cancelled`, `job.timeout`, `job.dead_lettered` khi áp dụng.
+- [ ] Notification gửi khi job completed/failed/timeout/dead_lettered.
