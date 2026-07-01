@@ -7,7 +7,7 @@ The Auth module provides user authentication, session management, refresh token 
 ## Actors
 
 - System Admin
-- Organization Owner
+- Organization Owner (Note: Mapped to project-level owner/admin in MVP; no standalone Organization entity exists)
 - Project Admin
 - Developer
 - Reviewer/QA
@@ -103,7 +103,11 @@ The Auth module provides user authentication, session management, refresh token 
 | POST | `/api/v1/auth/setup-password` | Invite token | token, password | Account activated | `INVITE_TOKEN_EXPIRED`, `VALIDATION_ERROR` |
 | GET | `/api/v1/users` | `system_admin` | pagination/filter | User list | `FORBIDDEN` |
 | POST | `/api/v1/users` | `system_admin` | email, displayName, systemRole | User invited | `EMAIL_ALREADY_EXISTS` |
+| GET | `/api/v1/users/{id}` | `system_admin` or self | user id | User detail | `USER_NOT_FOUND`, `FORBIDDEN` |
+| PUT | `/api/v1/users/{id}` | `system_admin` or self | displayName, avatarUrl | User updated | `FORBIDDEN`, `VALIDATION_ERROR` |
+| PUT | `/api/v1/users/{id}/status` | `system_admin` | status | User status updated | `USER_NOT_FOUND`, `VALIDATION_ERROR` |
 | GET | `/api/v1/users/me` | Any authenticated | none | Current user | `INVALID_TOKEN` |
+| PUT | `/api/v1/users/me/settings` | Any authenticated | theme, notification prefs | User settings updated | `VALIDATION_ERROR` |
 | PUT | `/api/v1/users/me/password` | Any authenticated | oldPassword, newPassword | Password changed | `INVALID_CREDENTIALS`, `VALIDATION_ERROR` |
 
 ## Related Database Tables

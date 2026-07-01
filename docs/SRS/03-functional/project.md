@@ -7,7 +7,7 @@ The Project module manages the Godot project lifecycle within GodForge, as well 
 ## Actors
 
 - System Admin
-- Organization Owner
+- Organization Owner (Note: Mapped to project-level owner/admin in MVP; no standalone Organization entity exists)
 - Project Admin
 - Developer
 - Reviewer/QA

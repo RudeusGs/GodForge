@@ -419,238 +419,11 @@ The `tenant` schema supports individual workspaces, teams, and enterprise organi
 
 ---
 
-## 4.4.1 `tenant.organizations`
-
-Stores organizations and personal workspaces.
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `name` | `varchar(150)` | No | Organization name. |
-| `slug` | `varchar(100)` | No | URL-safe organization slug. |
-| `type` | `varchar(30)` | No | `personal`, `team`, `enterprise`. |
-| `status` | `varchar(30)` | No | `active`, `suspended`, `deleted`. |
-| `created_by` | `uuid` | No | FK to `identity.users`. |
-| `created_at` | `timestamptz` | No | Creation time. |
-| `updated_at` | `timestamptz` | No | Update time. |
-| `deleted_at` | `timestamptz` | Yes | Soft delete. |
-
-Indexes:
-
-```sql
-create unique index ux_organizations_slug
-on tenant.organizations(slug);
-
-create index ix_organizations_status
-on tenant.organizations(status);
-```
-
----
-
-## 4.4.2 `tenant.organization_members`
-
-Stores organization-level RBAC.
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to `tenant.organizations`. |
-| `user_id` | `uuid` | No | FK to `identity.users`. |
-| `role` | `varchar(30)` | No | `owner`, `admin`, `billing_admin`, `member`, `viewer`. |
-| `status` | `varchar(30)` | No | `active`, `invited`, `removed`. |
-| `joined_at` | `timestamptz` | No | Join time. |
-| `removed_at` | `timestamptz` | Yes | Removal time. |
-
-Indexes:
-
-```sql
-create unique index ux_org_members_active
-on tenant.organization_members(organization_id, user_id)
-where removed_at is null;
-
-create index ix_org_members_user
-on tenant.organization_members(user_id);
-```
-
----
-
-## 4.4.3 `tenant.organization_invites`
-
-Stores organization invitations.
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to `tenant.organizations`. |
-| `email` | `varchar(255)` | No | Invited email. |
-| `normalized_email` | `varchar(255)` | No | Normalized email. |
-| `role` | `varchar(30)` | No | Requested org role. |
-| `token_hash` | `varchar(255)` | No | Invite token hash. |
-| `status` | `varchar(30)` | No | `pending`, `accepted`, `expired`, `revoked`. |
-| `invited_by` | `uuid` | No | FK to inviter user. |
-| `expires_at` | `timestamptz` | No | Expiration time. |
-| `accepted_at` | `timestamptz` | Yes | Acceptance time. |
-| `created_at` | `timestamptz` | No | Creation time. |
-
----
-
-## 4.4.4 `tenant.organization_settings`
-
-Stores enterprise policies and defaults.
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organizations, unique. |
-| `default_project_visibility` | `varchar(30)` | No | `private`, `internal`. |
-| `require_mfa` | `boolean` | No | MFA requirement. |
-| `allowed_email_domains` | `text[]` | Yes | Allowed domains for enterprise invites. |
-| `git_provider_policy` | `jsonb` | Yes | Allowed providers and credential rules. |
-| `data_retention_policy_id` | `uuid` | Yes | FK to governance retention policy. |
-| `created_at` | `timestamptz` | No | Creation time. |
-| `updated_at` | `timestamptz` | No | Update time. |
-
----
-
-## 4.4.5 `tenant.teams`
-
-Groups users inside organizations.
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organizations. |
-| `name` | `varchar(120)` | No | Team name. |
-| `slug` | `varchar(120)` | No | Team slug. |
-| `description` | `text` | Yes | Description. |
-| `created_at` | `timestamptz` | No | Creation time. |
-| `updated_at` | `timestamptz` | No | Update time. |
-
-Indexes:
-
-```sql
-create unique index ux_teams_org_slug
-on tenant.teams(organization_id, slug);
-```
-
----
-
-## 4.4.6 `tenant.team_members`
-
-Stores team membership.
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `team_id` | `uuid` | No | FK to `tenant.teams`. |
-| `user_id` | `uuid` | No | FK to `identity.users`. |
-| `role` | `varchar(30)` | No | `maintainer`, `member`. |
-| `created_at` | `timestamptz` | No | Creation time. |
-
-Indexes:
-
-```sql
-create unique index ux_team_members_team_user
-on tenant.team_members(team_id, user_id);
-```
-
----
-
-# 4.5 Billing / License Schema
-
-The `billing` schema supports plans, subscriptions, usage tracking, invoices, and future SaaS monetization.
-
----
-
-## 4.5.1 `billing.plans`
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `code` | `varchar(50)` | No | `free`, `pro`, `team`, `enterprise`. |
-| `name` | `varchar(100)` | No | Plan name. |
-| `price_monthly` | `numeric(12,2)` | Yes | Monthly price. |
-| `currency` | `varchar(10)` | Yes | Currency. |
-| `limits` | `jsonb` | No | Project/member/storage/worker limits. |
-| `features` | `jsonb` | No | Feature flags. |
-| `is_active` | `boolean` | No | Whether plan is available. |
-| `created_at` | `timestamptz` | No | Creation time. |
-
-Indexes:
-
-```sql
-create unique index ux_plans_code
-on billing.plans(code);
-```
-
----
-
-## 4.5.2 `billing.subscriptions`
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organizations. |
-| `plan_id` | `uuid` | No | FK to plans. |
-| `status` | `varchar(30)` | No | `trialing`, `active`, `past_due`, `cancelled`, `expired`. |
-| `started_at` | `timestamptz` | No | Start time. |
-| `trial_ends_at` | `timestamptz` | Yes | Trial end. |
-| `current_period_start` | `timestamptz` | Yes | Billing period start. |
-| `current_period_end` | `timestamptz` | Yes | Billing period end. |
-| `cancelled_at` | `timestamptz` | Yes | Cancellation time. |
-| `provider` | `varchar(50)` | Yes | Payment provider. |
-| `provider_subscription_id` | `varchar(200)` | Yes | External provider ID. |
-
----
-
-## 4.5.3 `billing.usage_counters`
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organizations. |
-| `period_start` | `date` | No | Usage period start. |
-| `period_end` | `date` | No | Usage period end. |
-| `metric` | `varchar(80)` | No | `projects`, `members`, `repo_bytes`, `storage_bytes`, `worker_minutes`. |
-| `value` | `numeric(20,4)` | No | Usage value. |
-| `updated_at` | `timestamptz` | No | Update time. |
-
-Indexes:
-
-```sql
-create unique index ux_usage_counters_org_period_metric
-on billing.usage_counters(organization_id, period_start, period_end, metric);
-```
-
----
-
-## 4.5.4 `billing.invoices`
-
-| Column | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organizations. |
-| `provider_invoice_id` | `varchar(200)` | Yes | External invoice ID. |
-| `status` | `varchar(30)` | No | `draft`, `open`, `paid`, `void`, `uncollectible`. |
-| `amount_due` | `numeric(12,2)` | No | Amount due. |
-| `currency` | `varchar(10)` | No | Currency. |
-| `issued_at` | `timestamptz` | Yes | Issue time. |
-| `paid_at` | `timestamptz` | Yes | Payment time. |
-
----
-
-# 4.6 Core Project Schema
-
-The `core` schema owns projects, project settings, project membership, and project invitations.
-
----
-
 ## 4.6.1 `core.projects`
 
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to `tenant.organizations`. |
 | `name` | `varchar(80)` | No | Project name. |
 | `slug` | `varchar(100)` | No | Unique inside organization. |
 | `description` | `text` | Yes | Project description. |
@@ -788,7 +561,6 @@ The `repo` schema owns repository configuration, credentials, workspace state, s
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organizations. |
 | `project_id` | `uuid` | No | FK to projects. One repository per project in MVP. |
 | `remote_url` | `varchar(800)` | No | Sanitized remote URL without credentials. |
 | `provider` | `varchar(50)` | No | `github`, `gitlab`, `bitbucket`, `generic`. |
@@ -1091,7 +863,6 @@ The `ops` schema tracks async jobs, attempts, leasing, worker health, transactio
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `project_id` | `uuid` | No | FK to project. |
 | `repository_id` | `uuid` | Yes | FK to repository. |
 | `type` | `varchar(40)` | No | `clone`, `fetch`, `parse`, `analyze`, `diff`, `preview`, `notification`. |
@@ -1110,6 +881,8 @@ The `ops` schema tracks async jobs, attempts, leasing, worker health, transactio
 | `completed_at` | `timestamptz` | Yes | Completion time. |
 | `cancelled_at` | `timestamptz` | Yes | Cancellation time. |
 | `timeout_at` | `timestamptz` | Yes | Timeout time. |
+| `last_heartbeat_at` | `timestamptz` | Yes | Worker heartbeat time. |
+| `cancellation_requested_at` | `timestamptz` | Yes | Cancellation intent time. |
 | `error_code` | `varchar(100)` | Yes | Error code. |
 | `error_message` | `text` | Yes | Sanitized error message. |
 | `triggered_by` | `uuid` | Yes | FK to user. |
@@ -1353,7 +1126,6 @@ The `metadata` schema stores parsed Godot metadata. All parsed metadata must be 
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `project_id` | `uuid` | No | FK to project. |
 | `repository_id` | `uuid` | No | FK to repository. |
 | `snapshot_id` | `uuid` | No | FK to repository snapshot. |
@@ -1706,7 +1478,6 @@ The `analysis` schema stores health rules, reports, issues, suppressions, and ma
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `project_id` | `uuid` | No | FK to project. |
 | `repository_id` | `uuid` | No | FK to repository. |
 | `snapshot_id` | `uuid` | No | FK to snapshot. |
@@ -1758,7 +1529,6 @@ on analysis.health_rules(code);
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `project_id` | `uuid` | No | FK to project. |
 | `repository_id` | `uuid` | No | FK to repository. |
 | `snapshot_id` | `uuid` | No | FK to snapshot. |
@@ -1886,7 +1656,6 @@ The `storage` schema tracks objects stored in MinIO/S3.
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `project_id` | `uuid` | Yes | FK to project. |
 | `repository_id` | `uuid` | Yes | FK to repository. |
 | `job_id` | `uuid` | Yes | FK to job. |
@@ -2005,7 +1774,6 @@ The `collab` schema stores notifications, timeline activities, comments, and rev
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `user_id` | `uuid` | No | Recipient user. |
 | `project_id` | `uuid` | Yes | Related project. |
 | `job_id` | `uuid` | Yes | Related job. |
@@ -2034,7 +1802,6 @@ Partitioning: monthly.
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
 | `user_id` | `uuid` | No | FK to user. |
-| `organization_id` | `uuid` | Yes | Optional organization scope. |
 | `event_type` | `varchar(80)` | No | Event type. |
 | `in_app_enabled` | `boolean` | No | In-app enabled. |
 | `email_enabled` | `boolean` | No | Email enabled. |
@@ -2050,7 +1817,6 @@ User-facing activity timeline.
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `project_id` | `uuid` | Yes | FK to project. |
 | `user_id` | `uuid` | Yes | Actor user. |
 | `action` | `varchar(100)` | No | Action type. |
@@ -2082,7 +1848,6 @@ Generic comments for files, nodes, health issues, and diffs.
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | FK to organization. |
 | `project_id` | `uuid` | No | FK to project. |
 | `author_id` | `uuid` | No | FK to user. |
 | `target_type` | `varchar(80)` | No | `scene_diff`, `health_issue`, `file`, `node`. |
@@ -2139,7 +1904,6 @@ Append-only audit log for sensitive business events.
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | Yes | FK to organization. |
 | `project_id` | `uuid` | Yes | FK to project. |
 | `actor_user_id` | `uuid` | Yes | Actor user. |
 | `event_type` | `varchar(120)` | No | Event type. |
@@ -2190,7 +1954,6 @@ Security-specific immutable audit events.
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | Yes | Organization scope. |
 | `user_id` | `uuid` | Yes | User scope. |
 | `event_type` | `varchar(120)` | No | Security event. |
 | `severity` | `varchar(30)` | No | `info`, `warning`, `critical`. |
@@ -2207,7 +1970,6 @@ Tracks access to sensitive resources and artifacts.
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | Organization scope. |
 | `user_id` | `uuid` | Yes | Actor user. |
 | `resource_type` | `varchar(100)` | No | Resource type. |
 | `resource_id` | `uuid` | Yes | Resource ID. |
@@ -2250,7 +2012,6 @@ The `search` schema stores materialized search documents and indexing runs.
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | Organization scope. |
 | `project_id` | `uuid` | No | Project scope. |
 | `repository_id` | `uuid` | Yes | Repository scope. |
 | `snapshot_id` | `uuid` | Yes | Snapshot scope. |
@@ -2297,7 +2058,6 @@ on search.search_documents using gin(search_vector);
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
 | `user_id` | `uuid` | No | Owner user. |
-| `organization_id` | `uuid` | No | Organization scope. |
 | `name` | `varchar(120)` | No | Search name. |
 | `query` | `text` | No | Query text. |
 | `filters` | `jsonb` | Yes | Saved filters. |
@@ -2317,7 +2077,6 @@ The `governance` schema stores retention, purge, legal hold, archive, and data c
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | Yes | Organization-specific policy or null for global. |
 | `scope` | `varchar(40)` | No | `global`, `organization`, `project`, `repository`. |
 | `target` | `varchar(120)` | No | Table/data class target. |
 | `retention_days` | `int` | No | Retention days. |
@@ -2360,7 +2119,6 @@ The `governance` schema stores retention, purge, legal hold, archive, and data c
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | Yes | Organization scope. |
 | `source_table` | `varchar(120)` | No | Original table. |
 | `source_id` | `uuid` | Yes | Source row/entity ID. |
 | `artifact_id` | `uuid` | Yes | Archive artifact. |
@@ -2374,7 +2132,6 @@ The `governance` schema stores retention, purge, legal hold, archive, and data c
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | Yes | Organization scope. |
 | `target_type` | `varchar(80)` | No | `user`, `project`, `repository`, `organization`. |
 | `target_id` | `uuid` | No | Target entity ID. |
 | `reason` | `text` | No | Purge reason. |
@@ -2391,7 +2148,6 @@ The `governance` schema stores retention, purge, legal hold, archive, and data c
 | Column | Type | Nullable | Description |
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
-| `organization_id` | `uuid` | No | Organization scope. |
 | `target_type` | `varchar(80)` | No | Target type. |
 | `target_id` | `uuid` | No | Target ID. |
 | `reason` | `text` | No | Legal hold reason. |
@@ -2832,3 +2588,234 @@ audit.admin_actions
 This design intentionally goes beyond the original MVP database document. The original version contained the essential seed tables such as `users`, `refresh_tokens`, `projects`, `project_members`, `repositories`, `jobs`, `activities`, `notifications`, `scenes`, `scene_nodes`, `assets`, `scripts`, `resources`, `dependencies`, `health_reports`, and `health_issues`, plus Redis and MinIO basics. This production-grade version expands that foundation for real SaaS and enterprise usage: tenancy, billing, credential rotation, worker reliability, metadata versioning, auditability, retention, backup, search, and operational governance.
 
 For implementation, do not build everything at once. Start with Phase 1, then proceed to parser/metadata, analysis/storage/search, and finally enterprise governance.
+
+## Deferred / Future Scope — Not for MVP Implementation
+> [!WARNING]
+> The following schemas (`tenant.*` and `billing.*`) are out of scope for the current MVP. Organization Owner is mapped to project-level roles instead. Do not scaffold or migrate these tables.
+
+## 4.4.1 `tenant.organizations`
+
+Stores organizations and personal workspaces.
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `name` | `varchar(150)` | No | Organization name. |
+| `slug` | `varchar(100)` | No | URL-safe organization slug. |
+| `type` | `varchar(30)` | No | `personal`, `team`, `enterprise`. |
+| `status` | `varchar(30)` | No | `active`, `suspended`, `deleted`. |
+| `created_by` | `uuid` | No | FK to `identity.users`. |
+| `created_at` | `timestamptz` | No | Creation time. |
+| `updated_at` | `timestamptz` | No | Update time. |
+| `deleted_at` | `timestamptz` | Yes | Soft delete. |
+
+Indexes:
+
+```sql
+create unique index ux_organizations_slug
+on tenant.organizations(slug);
+
+create index ix_organizations_status
+on tenant.organizations(status);
+```
+
+---
+
+## 4.4.2 `tenant.organization_members`
+
+Stores organization-level RBAC.
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `organization_id` | `uuid` | No | FK to `tenant.organizations`. |
+| `user_id` | `uuid` | No | FK to `identity.users`. |
+| `role` | `varchar(30)` | No | `owner`, `admin`, `billing_admin`, `member`, `viewer`. |
+| `status` | `varchar(30)` | No | `active`, `invited`, `removed`. |
+| `joined_at` | `timestamptz` | No | Join time. |
+| `removed_at` | `timestamptz` | Yes | Removal time. |
+
+Indexes:
+
+```sql
+create unique index ux_org_members_active
+on tenant.organization_members(organization_id, user_id)
+where removed_at is null;
+
+create index ix_org_members_user
+on tenant.organization_members(user_id);
+```
+
+---
+
+## 4.4.3 `tenant.organization_invites`
+
+Stores organization invitations.
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `organization_id` | `uuid` | No | FK to `tenant.organizations`. |
+| `email` | `varchar(255)` | No | Invited email. |
+| `normalized_email` | `varchar(255)` | No | Normalized email. |
+| `role` | `varchar(30)` | No | Requested org role. |
+| `token_hash` | `varchar(255)` | No | Invite token hash. |
+| `status` | `varchar(30)` | No | `pending`, `accepted`, `expired`, `revoked`. |
+| `invited_by` | `uuid` | No | FK to inviter user. |
+| `expires_at` | `timestamptz` | No | Expiration time. |
+| `accepted_at` | `timestamptz` | Yes | Acceptance time. |
+| `created_at` | `timestamptz` | No | Creation time. |
+
+---
+
+## 4.4.4 `tenant.organization_settings`
+
+Stores enterprise policies and defaults.
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `organization_id` | `uuid` | No | FK to organizations, unique. |
+| `default_project_visibility` | `varchar(30)` | No | `private`, `internal`. |
+| `require_mfa` | `boolean` | No | MFA requirement. |
+| `allowed_email_domains` | `text[]` | Yes | Allowed domains for enterprise invites. |
+| `git_provider_policy` | `jsonb` | Yes | Allowed providers and credential rules. |
+| `data_retention_policy_id` | `uuid` | Yes | FK to governance retention policy. |
+| `created_at` | `timestamptz` | No | Creation time. |
+| `updated_at` | `timestamptz` | No | Update time. |
+
+---
+
+## 4.4.5 `tenant.teams`
+
+Groups users inside organizations.
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `organization_id` | `uuid` | No | FK to organizations. |
+| `name` | `varchar(120)` | No | Team name. |
+| `slug` | `varchar(120)` | No | Team slug. |
+| `description` | `text` | Yes | Description. |
+| `created_at` | `timestamptz` | No | Creation time. |
+| `updated_at` | `timestamptz` | No | Update time. |
+
+Indexes:
+
+```sql
+create unique index ux_teams_org_slug
+on tenant.teams(organization_id, slug);
+```
+
+---
+
+## 4.4.6 `tenant.team_members`
+
+Stores team membership.
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `team_id` | `uuid` | No | FK to `tenant.teams`. |
+| `user_id` | `uuid` | No | FK to `identity.users`. |
+| `role` | `varchar(30)` | No | `maintainer`, `member`. |
+| `created_at` | `timestamptz` | No | Creation time. |
+
+Indexes:
+
+```sql
+create unique index ux_team_members_team_user
+on tenant.team_members(team_id, user_id);
+```
+
+---
+
+# 4.5 Billing / License Schema
+
+The `billing` schema supports plans, subscriptions, usage tracking, invoices, and future SaaS monetization.
+
+---
+
+## 4.5.1 `billing.plans`
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `code` | `varchar(50)` | No | `free`, `pro`, `team`, `enterprise`. |
+| `name` | `varchar(100)` | No | Plan name. |
+| `price_monthly` | `numeric(12,2)` | Yes | Monthly price. |
+| `currency` | `varchar(10)` | Yes | Currency. |
+| `limits` | `jsonb` | No | Project/member/storage/worker limits. |
+| `features` | `jsonb` | No | Feature flags. |
+| `is_active` | `boolean` | No | Whether plan is available. |
+| `created_at` | `timestamptz` | No | Creation time. |
+
+Indexes:
+
+```sql
+create unique index ux_plans_code
+on billing.plans(code);
+```
+
+---
+
+## 4.5.2 `billing.subscriptions`
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `organization_id` | `uuid` | No | FK to organizations. |
+| `plan_id` | `uuid` | No | FK to plans. |
+| `status` | `varchar(30)` | No | `trialing`, `active`, `past_due`, `cancelled`, `expired`. |
+| `started_at` | `timestamptz` | No | Start time. |
+| `trial_ends_at` | `timestamptz` | Yes | Trial end. |
+| `current_period_start` | `timestamptz` | Yes | Billing period start. |
+| `current_period_end` | `timestamptz` | Yes | Billing period end. |
+| `cancelled_at` | `timestamptz` | Yes | Cancellation time. |
+| `provider` | `varchar(50)` | Yes | Payment provider. |
+| `provider_subscription_id` | `varchar(200)` | Yes | External provider ID. |
+
+---
+
+## 4.5.3 `billing.usage_counters`
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `organization_id` | `uuid` | No | FK to organizations. |
+| `period_start` | `date` | No | Usage period start. |
+| `period_end` | `date` | No | Usage period end. |
+| `metric` | `varchar(80)` | No | `projects`, `members`, `repo_bytes`, `storage_bytes`, `worker_minutes`. |
+| `value` | `numeric(20,4)` | No | Usage value. |
+| `updated_at` | `timestamptz` | No | Update time. |
+
+Indexes:
+
+```sql
+create unique index ux_usage_counters_org_period_metric
+on billing.usage_counters(organization_id, period_start, period_end, metric);
+```
+
+---
+
+## 4.5.4 `billing.invoices`
+
+| Column | Type | Nullable | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | No | Primary key. |
+| `organization_id` | `uuid` | No | FK to organizations. |
+| `provider_invoice_id` | `varchar(200)` | Yes | External invoice ID. |
+| `status` | `varchar(30)` | No | `draft`, `open`, `paid`, `void`, `uncollectible`. |
+| `amount_due` | `numeric(12,2)` | No | Amount due. |
+| `currency` | `varchar(10)` | No | Currency. |
+| `issued_at` | `timestamptz` | Yes | Issue time. |
+| `paid_at` | `timestamptz` | Yes | Payment time. |
+
+---
+
+# 4.6 Core Project Schema
+
+The `core` schema owns projects, project settings, project membership, and project invitations.
+
+---
+

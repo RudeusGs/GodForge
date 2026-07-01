@@ -16,8 +16,8 @@ Before coding, read the relevant sections in `docs/SRS/`:
 - `02-architecture.md` or architecture overview: async processing, API/worker boundaries, observability.
 - `05-api.md`: job endpoints and API response conventions.
 - `06-security.md`: RBAC rules for who can trigger/cancel/retry jobs.
-- `09-database.md` or database schema: `jobs`, metadata, artifacts, activities, notifications.
-- `11-job-queue.md` or job queue specification: job types, retry and idempotency rules.
+- `04-database.md` or database schema: `jobs`, metadata, artifacts, activities, notifications.
+- `12-worker-processing.md` or job queue specification: job types, retry and idempotency rules.
 - `12-worker-processing.md`: producer/consumer contracts, timeout, DLQ, idempotency.
 - Relevant FR/WF for the feature: repository clone, analyze, parser, diff, preview, dashboard, activity log.
 

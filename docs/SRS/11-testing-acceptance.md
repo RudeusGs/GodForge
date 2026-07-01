@@ -53,6 +53,12 @@ GodForge applies a risk-based testing strategy: security flows, RBAC, Git operat
 | TC-SETTINGS-002 | FR-17.2 | Authenticated user. | View and change user settings. | Settings correctly saved per user, independent of others. | Medium |
 | TC-ACTIVITY-001 | FR-18 | Project with activity. | View activity by project and system admin view. | Project member sees appropriate scope; system admin sees global view. | High |
 | TC-JOB-001 | NFR-23 | Test queue with transient error, poison message, and timeout fixture. | Trigger job, simulate retry, timeout, retry exhaustion, and DLQ. | Status transitions correctly (`queued`/`running`/`retrying`/`timeout`/`dead_lettered`); DLQ retains sanitized payload. | High |
+| TC-JOB-002 | FR-19 | Project member. | Request job list for project. | Only returns jobs for that project with correct pagination. | High |
+| TC-JOB-003 | FR-19 | User requests jobs for unauthorized project. | Attempt to list or view job detail. | Returns 403 or 404, no job data exposed. | High |
+| TC-JOB-004 | FR-19 | Developer/Project Admin. | Request cancellation of cancellable queued/running job. | Job marked for cancellation, returns success. | High |
+| TC-JOB-005 | FR-19 | Terminal job exists. | Request cancellation of terminal job. | Returns `JOB_NOT_CANCELLABLE`. | Medium |
+| TC-JOB-006 | FR-19 | Failed job exists. | View job detail. | Detail includes status, progress, timestamps, safe error code, `correlationId`, no secrets. | High |
+| TC-JOB-007 | FR-19 | Active SignalR connection. | Monitor running job. | SignalR updates match REST DB state; REST remains source of truth. | Medium |
 | TC-SEC-001 | Security NFR | User with multiple projects. | Attempt cross-project IDOR, path traversal, malicious repo URL. | Requests rejected/forbidden, no data leaked. | High |
 | TC-PERF-001 | Performance NFR | Representative dataset. | Measure dashboard/search/parse/diff. | Meets NFR targets or clearly notes deviations. | Medium |
 
