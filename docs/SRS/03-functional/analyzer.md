@@ -1,145 +1,114 @@
-# Functional Requirements: Analyzer & Diff
+# Analyzer / Project Health
 
-## FR-11: Dependency Graph
-**Mức ưu tiên:** Must  
-**Mô tả:** Xây dựng và trực quan hóa graph phụ thuộc giữa các resource trong project Godot.
+## Mục tiêu
 
-### Loại dependency (Edge)
-| From | To | Relation |
-|------|----|----------|
-| Scene | Scene | `instances` (sub-scene) |
-| Scene | Script | `attaches` (script gắn vào node) |
-| Scene | Resource | `uses` (ext_resource) |
-| Scene | Asset | `references` (image, audio...) |
-| Script | Script | `extends` / `preload` / `load` |
-| Script | Scene | `preload` / `load` |
-| Script | Asset | `preload` / `load` |
-| Resource | Asset | `references` |
+Module Analyzer phân tích metadata đã parse để tạo health report, health issues, score và dữ liệu tổng hợp cho dashboard.
 
-### Giao diện Graph
-- **Interactive Graph:** Zoom, pan, drag nodes.
-- **Node:** Mỗi file là 1 node, icon theo type (scene/script/asset).
-- **Edge:** Đường nối có mũi tên, label kiểu relation.
-- **Filter:** Theo type (chỉ scene, chỉ script), theo depth (1-hop, 2-hop, all).
-- **Focus mode:** Click 1 node → highlight tất cả incoming + outgoing dependencies.
-- **Cyclic Detection:** Đường vòng phụ thuộc (A→B→C→A) highlight bằng màu đỏ.
+## Tác nhân
 
-### Thuật toán
-- Xây dựng DAG từ `dependencies` table.
-- Phát hiện cycle: DFS-based cycle detection (Tarjan's hoặc tương đương).
-- Lưu cycle info trong `health_issues` (severity: `warning`).
+- Developer
+- Project Admin
+- Worker/System
+- Reviewer/QA
 
-### Business Rules
-- **BR-50:** Graph data đọc từ `dependencies` table (Metadata Schema).
-- **BR-51:** Graph chỉ hiển thị data của project hiện tại.
-- **BR-52:** Nếu project chưa analyze → hiển thị "Chưa có dữ liệu" + button trigger analyze.
-- **BR-53:** Graph layout sử dụng force-directed layout (client-side rendering).
+## Phạm vi
 
-### Acceptance Criteria
-- [x] AC-65: Mở dependency graph → hiển thị graph interactive với nodes và edges.
-- [x] AC-66: Filter chỉ scene → chỉ hiện scene nodes và liên kết giữa chúng.
-- [x] AC-67: Có cyclic dependency A→B→A → đường vòng highlight đỏ.
-- [x] AC-68: Click node → focus mode highlight incoming/outgoing.
-- [x] AC-69: Project chưa analyze → thông báo + nút trigger.
+- Chạy analyze sau parse thành công.
+- Đọc Metadata Schema để phát hiện issue.
+- Tính health score và lưu lịch sử report.
+- Cập nhật cache dashboard.
+- Gửi notification khi có issue critical.
 
----
+## Yêu cầu chức năng
 
-## FR-12: Project Health Analyzer
-**Mức ưu tiên:** Must  
-**Mô tả:** Phân tích sức khỏe dự án Godot, tính health score, phát hiện vấn đề.
+| ID | Tên yêu cầu | Mô tả | Priority | Actor |
+| --- | --- | --- | --- | --- |
+| FR-12 | Project Health Analyzer | Phân tích sức khỏe dự án Godot, tính health score và phát hiện vấn đề. | Must | Developer, Worker |
+| BR-54 | Async analyze | Analyze job chạy qua RabbitMQ Worker. | Must | System |
+| BR-55 | Lưu history | Health report lưu lịch sử, không ghi đè report cũ. | Must | Worker |
+| BR-56 | Hiển thị score | Health score hiển thị trên dashboard và project detail. | Must | Viewer+ |
+| BR-57 | Yêu cầu parse trước | Analyze yêu cầu metadata parse hoàn thành trước. | Must | Worker |
 
-### Health Score Formula
-```
-Health Score = 100 - Σ(penalty_per_issue)
+## Luồng xử lý chính
 
-Penalty per issue:
-  - Critical: -10 điểm/issue (cap: -50)
-  - Warning:  -3 điểm/issue  (cap: -30)
-  - Info:     -1 điểm/issue  (cap: -10)
+1. User hoặc hệ thống trigger analyze.
+2. API kiểm tra repository ready, parse data available và actor có quyền `developer+`.
+3. API tạo job `analyze` và publish message vào RabbitMQ.
+4. Analyzer Worker đọc `scenes`, `scene_nodes`, `assets`, `scripts`, `resources`, `dependencies`.
+5. Worker chạy health rules: missing resource, missing script, cyclic dependency, unused asset, oversized scene, deep nesting, duplicate resource, missing import.
+6. Worker tính health score.
+7. Worker lưu `health_reports` và `health_issues`.
+8. Worker cập nhật Redis cache cho dashboard và project summary.
+9. Nếu có critical issue, hệ thống gửi notification.
+
+## Công thức health score
+
+```text
+Health Score = 100 - SUM(penalty_per_issue)
+
+Critical: -10 điểm/issue, cap -50
+Warning:  -3 điểm/issue, cap -30
+Info:     -1 điểm/issue, cap -10
 
 Minimum score: 0
 Maximum score: 100
 ```
 
-### Danh sách Health Issues
+## Health rules tối thiểu
+
 | Issue Type | Severity | Mô tả |
-|------------|----------|-------|
-| `missing_resource` | Critical | Scene reference file không tồn tại |
-| `missing_script` | Critical | Node gắn script nhưng script không tồn tại |
-| `cyclic_dependency` | Warning | Vòng phụ thuộc giữa các file |
-| `unused_asset` | Info | Asset không được reference |
-| `oversized_scene` | Warning | Scene có > 500 nodes |
-| `deep_nesting` | Warning | Node tree sâu > 10 level |
-| `duplicate_resource` | Info | Resource trùng lặp (cùng content, khác path) |
-| `missing_import` | Warning | File `.import` tồn tại nhưng source file bị xóa |
+| --- | --- | --- |
+| `missing_resource` | Critical | Scene hoặc resource reference file không tồn tại. |
+| `missing_script` | Critical | Node gắn script nhưng script không tồn tại. |
+| `cyclic_dependency` | Warning | Có vòng phụ thuộc giữa các file. |
+| `unused_asset` | Info | Asset không được reference trong dependency graph. |
+| `oversized_scene` | Warning | Scene có hơn 500 nodes. |
+| `deep_nesting` | Warning | Node tree sâu hơn 10 level. |
+| `duplicate_resource` | Info | Resource trùng nội dung ở nhiều path. |
+| `missing_import` | Warning | File `.import` tồn tại nhưng source file bị xóa. |
 
-### Luồng xử lý
-1. Job `analyze` nhận project_id.
-2. Đọc Metadata Schema (scenes, assets, scripts, dependencies).
-3. Chạy từng rule → sinh danh sách issues.
-4. Tính health score.
-5. Lưu vào `health_reports` + `health_issues`.
-6. Cập nhật Redis Cache cho dashboard.
-7. Nếu có issue Critical → gửi notification.
+## Ngoại lệ / lỗi
 
-### Business Rules
-- **BR-54:** Analyze job chạy async qua RabbitMQ Worker.
-- **BR-55:** Health report lưu history — không ghi đè report cũ (để so sánh trend).
-- **BR-56:** Health score hiển thị trên dashboard và project detail.
-- **BR-57:** Analyze yêu cầu parse hoàn thành trước. Nếu chưa parse → reject job.
+| Tình huống | HTTP Status / Job State | Error Code | Hành vi |
+| --- | --- | --- | --- |
+| Chưa parse metadata | 400 | `PARSE_REQUIRED` | Từ chối analyze, yêu cầu parse trước. |
+| Metadata version cũ hơn job hiện hành | Job ignored | `STALE_METADATA_VERSION` | Không ghi đè report mới hơn. |
+| DB tạm lỗi | Job retry | `JOB_TRANSIENT_FAILURE` | Retry theo policy. |
+| Rule config invalid | Job failed | `ANALYZE_RULE_CONFIG_INVALID` | Không retry vô hạn; ghi log và DLQ nếu cần. |
 
-### Acceptance Criteria
-- [x] AC-70: Chạy analyze → sinh health report với score 0-100.
-- [x] AC-71: Project có 2 missing resource → 2 issues Critical, score giảm 20 điểm.
-- [x] AC-72: Có issue Critical → user nhận notification.
-- [x] AC-73: Health history giữ report cũ → xem trend qua thời gian.
-- [x] AC-74: Chạy analyze khi chưa parse → lỗi rõ ràng, yêu cầu parse trước.
+## Acceptance Criteria
 
----
+- AC-70: Chạy analyze sinh health report với score 0-100.
+- AC-71: Project có 2 missing resource sinh 2 critical issues và score giảm 20 điểm.
+- AC-72: Có issue critical thì user liên quan nhận notification.
+- AC-73: Health history giữ report cũ để xem trend.
+- AC-74: Analyze khi chưa parse trả lỗi rõ ràng yêu cầu parse trước.
 
-## FR-13: Scene Diff Viewer
-**Mức ưu tiên:** Must  
-**Mô tả:** So sánh scene theo cấu trúc (scene-aware diff) thay vì text-based diff.
+## API liên quan
 
-### Loại Diff
-| Loại | Mô tả |
-|------|-------|
-| **Commit Diff** | So sánh scene giữa 2 commit |
-| **Branch Diff** | So sánh scene giữa 2 branch (tip commit) |
+| Method | Path | Permission | Request chính | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/api/v1/projects/{id}/analyze` | `developer+` | branch/commit/options | `202` analyze job | `PARSE_REQUIRED`, `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{id}/health` | `viewer+` | none | Latest health report | `HEALTH_NOT_READY` |
+| GET | `/api/v1/projects/{id}/health/history` | `viewer+` | pagination | Health history | `FORBIDDEN` |
+| GET | `/api/v1/projects/{id}/health/{reportId}/issues` | `viewer+` | severity/filter | Health issues | `REPORT_NOT_FOUND` |
+| GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | job id | Job status | `JOB_NOT_FOUND` |
 
-### Hiển thị Diff
-#### Node-level Diff
-- **Added nodes:** Highlight xanh lá, hiển thị full node info.
-- **Removed nodes:** Highlight đỏ, hiển thị node info trước khi xóa.
-- **Modified nodes:** Highlight vàng, hiển thị property changes (old → new).
-- **Moved nodes:** Hiển thị parent path cũ → mới.
-- **Unchanged nodes:** Hiện mờ (collapsed by default).
+## Database liên quan
 
-#### Property-level Diff
-- Cho mỗi modified node, hiển thị danh sách property thay đổi:
-  - Property name, old value, new value.
-  - Highlight inline diff cho string values.
+| Bảng | Vai trò |
+| --- | --- |
+| `jobs` | Analyze job lifecycle, progress, error code và correlation id. |
+| `scenes`, `scene_nodes` | Source data cho scene size, nesting và script attachment rules. |
+| `assets`, `scripts`, `resources`, `dependencies` | Source data cho missing/unused/cycle rules. |
+| `health_reports` | Lưu report summary, score, severity counts và rule version. |
+| `health_issues` | Lưu từng issue, severity, file path và details. |
+| `projects` | Cache health score mới nhất nếu cần. |
+| `notifications` | Thông báo critical health issues. |
 
-#### Summary Statistics
-- Tổng số nodes: added / removed / modified / unchanged.
-- Tổng số properties changed.
+## Ghi chú bảo mật / phân quyền
 
-### Luồng xử lý
-1. User chọn 2 commit hoặc 2 branch để so sánh.
-2. Nếu cả 2 version đã parse → so sánh từ Metadata.
-3. Nếu chưa parse → tạo job parse tạm (parse 2 version của file `.tscn`).
-4. Sinh diff artifact, lưu MinIO (cache).
-5. Trả về diff data cho frontend render.
-
-### Business Rules
-- **BR-58:** Diff được cache trong MinIO (key: `{scene_path}:{commit_a}:{commit_b}`).
-- **BR-59:** Cache diff expire sau 7 ngày hoặc khi re-analyze.
-- **BR-60:** Scene diff chỉ áp dụng cho file `.tscn`. File khác dùng text diff thông thường.
-- **BR-61:** Diff job chạy async, trả 202 nếu cần compute.
-
-### Acceptance Criteria
-- [x] AC-75: So sánh 2 commit của cùng scene → hiển thị node-level diff (added/removed/modified).
-- [x] AC-76: Node được thêm → highlight xanh lá, hiển thị full info.
-- [x] AC-77: Property changed → hiển thị old value → new value.
-- [x] AC-78: Diff đã cache → response nhanh (< 500ms).
-- [x] AC-79: File non-tscn → fallback text diff.
+- Health issue có thể lộ path/structure repository; mọi query phải filter theo project permission.
+- Analyzer không execute script hoặc resource.
+- Error trả client không chứa server path, stack trace hoặc raw parser exception.
+- Health rule version phải lưu để giải thích score tại thời điểm report.

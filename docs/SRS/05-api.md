@@ -1,49 +1,49 @@
-# 5. Thiết kế API
+# 5. API
 
 ## 5.1 Tiêu chuẩn API
-Hệ thống sử dụng chuẩn RESTful API, triển khai bằng ASP.NET Core .NET 9.
-- **Stateless:** API không lưu session, xác thực qua JWT.
-- **Base URL:** `/api/v1`
-- **Request/Response Format:** `application/json`
-- **Authentication:** Bearer Token trong header `Authorization: Bearer {accessToken}`
 
-## 5.2 Convention
+GodForge sử dụng REST API triển khai dưới prefix `/api/v1`.
 
-### Pagination
-```
-GET /api/v1/projects?page=1&pageSize=20&sortBy=createdAt&sortOrder=desc
-```
-Response:
+| Quy ước | Giá trị |
+| --- | --- |
+| Base URL | `/api/v1` |
+| Format | `application/json` |
+| Authentication | `Authorization: Bearer {accessToken}` |
+| Correlation | Header `X-Correlation-Id`; server tạo nếu client không gửi |
+| Time format | ISO 8601 UTC |
+| Pagination | Offset-based `page`, `pageSize` |
+| Max pageSize | 100 |
+
+## 5.2 Response format
+
+### Thành công
+
 ```json
 {
-  "data": [...],
+  "data": {},
+  "meta": {
+    "correlationId": "abc-123"
+  }
+}
+```
+
+### Pagination
+
+```json
+{
+  "data": [],
   "meta": {
     "page": 1,
     "pageSize": 20,
     "totalItems": 150,
-    "totalPages": 8
+    "totalPages": 8,
+    "correlationId": "abc-123"
   }
 }
 ```
-- Default `pageSize`: 20. Max: 100.
-- Default `sortOrder`: `desc`.
 
-### Filtering
-```
-GET /api/v1/assets?type=image&search=player
-```
+### Lỗi
 
-### Standard Response — Thành công
-**200 OK / 201 Created:**
-```json
-{
-  "data": { ... },
-  "meta": { "pagination": ... }
-}
-```
-
-### Standard Response — Lỗi
-**4xx / 5xx:**
 ```json
 {
   "error": {
@@ -57,265 +57,192 @@ GET /api/v1/assets?type=image&search=player
 }
 ```
 
-### Async Job Response
-**202 Accepted:**
+### Async job
+
 ```json
 {
   "data": {
     "jobId": "uuid",
     "type": "parse",
     "status": "queued"
+  },
+  "meta": {
+    "correlationId": "abc-123"
   }
 }
 ```
 
----
+## 5.3 Quy tắc API
 
-## 5.3 API Endpoints
+- API không trả stack trace, server workspace path, credential, token hoặc raw command output chứa secret.
+- Validation error trả 400 với `details[]`.
+- Permission denied trả 403; resource ngoài quyền có thể trả 404 nếu cần tránh lộ sự tồn tại.
+- Async operation trả 202 khi job được tạo.
+- Error code dùng `SCREAMING_SNAKE_CASE` và ổn định để UI/QA có thể xử lý.
 
-### Auth Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `POST` | `/api/v1/auth/login` | Đăng nhập | ❌ | — |
-| `POST` | `/api/v1/auth/refresh` | Refresh token | ❌ | — |
-| `POST` | `/api/v1/auth/logout` | Đăng xuất | ✅ | Any |
-| `POST` | `/api/v1/auth/setup-password` | Thiết lập password (từ invite link) | ❌ | — |
+## 5.4 Endpoint catalog
 
-**`POST /api/v1/auth/login`**
-```
-Request:  { "email": "string", "password": "string" }
-Response: { "data": { "accessToken": "jwt", "refreshToken": "opaque", "expiresIn": 900, "user": {...} } }
-Errors:   401 INVALID_CREDENTIALS | 403 ACCOUNT_LOCKED | 403 ACCOUNT_DISABLED
-```
+### Auth
 
-**`POST /api/v1/auth/refresh`**
-```
-Request:  { "refreshToken": "string" }
-Response: { "data": { "accessToken": "jwt", "refreshToken": "opaque", "expiresIn": 900 } }
-Errors:   401 TOKEN_EXPIRED | 401 TOKEN_REVOKED
-```
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/api/v1/auth/login` | Anonymous | `email`, `password` | Access token, refresh token, expiresIn, user | `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `ACCOUNT_DISABLED` |
+| POST | `/api/v1/auth/refresh` | Refresh token | `refreshToken` | Access token mới, refresh token mới | `TOKEN_EXPIRED`, `TOKEN_REVOKED` |
+| POST | `/api/v1/auth/logout` | Authenticated | `refreshToken` | Logout success | `INVALID_TOKEN` |
+| POST | `/api/v1/auth/setup-password` | Invite token | `token`, `password` | Account activated | `INVITE_TOKEN_EXPIRED`, `VALIDATION_ERROR` |
 
----
+### Users
 
-### User Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/users` | Danh sách users | ✅ | system_admin |
-| `POST` | `/api/v1/users` | Tạo user (invite) | ✅ | system_admin |
-| `GET` | `/api/v1/users/{id}` | Chi tiết user | ✅ | system_admin hoặc self |
-| `PUT` | `/api/v1/users/{id}` | Cập nhật user | ✅ | system_admin hoặc self |
-| `PUT` | `/api/v1/users/{id}/status` | Thay đổi status (lock/disable) | ✅ | system_admin |
-| `GET` | `/api/v1/users/me` | Thông tin user hiện tại | ✅ | Any |
-| `PUT` | `/api/v1/users/me/settings` | Cập nhật user settings | ✅ | Any |
-| `PUT` | `/api/v1/users/me/password` | Đổi password | ✅ | Any |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/users` | `system_admin` | `page`, `pageSize`, `search`, `status` | User list | `FORBIDDEN` |
+| POST | `/api/v1/users` | `system_admin` | `email`, `displayName`, `systemRole` | User invited | `EMAIL_ALREADY_EXISTS`, `VALIDATION_ERROR` |
+| GET | `/api/v1/users/{id}` | `system_admin` hoặc self | user id | User detail | `USER_NOT_FOUND`, `FORBIDDEN` |
+| PUT | `/api/v1/users/{id}` | `system_admin` hoặc self | displayName, avatarUrl | User updated | `FORBIDDEN`, `VALIDATION_ERROR` |
+| PUT | `/api/v1/users/{id}/status` | `system_admin` | status | User status updated | `USER_NOT_FOUND`, `VALIDATION_ERROR` |
+| GET | `/api/v1/users/me` | Authenticated | none | Current user | `INVALID_TOKEN` |
+| PUT | `/api/v1/users/me/settings` | Authenticated | theme, notification prefs | User settings updated | `VALIDATION_ERROR` |
+| PUT | `/api/v1/users/me/password` | Authenticated | oldPassword, newPassword | Password changed | `INVALID_CREDENTIALS`, `VALIDATION_ERROR` |
 
-**`POST /api/v1/users`**
-```
-Request:  { "email": "string", "displayName": "string", "systemRole": "user|system_admin" }
-Response: 201 { "data": { "id": "uuid", "email": "...", "status": "pending_activation" } }
-Errors:   409 EMAIL_ALREADY_EXISTS | 400 VALIDATION_ERROR
-```
+### Projects
 
----
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects` | Authenticated | pagination, search, status | Projects visible to user | `FORBIDDEN` |
+| POST | `/api/v1/projects` | Authenticated | name, description, godotVersion, visibility | Project created | `PROJECT_NAME_EXISTS`, `VALIDATION_ERROR` |
+| GET | `/api/v1/projects/{id}` | Project member | project id | Project detail | `PROJECT_NOT_FOUND`, `FORBIDDEN` |
+| PUT | `/api/v1/projects/{id}` | `project_admin+` | name, description, visibility, godotVersion | Project updated | `FORBIDDEN`, `VALIDATION_ERROR` |
+| DELETE | `/api/v1/projects/{id}` | `project_owner` | confirmation | Project soft-deleted | `FORBIDDEN`, `PROJECT_NOT_FOUND` |
+| POST | `/api/v1/projects/{id}/restore` | `system_admin` | none | Project restored | `PROJECT_NOT_FOUND` |
+| GET | `/api/v1/projects/{id}/dashboard` | `viewer+` | optional time range | Dashboard summary | `PROJECT_NOT_FOUND`, `FORBIDDEN` |
 
-### Project Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/projects` | Danh sách projects (của user) | ✅ | Any |
-| `POST` | `/api/v1/projects` | Tạo project | ✅ | Any |
-| `GET` | `/api/v1/projects/{id}` | Chi tiết project | ✅ | project member |
-| `PUT` | `/api/v1/projects/{id}` | Cập nhật project | ✅ | project_admin+ |
-| `DELETE` | `/api/v1/projects/{id}` | Xóa mềm project | ✅ | project_owner |
-| `POST` | `/api/v1/projects/{id}/restore` | Khôi phục project | ✅ | system_admin |
-| `GET` | `/api/v1/projects/{id}/dashboard` | Dashboard data | ✅ | project member |
-| `GET` | `/api/v1/projects/{id}/settings` | Xem settings | ✅ | project_admin+ |
-| `PUT` | `/api/v1/projects/{id}/settings` | Cập nhật settings | ✅ | project_admin+ |
+### Members
 
-**`POST /api/v1/projects`**
-```
-Request:  { "name": "string", "description": "string?", "godotVersion": "string", "visibility": "private|internal" }
-Response: 201 { "data": { "id": "uuid", "name": "...", "slug": "..." } }
-Errors:   409 PROJECT_NAME_EXISTS | 400 VALIDATION_ERROR
-```
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/members` | Project member | pagination | Member list | `FORBIDDEN` |
+| POST | `/api/v1/projects/{id}/members` | `project_admin+` | email, role | Member invited/added | `USER_NOT_FOUND`, `ALREADY_MEMBER`, `FORBIDDEN` |
+| PUT | `/api/v1/projects/{id}/members/{userId}` | `project_admin+` | role | Member role updated | `LAST_OWNER_CANNOT_BE_REMOVED`, `FORBIDDEN` |
+| DELETE | `/api/v1/projects/{id}/members/{userId}` | `project_admin+` | none | Member removed | `LAST_OWNER_CANNOT_BE_REMOVED`, `FORBIDDEN` |
 
----
+### Repositories
 
-### Project Member Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/projects/{id}/members` | Danh sách members | ✅ | project member |
-| `POST` | `/api/v1/projects/{id}/members` | Mời member | ✅ | project_admin+ |
-| `PUT` | `/api/v1/projects/{id}/members/{userId}` | Thay đổi role | ✅ | project_admin+ |
-| `DELETE` | `/api/v1/projects/{id}/members/{userId}` | Xóa member | ✅ | project_admin+ |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/api/v1/projects/{id}/repository` | `project_admin+` | remoteUrl, personalAccessToken, defaultBranch | Clone job | `INVALID_REPO_URL`, `REPO_ALREADY_CONNECTED` |
+| GET | `/api/v1/projects/{id}/repository` | Project member | none | Repository detail, masked credential state | `REPO_NOT_CONNECTED` |
+| PUT | `/api/v1/projects/{id}/repository/credential` | `project_admin+` | personalAccessToken | Credential updated | `FORBIDDEN`, `VALIDATION_ERROR` |
+| DELETE | `/api/v1/projects/{id}/repository` | `project_admin+` | confirmation | Repository disconnected | `REPO_LOCKED`, `FORBIDDEN` |
+| POST | `/api/v1/projects/{id}/repository/sync` | `developer+` | branch/options | Fetch/sync job | `REPO_NOT_READY`, `REPO_LOCKED` |
 
-**`POST /api/v1/projects/{id}/members`**
-```
-Request:  { "email": "string", "role": "developer|reviewer|viewer" }
-Response: 201 { "data": { "userId": "uuid", "role": "developer", "joinedAt": "..." } }
-Errors:   404 USER_NOT_FOUND | 409 ALREADY_MEMBER | 403 FORBIDDEN
-```
+### Git
 
----
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/git/status` | `developer+` | branch optional | Working tree status | `REPO_NOT_READY`, `FORBIDDEN` |
+| POST | `/api/v1/projects/{id}/git/stage` | `developer+` | file paths | Stage result | `PATH_NOT_ALLOWED`, `REPO_LOCKED` |
+| POST | `/api/v1/projects/{id}/git/unstage` | `developer+` | file paths | Unstage result | `PATH_NOT_ALLOWED`, `REPO_LOCKED` |
+| POST | `/api/v1/projects/{id}/git/commit` | `developer+` | message | Commit hash/result | `NO_STAGED_FILES`, `COMMIT_MESSAGE_TOO_SHORT`, `REPO_LOCKED` |
+| POST | `/api/v1/projects/{id}/git/push` | `developer+` | branch, remote optional | Push result | `NON_FAST_FORWARD`, `REPO_LOCKED` |
+| POST | `/api/v1/projects/{id}/git/pull` | `developer+` | branch | Pull result | `GIT_CONFLICT`, `REPO_LOCKED` |
+| GET | `/api/v1/projects/{id}/git/branches` | `viewer+` | none | Branch list | `REPO_NOT_READY` |
+| POST | `/api/v1/projects/{id}/git/branches` | `developer+` | name, sourceBranch | Branch created | `BRANCH_EXISTS`, `VALIDATION_ERROR` |
+| POST | `/api/v1/projects/{id}/git/branches/checkout` | `developer+` | branch | Checkout result | `DIRTY_WORKTREE`, `BRANCH_NOT_FOUND` |
+| DELETE | `/api/v1/projects/{id}/git/branches/{name}` | `project_admin+` | local/remote flag | Branch deleted | `CURRENT_BRANCH_DELETE_DENIED`, `FORBIDDEN` |
+| POST | `/api/v1/projects/{id}/git/merge` | `developer+` | sourceBranch, targetBranch | Merge result | `GIT_CONFLICT`, `REPO_LOCKED` |
+| GET | `/api/v1/projects/{id}/git/commits` | `viewer+` | branch, author, date range, pagination | Commit list | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{id}/git/commits/{hash}` | `viewer+` | commit hash | Commit detail | `COMMIT_NOT_FOUND` |
+| GET | `/api/v1/projects/{id}/git/commits/{hash}/diff` | `viewer+` | commit hash | File diff summary | `COMMIT_NOT_FOUND` |
 
-### Repository Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `POST` | `/api/v1/projects/{id}/repository` | Kết nối repository | ✅ | project_admin+ |
-| `GET` | `/api/v1/projects/{id}/repository` | Thông tin repository | ✅ | project member |
-| `PUT` | `/api/v1/projects/{id}/repository/credential` | Cập nhật credential | ✅ | project_admin+ |
-| `DELETE` | `/api/v1/projects/{id}/repository` | Ngắt kết nối | ✅ | project_admin+ |
-| `POST` | `/api/v1/projects/{id}/repository/sync` | Fetch/sync remote | ✅ | developer+ |
+### Scenes
 
-**`POST /api/v1/projects/{id}/repository`**
-```
-Request:  { "remoteUrl": "string", "personalAccessToken": "string" }
-Response: 202 { "data": { "jobId": "uuid", "type": "clone", "status": "queued" } }
-Errors:   409 REPO_ALREADY_CONNECTED | 400 INVALID_REPO_URL
-```
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/scenes` | `viewer+` | search, page, pageSize | Scene list | `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{id}/scenes/{sceneId}` | `viewer+` | scene id | Scene detail | `SCENE_NOT_FOUND` |
+| GET | `/api/v1/projects/{id}/scenes/{sceneId}/nodes` | `viewer+` | tree/flat, search, type | Scene node tree/list | `SCENE_NOT_FOUND` |
 
----
+### Assets
 
-### Git Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/projects/{id}/git/status` | Git status | ✅ | developer+ |
-| `POST` | `/api/v1/projects/{id}/git/stage` | Stage files | ✅ | developer+ |
-| `POST` | `/api/v1/projects/{id}/git/unstage` | Unstage files | ✅ | developer+ |
-| `POST` | `/api/v1/projects/{id}/git/commit` | Commit changes | ✅ | developer+ |
-| `POST` | `/api/v1/projects/{id}/git/push` | Push to remote | ✅ | developer+ |
-| `POST` | `/api/v1/projects/{id}/git/pull` | Pull from remote | ✅ | developer+ |
-| `GET` | `/api/v1/projects/{id}/git/branches` | List branches | ✅ | viewer+ |
-| `POST` | `/api/v1/projects/{id}/git/branches` | Create branch | ✅ | developer+ |
-| `POST` | `/api/v1/projects/{id}/git/branches/checkout` | Checkout branch | ✅ | developer+ |
-| `DELETE` | `/api/v1/projects/{id}/git/branches/{name}` | Delete branch | ✅ | project_admin+ |
-| `POST` | `/api/v1/projects/{id}/git/merge` | Merge branches | ✅ | developer+ |
-| `GET` | `/api/v1/projects/{id}/git/commits` | Commit history | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/git/commits/{hash}` | Commit detail | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/git/commits/{hash}/diff` | Commit diff | ✅ | viewer+ |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/assets` | `viewer+` | type, search, usage, page | Asset list | `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{id}/assets/{assetId}` | `viewer+` | asset id | Asset detail and usage | `ASSET_NOT_FOUND` |
+| GET | `/api/v1/projects/{id}/scripts` | `viewer+` | search, page | Script list | `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{id}/resources` | `viewer+` | search, type, page | Resource list | `METADATA_NOT_READY` |
 
-**`POST /api/v1/projects/{id}/git/commit`**
-```
-Request:  { "message": "string" }
-Response: 200 { "data": { "hash": "abc123", "message": "...", "author": "..." } }
-Errors:   400 NO_STAGED_FILES | 400 COMMIT_MESSAGE_TOO_SHORT | 423 REPO_LOCKED
-```
+### Dependencies
 
-**`POST /api/v1/projects/{id}/git/push`**
-```
-Response: 200 { "data": { "pushed": true, "commits": 3 } }
-Errors:   423 REPO_LOCKED | 409 NON_FAST_FORWARD (need pull first)
-```
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/dependencies` | `viewer+` | root, depth, type | Graph nodes/edges | `ANALYZE_REQUIRED`, `DEPENDENCY_ROOT_NOT_FOUND` |
 
----
+### Health
 
-### Scene & Metadata Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/projects/{id}/scenes` | Danh sách scenes | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/scenes/{sceneId}` | Scene detail + node tree | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/scenes/{sceneId}/nodes` | Node list (flat/tree) | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/assets` | Danh sách assets | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/assets/{assetId}` | Asset detail | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/scripts` | Danh sách scripts | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/resources` | Danh sách resources | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/dependencies` | Dependency graph data | ✅ | viewer+ |
-| `POST` | `/api/v1/projects/{id}/parse` | Trigger parse job | ✅ | developer+ |
-| `POST` | `/api/v1/projects/{id}/analyze` | Trigger analyze job | ✅ | developer+ |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/api/v1/projects/{id}/parse` | `developer+` | branch, commit, options | Parse job | `REPO_NOT_READY`, `REPO_NOT_CONNECTED` |
+| POST | `/api/v1/projects/{id}/analyze` | `developer+` | branch, commit, options | Analyze job | `PARSE_REQUIRED`, `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{id}/health` | `viewer+` | none | Latest health report | `HEALTH_NOT_READY` |
+| GET | `/api/v1/projects/{id}/health/history` | `viewer+` | pagination | Health report history | `FORBIDDEN` |
+| GET | `/api/v1/projects/{id}/health/{reportId}/issues` | `viewer+` | severity, type, page | Health issues | `REPORT_NOT_FOUND` |
 
-**`POST /api/v1/projects/{id}/parse`**
-```
-Response: 202 { "data": { "jobId": "uuid", "type": "parse", "status": "queued" } }
-Errors:   400 REPO_NOT_CONNECTED | 400 REPO_NOT_READY
-```
+### Diff
 
----
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/api/v1/projects/{id}/diff/scene` | `viewer+` | scenePath, commitA/branchA, commitB/branchB | Diff job hoặc cached result | `REVISION_NOT_FOUND`, `PATH_NOT_ALLOWED`, `DIFF_PARSE_FAILED` |
+| GET | `/api/v1/projects/{id}/diff/{diffId}` | `viewer+` | diff id | Diff result | `DIFF_NOT_FOUND` |
 
-### Diff Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `POST` | `/api/v1/projects/{id}/diff/scene` | Scene-aware diff | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/diff/{diffId}` | Lấy diff result | ✅ | viewer+ |
+### Jobs
 
-**`POST /api/v1/projects/{id}/diff/scene`**
-```
-Request:  { "scenePath": "string", "commitA": "string", "commitB": "string" }
-Response: 202 { "data": { "jobId": "uuid", "type": "diff", "status": "queued" } }
-          hoặc 200 nếu đã cache: { "data": { "diffId": "uuid", "nodes": {...} } }
-```
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/jobs` | Project member | type, status, page | Job list | `FORBIDDEN` |
+| GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | job id | Job detail/progress | `JOB_NOT_FOUND` |
+| POST | `/api/v1/projects/{id}/jobs/{jobId}/cancel` | `developer+` | none | Job cancelled | `JOB_NOT_CANCELLABLE`, `FORBIDDEN` |
 
----
+### Notifications
 
-### Health Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/projects/{id}/health` | Health report mới nhất | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/health/history` | Lịch sử health reports | ✅ | viewer+ |
-| `GET` | `/api/v1/projects/{id}/health/{reportId}/issues` | Issues chi tiết | ✅ | viewer+ |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/notifications` | Authenticated | unread, page | Notification list | `FORBIDDEN` |
+| GET | `/api/v1/notifications/unread-count` | Authenticated | none | Unread count | `FORBIDDEN` |
+| PUT | `/api/v1/notifications/{id}/read` | Notification owner | notification id | Mark read result | `NOTIFICATION_NOT_FOUND` |
+| PUT | `/api/v1/notifications/read-all` | Authenticated | none | Mark all read result | `FORBIDDEN` |
 
----
+### Activities
 
-### Job Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/projects/{id}/jobs` | Danh sách jobs | ✅ | project member |
-| `GET` | `/api/v1/projects/{id}/jobs/{jobId}` | Job detail + status | ✅ | project member |
-| `POST` | `/api/v1/projects/{id}/jobs/{jobId}/cancel` | Cancel job | ✅ | developer+ |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/activities` | Project member | action, user, page | Project activity log | `FORBIDDEN` |
+| GET | `/api/v1/activities` | `system_admin` | action, project, user, page | System activity log | `FORBIDDEN` |
 
----
+### Settings
 
-### Activity Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/projects/{id}/activities` | Activity log của project | ✅ | project member |
-| `GET` | `/api/v1/activities` | Activity log toàn hệ thống | ✅ | system_admin |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/projects/{id}/settings` | `project_admin+` | none | Project settings | `FORBIDDEN` |
+| PUT | `/api/v1/projects/{id}/settings` | `project_admin+` | autoParseOnPush, autoAnalyzeOnParse, health schedule, notification prefs | Settings updated | `VALIDATION_ERROR`, `FORBIDDEN` |
+| GET | `/api/v1/users/me/settings` | Authenticated | none | User settings | `FORBIDDEN` |
+| PUT | `/api/v1/users/me/settings` | Authenticated | theme, notification prefs | Settings updated | `VALIDATION_ERROR` |
 
----
+### Search
 
-### Notification Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/notifications` | Danh sách notifications | ✅ | Any |
-| `GET` | `/api/v1/notifications/unread-count` | Số notification chưa đọc | ✅ | Any |
-| `PUT` | `/api/v1/notifications/{id}/read` | Đánh dấu đã đọc | ✅ | Any |
-| `PUT` | `/api/v1/notifications/read-all` | Đánh dấu tất cả đã đọc | ✅ | Any |
+| Method | Path | Permission | Request body/query | Response chính | Error chính |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/search` | Authenticated | q, projectId, type, page, pageSize | Search results/facets | `VALIDATION_ERROR`, `FORBIDDEN` |
 
----
+## 5.5 SignalR
 
-### Search Module
-| Method | Path | Mô tả | Auth | RBAC |
-|--------|------|--------|------|------|
-| `GET` | `/api/v1/search` | Tìm kiếm tổng hợp | ✅ | Any (RBAC filtered) |
+Realtime hub: `/hubs/godforge`.
 
-**`GET /api/v1/search?q=Player&type=scene,script&projectId=uuid`**
-```
-Response: {
-  "data": {
-    "results": [
-      { "type": "scene", "name": "Player.tscn", "path": "scenes/Player.tscn", "projectId": "uuid", "projectName": "MyGame" },
-      { "type": "script", "name": "player.gd", "path": "scripts/player.gd", "projectId": "uuid", "projectName": "MyGame" }
-    ]
-  },
-  "meta": { "totalItems": 42, ... }
-}
-```
-
----
-
-## 5.4 WebSocket / SignalR Events
-
-Kết nối realtime qua SignalR hub: `/hubs/atlas`
-
-### Client → Server
-| Event | Payload | Mô tả |
-|-------|---------|-------|
-| `JoinProject` | `{ projectId }` | Subscribe updates cho project |
-| `LeaveProject` | `{ projectId }` | Unsubscribe |
-
-### Server → Client
-| Event | Payload | Mô tả |
-|-------|---------|-------|
-| `JobProgressUpdate` | `{ jobId, progress, status }` | Cập nhật tiến độ job |
-| `JobCompleted` | `{ jobId, type, result }` | Job hoàn thành |
-| `JobFailed` | `{ jobId, type, errorCode, message }` | Job thất bại |
-| `NotificationReceived` | `{ notification }` | Thông báo mới |
-| `RepoStatusChanged` | `{ repositoryId, status }` | Trạng thái repo thay đổi |
+| Direction | Event | Payload | Mô tả |
+| --- | --- | --- | --- |
+| Client -> Server | `JoinProject` | `{ "projectId": "uuid" }` | Subscribe updates của project. |
+| Client -> Server | `LeaveProject` | `{ "projectId": "uuid" }` | Unsubscribe project. |
+| Server -> Client | `JobProgressUpdate` | jobId, progress, status | Cập nhật job progress. |
+| Server -> Client | `JobCompleted` | jobId, type, result summary | Job hoàn thành. |
+| Server -> Client | `JobFailed` | jobId, type, errorCode, message | Job thất bại. |
+| Server -> Client | `NotificationReceived` | notification | Notification mới. |
+| Server -> Client | `RepoStatusChanged` | repositoryId, status | Repository status thay đổi. |
