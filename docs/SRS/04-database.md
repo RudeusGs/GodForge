@@ -70,21 +70,22 @@ The database design must support:
 
 ### Core Principles
 
-- PostgreSQL is the authoritative source of truth.
-- Redis must not contain irreplaceable business data.
-- RabbitMQ is a transport layer; important job/message state must still be recorded in PostgreSQL.
-- MinIO stores binary artifacts; PostgreSQL stores object metadata and object keys.
+- PostgreSQL is the source of truth for durable job state and all business data.
+- RabbitMQ is transport only, not authoritative job storage.
+- Redis is cache/rate limit/distributed lock only, not primary data storage.
+- Redis repository locks require TTL and owner token.
+- MinIO stores artifacts such as diff outputs, thumbnails, reports, previews, snapshots, and archives.
 - All tables use `uuid` primary keys unless explicitly noted.
 - Table and column names use `snake_case`.
 - Time columns use `timestamptz` and UTC.
-- No plaintext passwords, refresh tokens, invite tokens, reset tokens, Git PATs, API keys, or secrets are stored.
+- No plaintext passwords, refresh tokens, invite tokens, reset tokens, API keys, or secrets are stored.
 - Tokens are stored as hashes only.
-- Git credentials are encrypted and versioned.
+- Git credentials must never be stored in plaintext; they are encrypted and versioned.
+- API responses/logs/activity logs must never expose credentials, internal paths, stack traces, or raw unsafe Git output.
 - Metadata must be snapshot-aware and parse-run-aware.
-- Worker jobs must support lease, retry, attempts, timeout, cancellation, DLQ, idempotency, inbox, and outbox.
+- Worker jobs must support lease, retry, attempts, timeout, cancellation, DLQ, and idempotency.
 - Audit logs are append-only from the application perspective.
 - High-volume tables must have partitioning and retention strategy.
-- The design must support tenant isolation through `organization_id`.
 
 ---
 
@@ -2472,9 +2473,6 @@ identity.user_invites
 identity.login_events
 identity.security_events
 
-tenant.organizations
-tenant.organization_members
-tenant.organization_settings
 
 core.projects
 core.project_settings
@@ -2556,10 +2554,6 @@ search.saved_searches
 ## Phase 4 — Enterprise Governance and Operations
 
 ```text
-billing.plans
-billing.subscriptions
-billing.usage_counters
-billing.invoices
 
 governance.retention_policies
 governance.retention_runs
@@ -2591,7 +2585,7 @@ For implementation, do not build everything at once. Start with Phase 1, then pr
 
 ## Deferred / Future Scope — Not for MVP Implementation
 > [!WARNING]
-> The following schemas (`tenant.*` and `billing.*`) are out of scope for the current MVP. Organization Owner is mapped to project-level roles instead. Do not scaffold or migrate these tables.
+> Implementation agents must not scaffold, migrate, or implement deferred tenant.* or billing.* tables for the MVP.
 
 ## 4.4.1 `tenant.organizations`
 

@@ -27,7 +27,7 @@ Traceability mapping ensures that each requirement has corresponding API, databa
 | FR-17.1 | Project Settings | `GET/PUT /api/v1/projects/{id}/settings` | `project_settings`, `activities` | Project Settings | TC-SETTINGS-001 |
 | FR-17.2 | User Settings | `GET/PUT /api/v1/users/me/settings` | `user_settings` | User Menu | TC-SETTINGS-002 |
 | FR-18 | Activity Log | `/api/v1/projects/{id}/activities`, `/api/v1/activities` | `activities` | Activity Log, Admin Activity | TC-ACTIVITY-001 |
-| FR-19 | Jobs | `GET/POST /api/v1/projects/{id}/jobs` | `ops.jobs` | Jobs Dashboard, Job Detail | TC-JOB-002 |
+| FR-19 | Jobs (`03-functional/jobs.md`) | `GET /api/v1/projects/{id}/jobs`<br>`GET /api/v1/projects/{id}/jobs/{jobId}`<br>`POST /api/v1/projects/{id}/jobs/{jobId}/cancel` | `ops.jobs` (see `12-worker-processing.md`) | Job list, Dashboard job widget, Job detail | TC-JOB-002, TC-JOB-003, TC-JOB-004, TC-JOB-005, TC-JOB-006, TC-JOB-007 (Project scoped RBAC) |
 | NFR-01..NFR-11 | Performance | API/worker metrics | Redis, PostgreSQL, RabbitMQ metrics | Dashboard, Jobs | TC-PERF-001 |
 | NFR-19..NFR-25 | Reliability | Job APIs, worker queues | `jobs`, RabbitMQ DLQ | Jobs, Operations | TC-RELIABILITY-001 |
 | NFR-23 | Worker Retry/DLQ | Job status APIs, worker queue consumers | `jobs.status`, RabbitMQ DLQ | Jobs, Operations | TC-JOB-001 |
