@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running backend pre-commit checks..."
+
+npx lint-staged
+
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo "Pre-commit checks failed. Please fix the issues before committing."
+  exit $status
+fi
+
+echo "Pre-commit checks passed."

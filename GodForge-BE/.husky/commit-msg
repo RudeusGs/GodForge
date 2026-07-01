@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Validating commit message..."
+
+npx --no -- commitlint --edit "$1"
+
+status=$?
+
+if [ $status -ne 0 ]; then
+echo "Invalid commit message."
+echo ""
+echo "Expected format:"
+echo "  <type>(<scope>): <short description>"
+echo ""
+echo "Allowed types:"
+echo "  feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+echo ""
+echo "Allowed scopes:"
+echo "  auth, user, role, project, member, repository, git, branch, commit"
+echo "  scene, asset, resource, script, dependency, health, diff, dashboard"
+echo "  notification, activity, job, worker, queue, cache, storage, database"
+echo "  api, config, security, infra, test"
+echo ""
+echo "Examples:"
+echo "  feat(auth): add JWT refresh token flow"
+echo "  fix(git): prevent push when repository is locked"
+echo "  docs(api): document repository connection endpoints"
+echo "  refactor(project): split project service and repository service"
+echo "  perf(scene): optimize scene parsing for large files"
+echo "  test(worker): add parser worker unit tests"
+echo "  chore(config): setup backend husky hooks"
+echo ""
+echo "Rules:"
+echo "  - Type must be valid."
+echo "  - Scope must be valid."
+echo "  - Subject must be lowercase."
+echo "  - Subject must not end with a period."
+echo "  - Header must not exceed 100 characters."
+  exit $status
+fi
+
+echo "Commit message is valid."
