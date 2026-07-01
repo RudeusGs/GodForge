@@ -4,9 +4,9 @@ GodForge Backend is an ASP.NET Core .NET 9 backend for managing, analyzing, and 
 
 ## Current Status
 
-This repository currently contains backend readiness assets: .NET build configuration, Docker Compose infrastructure, Git hook configuration, and `scaffold.ps1`.
+This repository currently contains the scaffolded C# solution, backend readiness assets, .NET build configuration, Docker Compose infrastructure, and Git hook configuration.
 
-The C# solution is not committed yet. Run `.\scaffold.ps1` from this directory to generate:
+The C# solution is already scaffolded and committed. Use `scaffold.ps1` only when regenerating the backend solution from scratch. It generates:
 
 - `GodForge.Backend.sln`
 - `src/GodForge.Domain`
@@ -48,6 +48,8 @@ Port mappings live in `docker-compose.override.yml` for local development only. 
 
 ## Scaffold The Backend
 
+**Note: The solution is already scaffolded. You only need to run this if you want to regenerate the backend solution from scratch.**
+
 From `GodForge-BE`:
 
 ```powershell
@@ -58,6 +60,7 @@ The scaffold generates a .NET 9 Clean Architecture solution with API, Worker, Do
 
 **Worker Architecture Note (MVP vs Scale):**
 The `src/GodForge.Worker` project is a shared worker host designed to contain multiple logical workers. This simplifies the MVP deployment into a single process. However, to ensure we can split these into separate specialized worker services in the future without rewriting business logic, the internal structure must separate each queue into its own consumer:
+
 - `Consumers/RepositoryCloneConsumer.cs`
 - `Consumers/RepositorySyncConsumer.cs`
 - `Consumers/MetadataParseConsumer.cs`

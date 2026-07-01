@@ -1,7 +1,7 @@
 # Note on MVP Deployment:
-# This compose file currently provisions infrastructure. The worker application 
-# can be deployed as a single GodForge.Worker container for MVP. 
-# However, the architecture supports running multiple worker replicas or 
+# This compose file currently provisions infrastructure. The worker application
+# can be deployed as a single GodForge.Worker container for MVP.
+# However, the architecture supports running multiple worker replicas or
 # specialized worker containers (per queue) when scaling is required.
 
 services:
