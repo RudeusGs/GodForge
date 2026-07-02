@@ -1,6 +1,6 @@
+using GodForge.Application.Common.Models;
 using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Collab;
-using GodForge.Application.Common.Models;
 
 namespace GodForge.Application.Common.Interfaces.Repositories;
 

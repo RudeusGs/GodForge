@@ -22,7 +22,7 @@ public sealed class HealthIssueConfiguration : IEntityTypeConfiguration<HealthIs
         builder.Property(i => i.Message).HasColumnName("message").HasColumnType("text").IsRequired();
         builder.Property(i => i.DetailsJson).HasColumnName("details").HasColumnType("jsonb");
         builder.Property(i => i.IsSuppressed).HasColumnName("is_suppressed").IsRequired();
-        
+
         builder.Property(i => i.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<HealthReport>().WithMany().HasForeignKey(i => i.ReportId).OnDelete(DeleteBehavior.Cascade);

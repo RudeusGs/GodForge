@@ -24,7 +24,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(o => o.AvailableAt).HasColumnName("available_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(o => o.ProcessedAt).HasColumnName("processed_at").HasColumnType("timestamptz");
         builder.Property(o => o.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
-        
+
         builder.Property(o => o.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasIndex(o => new { o.Status, o.AvailableAt }).HasDatabaseName("ix_outbox_status_available");

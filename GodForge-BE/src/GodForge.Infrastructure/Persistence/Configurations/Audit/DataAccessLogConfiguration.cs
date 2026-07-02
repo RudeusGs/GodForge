@@ -21,7 +21,7 @@ public sealed class DataAccessLogConfiguration : IEntityTypeConfiguration<DataAc
         builder.Property(l => l.Outcome).HasColumnName("outcome").HasMaxLength(30).IsRequired();
         builder.Property(l => l.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
         builder.Property(l => l.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
-        
+
         builder.Property(l => l.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<User>().WithMany().HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.SetNull);

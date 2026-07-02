@@ -12,7 +12,7 @@ public class ProjectEntityTests
         // Arrange
         var creatorId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
-        
+
         // Act
         var project = Project.Create("Test Project", "test-project", "desc", "4.3", ProjectVisibility.Private, creatorId, now);
 

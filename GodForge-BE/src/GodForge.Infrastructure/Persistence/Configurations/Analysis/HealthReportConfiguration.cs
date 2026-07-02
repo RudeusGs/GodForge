@@ -27,7 +27,7 @@ public sealed class HealthReportConfiguration : IEntityTypeConfiguration<HealthR
         builder.Property(r => r.WarningCount).HasColumnName("warning_count").IsRequired();
         builder.Property(r => r.InfoCount).HasColumnName("info_count").IsRequired();
         builder.Property(r => r.SummaryJson).HasColumnName("summary").HasColumnType("jsonb");
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);

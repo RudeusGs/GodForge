@@ -18,7 +18,7 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
         builder.Property(t => t.ReplacedByTokenHash).HasColumnName("replaced_by_token_hash").HasMaxLength(255);
         builder.Property(t => t.DeviceName).HasColumnName("device_name").HasMaxLength(255);
         builder.Property(t => t.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
-        
+
         builder.Property(t => t.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(t => t.RevokedAt).HasColumnName("revoked_at").HasColumnType("timestamptz");

@@ -1,12 +1,12 @@
-using MediatR;
-using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Features.Projects.DTOs;
 using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
-using GodForge.Application.Features.Projects.DTOs;
+using MediatR;
 
 namespace GodForge.Application.Features.Projects.Commands.CreateProject;
 
@@ -39,13 +39,13 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
     {
         // System user check: only active users or system admins can create. Assuming standard user has the right.
         // Actually, the API controller requires authentication.
-        
+
         if (await _projects.NameExistsAsync(request.ActorId, request.Name, cancellationToken))
             return ApplicationError.Conflict("PROJECT_NAME_EXISTS", "A project with this name already exists.");
 
         var now = _clock.UtcNow;
         var slug = request.Name.ToLowerInvariant().Replace(" ", "-");
-        
+
         if (!Enum.TryParse<ProjectVisibility>(request.Visibility, true, out var visibility))
         {
             visibility = ProjectVisibility.Private;
@@ -70,7 +70,7 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
 
         await _projects.AddAsync(project, cancellationToken);
         await _members.AddAsync(member, cancellationToken);
-        
+
         await _activityWriter.WriteAsync(
             project.Id,
             request.ActorId,

@@ -21,7 +21,7 @@ public sealed class GitCommitConfiguration : IEntityTypeConfiguration<GitCommit>
         builder.Property(c => c.Message).HasColumnName("message").HasColumnType("text").IsRequired();
         builder.Property(c => c.AuthoredAt).HasColumnName("authored_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(c => c.CommittedAt).HasColumnName("committed_at").HasColumnType("timestamptz").IsRequired();
-        
+
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<GitRepository>().WithMany().HasForeignKey(c => c.RepositoryId).OnDelete(DeleteBehavior.Cascade);

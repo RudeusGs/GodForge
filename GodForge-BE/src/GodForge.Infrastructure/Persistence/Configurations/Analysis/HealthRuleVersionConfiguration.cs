@@ -16,7 +16,7 @@ public sealed class HealthRuleVersionConfiguration : IEntityTypeConfiguration<He
         builder.Property(v => v.RuleId).HasColumnName("rule_id").HasColumnType("uuid").IsRequired();
         builder.Property(v => v.Version).HasColumnName("version").IsRequired();
         builder.Property(v => v.ConfigJson).HasColumnName("config").HasColumnType("jsonb");
-        
+
         builder.Property(v => v.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<HealthRule>().WithMany().HasForeignKey(v => v.RuleId).OnDelete(DeleteBehavior.Cascade);

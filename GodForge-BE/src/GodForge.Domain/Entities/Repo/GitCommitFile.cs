@@ -13,8 +13,8 @@ public sealed class GitCommitFile : BaseEntity
     public int? Additions { get; private set; }
     public int? Deletions { get; private set; }
 
-    private GitCommitFile() 
-    { 
+    private GitCommitFile()
+    {
         FilePath = null!;
         ChangeType = null!;
     }

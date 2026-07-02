@@ -19,7 +19,7 @@ public sealed class ProjectMemberHistoryConfiguration : IEntityTypeConfiguration
         builder.Property(h => h.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(h => h.Action).HasColumnName("action").HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(h => h.ActorId).HasColumnName("actor_id").HasColumnType("uuid").IsRequired();
-        
+
         builder.Property(h => h.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(h => h.ProjectId).OnDelete(DeleteBehavior.Cascade);

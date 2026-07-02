@@ -38,7 +38,7 @@ public sealed class GitRepository : BaseAuditableEntity, ISoftDeletable
         GitRepositoryStatus = newStatus;
         UpdatedAt = now;
     }
-    
+
     public void SoftDelete(DateTimeOffset now)
     {
         if (DeletedAt is not null) return;

@@ -18,7 +18,7 @@ public sealed class JobEventConfiguration : IEntityTypeConfiguration<JobEvent>
         builder.Property(e => e.Progress).HasColumnName("progress");
         builder.Property(e => e.Message).HasColumnName("message").HasColumnType("text");
         builder.Property(e => e.DataJson).HasColumnName("data").HasColumnType("jsonb");
-        
+
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Job>().WithMany().HasForeignKey(e => e.JobId).OnDelete(DeleteBehavior.Restrict);

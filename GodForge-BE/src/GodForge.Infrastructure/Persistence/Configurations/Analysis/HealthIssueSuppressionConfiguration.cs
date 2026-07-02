@@ -22,7 +22,7 @@ public sealed class HealthIssueSuppressionConfiguration : IEntityTypeConfigurati
         builder.Property(s => s.Reason).HasColumnName("reason").HasColumnType("text").IsRequired();
         builder.Property(s => s.SuppressedBy).HasColumnName("suppressed_by").HasColumnType("uuid").IsRequired();
         builder.Property(s => s.SuppressedUntil).HasColumnName("suppressed_until").HasColumnType("timestamptz");
-        
+
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(s => s.RevokedAt).HasColumnName("revoked_at").HasColumnType("timestamptz");
 

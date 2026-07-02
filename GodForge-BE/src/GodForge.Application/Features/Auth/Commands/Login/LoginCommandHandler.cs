@@ -1,8 +1,8 @@
-using MediatR;
-using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Models;
 using GodForge.Domain.Enums;
+using MediatR;
 
 namespace GodForge.Application.Features.Auth.Commands.Login;
 

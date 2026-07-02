@@ -19,7 +19,7 @@ public sealed class LoginEventConfiguration : IEntityTypeConfiguration<LoginEven
         builder.Property(e => e.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
         builder.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(e => e.FailureReason).HasColumnName("failure_reason").HasMaxLength(255);
-        
+
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);

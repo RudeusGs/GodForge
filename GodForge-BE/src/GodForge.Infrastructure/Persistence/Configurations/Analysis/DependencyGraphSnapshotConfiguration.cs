@@ -23,7 +23,7 @@ public sealed class DependencyGraphSnapshotConfiguration : IEntityTypeConfigurat
         builder.Property(s => s.NodeCount).HasColumnName("node_count").IsRequired();
         builder.Property(s => s.EdgeCount).HasColumnName("edge_count").IsRequired();
         builder.Property(s => s.CycleCount).HasColumnName("cycle_count").IsRequired();
-        
+
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Cascade);

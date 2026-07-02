@@ -17,7 +17,7 @@ public sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSess
         builder.Property(s => s.DeviceName).HasColumnName("device_name").HasMaxLength(200);
         builder.Property(s => s.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
         builder.Property(s => s.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
-        
+
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(s => s.LastSeenAt).HasColumnName("last_seen_at").HasColumnType("timestamptz");
         builder.Property(s => s.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz").IsRequired();

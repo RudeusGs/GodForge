@@ -1,5 +1,5 @@
-using GodForge.Domain.Entities.Metadata;
 using GodForge.Domain.Entities.Core;
+using GodForge.Domain.Entities.Metadata;
 using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Repo;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +31,7 @@ public sealed class MetadataRunConfiguration : IEntityTypeConfiguration<Metadata
         builder.Property(r => r.DependencyCount).HasColumnName("dependency_count").IsRequired();
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);

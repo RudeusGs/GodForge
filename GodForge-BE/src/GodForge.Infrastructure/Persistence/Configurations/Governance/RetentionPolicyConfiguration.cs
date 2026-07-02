@@ -18,7 +18,7 @@ public sealed class RetentionPolicyConfiguration : IEntityTypeConfiguration<Rete
         builder.Property(p => p.RetentionDays).HasColumnName("retention_days").IsRequired();
         builder.Property(p => p.Action).HasColumnName("action").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(p => p.IsEnabled).HasColumnName("is_enabled").IsRequired();
-        
+
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
     }

@@ -19,7 +19,7 @@ public sealed class SceneNodeReferenceConfiguration : IEntityTypeConfiguration<S
         builder.Property(r => r.TargetPath).HasColumnName("target_path").HasMaxLength(800);
         builder.Property(r => r.TargetUid).HasColumnName("target_uid").HasMaxLength(120);
         builder.Property(r => r.TargetExists).HasColumnName("target_exists").IsRequired();
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<SceneNode>().WithMany().HasForeignKey(r => r.SceneNodeId).OnDelete(DeleteBehavior.Cascade);

@@ -23,16 +23,16 @@ public sealed class ActivityRepository : IActivityRepository
     public async Task<PagedResult<Activity>> GetProjectActivitiesAsync(Guid projectId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var query = _context.Activities.Where(a => a.ProjectId == projectId);
-        
+
         var totalItems = await query.CountAsync(cancellationToken);
-        
+
         var items = await query
             .AsNoTracking()
             .OrderByDescending(a => a.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
-            
+
         return new PagedResult<Activity>(items, page, pageSize, totalItems);
     }
 }

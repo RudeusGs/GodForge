@@ -1,3 +1,4 @@
+using System.Text;
 using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -5,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 namespace GodForge.Api;
 
@@ -23,7 +23,7 @@ public static class DependencyInjection
 
         // Configure JWT Authentication
         var jwtSecret = configuration["Jwt:Secret"];
-        
+
         if (!environment.IsDevelopment())
         {
             if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32 || jwtSecret == "SuperSecretKeyForDevelopmentOnlyPleaseChangeInProduction123!")
@@ -31,7 +31,7 @@ public static class DependencyInjection
                 throw new InvalidOperationException("A secure Jwt:Secret of at least 32 characters is required in non-development environments.");
             }
         }
-        
+
         jwtSecret ??= "SuperSecretKeyForDevelopmentOnlyPleaseChangeInProduction123!";
         var key = Encoding.UTF8.GetBytes(jwtSecret);
 

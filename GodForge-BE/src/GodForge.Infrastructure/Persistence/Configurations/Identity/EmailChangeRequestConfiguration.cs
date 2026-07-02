@@ -18,7 +18,7 @@ public sealed class EmailChangeRequestConfiguration : IEntityTypeConfiguration<E
         builder.Property(e => e.TokenHash).HasColumnName("token_hash").HasMaxLength(255).IsRequired();
         builder.Property(e => e.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(e => e.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
-        
+
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);

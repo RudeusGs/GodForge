@@ -22,7 +22,7 @@ public sealed class ProjectInviteConfiguration : IEntityTypeConfiguration<Projec
         builder.Property(i => i.InvitedBy).HasColumnName("invited_by").HasColumnType("uuid").IsRequired();
         builder.Property(i => i.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(i => i.AcceptedAt).HasColumnName("accepted_at").HasColumnType("timestamptz");
-        
+
         builder.Property(i => i.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(i => i.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

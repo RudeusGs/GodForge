@@ -18,7 +18,7 @@ public sealed class DeadLetterMessageConfiguration : IEntityTypeConfiguration<De
         builder.Property(d => d.PayloadJson).HasColumnName("payload").HasColumnType("jsonb").IsRequired();
         builder.Property(d => d.Reason).HasColumnName("reason").HasColumnType("text").IsRequired();
         builder.Property(d => d.ErrorDetailsJson).HasColumnName("error_details").HasColumnType("jsonb");
-        
+
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasIndex(d => new { d.QueueName, d.CreatedAt }).HasDatabaseName("ix_dead_letter_messages_queue_time").IsDescending(false, true);

@@ -18,7 +18,7 @@ public sealed class LegalHoldConfiguration : IEntityTypeConfiguration<LegalHold>
         builder.Property(h => h.TargetId).HasColumnName("target_id").HasColumnType("uuid").IsRequired();
         builder.Property(h => h.Reason).HasColumnName("reason").HasColumnType("text").IsRequired();
         builder.Property(h => h.CreatedBy).HasColumnName("created_by").HasColumnType("uuid").IsRequired();
-        
+
         builder.Property(h => h.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(h => h.ReleasedAt).HasColumnName("released_at").HasColumnType("timestamptz");
 

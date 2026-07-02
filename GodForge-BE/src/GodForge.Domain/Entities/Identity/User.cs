@@ -11,18 +11,18 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
     public string PasswordHash { get; private set; } = default!;
     public SystemRole SystemRole { get; private set; }
     public UserStatus Status { get; private set; }
-    
+
     public DateTimeOffset? EmailVerifiedAt { get; private set; }
     public DateTimeOffset? LastLoginAt { get; private set; }
     public DateTimeOffset? PasswordChangedAt { get; private set; }
-    
+
     public int FailedLoginCount { get; private set; }
     public DateTimeOffset? LockedUntil { get; private set; }
-    
+
     public string? AvatarUrl { get; private set; }
     public string SecurityStamp { get; private set; } = default!;
     public string ConcurrencyStamp { get; private set; } = default!;
-    
+
     public DateTimeOffset? DeletedAt { get; private set; }
 
     private User() { } // EF Core
@@ -44,7 +44,7 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
             UpdatedAt = now
         };
     }
-    
+
     public void SoftDelete(DateTimeOffset now)
     {
         if (DeletedAt is not null) return;
@@ -60,7 +60,7 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
         LockedUntil = null;
         UpdatedAt = now;
     }
-    
+
     public void RecordLoginFailure(DateTimeOffset now, int maxFailedAccessAttempts, TimeSpan lockoutTimeSpan)
     {
         FailedLoginCount++;

@@ -1,7 +1,7 @@
-using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Core;
-using GodForge.Domain.Entities.Repo;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Ops;
+using GodForge.Domain.Entities.Repo;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -29,7 +29,7 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(160);
         builder.Property(j => j.MaxAttempts).HasColumnName("max_attempts").HasDefaultValue(3).IsRequired();
         builder.Property(j => j.AttemptCount).HasColumnName("attempt_count").IsRequired();
-        
+
         builder.Property(j => j.AvailableAt).HasColumnName("available_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(j => j.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz");
         builder.Property(j => j.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
@@ -37,12 +37,12 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.TimeoutAt).HasColumnName("timeout_at").HasColumnType("timestamptz");
         builder.Property(j => j.LastHeartbeatAt).HasColumnName("last_heartbeat_at").HasColumnType("timestamptz");
         builder.Property(j => j.CancellationRequestedAt).HasColumnName("cancellation_requested_at").HasColumnType("timestamptz");
-        
+
         builder.Property(j => j.ErrorCode).HasColumnName("error_code").HasMaxLength(100);
         builder.Property(j => j.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
         builder.Property(j => j.TriggeredBy).HasColumnName("triggered_by").HasColumnType("uuid");
         builder.Property(j => j.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
-        
+
         builder.Property(j => j.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(j => j.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

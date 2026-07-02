@@ -18,7 +18,7 @@ public sealed class DataClassificationConfiguration : IEntityTypeConfiguration<D
         builder.Property(c => c.ColumnName).HasColumnName("column_name").HasMaxLength(120);
         builder.Property(c => c.Classification).HasColumnName("classification").HasMaxLength(40).IsRequired();
         builder.Property(c => c.Notes).HasColumnName("notes").HasColumnType("text");
-        
+
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
     }
 }

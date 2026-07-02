@@ -17,7 +17,7 @@ public sealed class ReviewThreadCommentConfiguration : IEntityTypeConfiguration<
         builder.Property(c => c.ThreadId).HasColumnName("thread_id").HasColumnType("uuid").IsRequired();
         builder.Property(c => c.AuthorId).HasColumnName("author_id").HasColumnType("uuid").IsRequired();
         builder.Property(c => c.Content).HasColumnName("content").HasColumnType("text").IsRequired();
-        
+
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

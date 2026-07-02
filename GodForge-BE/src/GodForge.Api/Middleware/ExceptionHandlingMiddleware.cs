@@ -1,8 +1,8 @@
+using System.Net;
+using System.Text.Json;
 using GodForge.Application.Common.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Net;
-using System.Text.Json;
 
 namespace GodForge.Api.Middleware;
 

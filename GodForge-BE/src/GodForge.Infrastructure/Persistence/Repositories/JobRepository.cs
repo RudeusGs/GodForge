@@ -28,16 +28,16 @@ public sealed class JobRepository : IJobRepository
     public async Task<PagedResult<Job>> GetProjectJobsAsync(Guid projectId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var query = _context.Jobs.Where(j => j.ProjectId == projectId);
-        
+
         var totalItems = await query.CountAsync(cancellationToken);
-        
+
         var items = await query
             .AsNoTracking()
             .OrderByDescending(j => j.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
-            
+
         return new PagedResult<Job>(items, page, pageSize, totalItems);
     }
 }

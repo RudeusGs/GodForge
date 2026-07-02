@@ -1,5 +1,5 @@
-using GodForge.Domain.Entities.Storage;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +19,7 @@ public sealed class ArtifactVersionConfiguration : IEntityTypeConfiguration<Arti
         builder.Property(v => v.Size).HasColumnName("size").HasColumnType("bigint").IsRequired();
         builder.Property(v => v.ObjectPath).HasColumnName("object_path").HasMaxLength(500).IsRequired();
         builder.Property(v => v.CreatedBy).HasColumnName("created_by").HasColumnType("uuid").IsRequired();
-        
+
         builder.Property(v => v.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Artifact>().WithMany().HasForeignKey(v => v.ArtifactId).OnDelete(DeleteBehavior.Cascade);

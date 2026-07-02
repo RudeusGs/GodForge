@@ -19,7 +19,7 @@ public sealed class SecurityAuditEventConfiguration : IEntityTypeConfiguration<S
         builder.Property(e => e.Severity).HasColumnName("severity").HasMaxLength(30).IsRequired();
         builder.Property(e => e.DetailsJson).HasColumnName("details").HasColumnType("jsonb");
         builder.Property(e => e.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
-        
+
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);

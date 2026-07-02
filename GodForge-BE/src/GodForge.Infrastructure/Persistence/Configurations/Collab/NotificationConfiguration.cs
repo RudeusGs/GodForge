@@ -22,7 +22,7 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
         builder.Property(n => n.Message).HasColumnName("message").HasColumnType("text").IsRequired();
         builder.Property(n => n.Link).HasColumnName("link").HasMaxLength(500);
         builder.Property(n => n.IsRead).HasColumnName("is_read").IsRequired();
-        
+
         builder.Property(n => n.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);

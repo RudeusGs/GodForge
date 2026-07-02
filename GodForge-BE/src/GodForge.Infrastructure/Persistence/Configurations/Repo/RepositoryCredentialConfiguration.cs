@@ -17,7 +17,7 @@ public sealed class RepositoryCredentialConfiguration : IEntityTypeConfiguration
         builder.Property(c => c.CredentialType).HasColumnName("credential_type").HasMaxLength(40).IsRequired();
         builder.Property(c => c.IsActive).HasColumnName("is_active").IsRequired();
         builder.Property(c => c.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz");
-        
+
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

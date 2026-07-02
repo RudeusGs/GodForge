@@ -23,16 +23,16 @@ public sealed class NotificationRepository : INotificationRepository
     public async Task<PagedResult<Notification>> GetUserNotificationsAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var query = _context.Notifications.Where(n => n.UserId == userId);
-        
+
         var totalItems = await query.CountAsync(cancellationToken);
-        
+
         var items = await query
             .AsNoTracking()
             .OrderByDescending(n => n.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
-            
+
         return new PagedResult<Notification>(items, page, pageSize, totalItems);
     }
 
