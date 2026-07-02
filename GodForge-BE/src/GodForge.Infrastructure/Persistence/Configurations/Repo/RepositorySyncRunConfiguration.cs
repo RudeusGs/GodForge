@@ -19,7 +19,7 @@ public sealed class RepositorySyncRunConfiguration : IEntityTypeConfiguration<Re
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
         builder.Property(r => r.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<GitRepository>().WithMany().HasForeignKey(r => r.RepositoryId).OnDelete(DeleteBehavior.Cascade);

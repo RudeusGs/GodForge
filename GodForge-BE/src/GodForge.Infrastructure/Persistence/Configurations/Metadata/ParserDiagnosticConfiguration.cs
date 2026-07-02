@@ -23,7 +23,7 @@ public sealed class ParserDiagnosticConfiguration : IEntityTypeConfiguration<Par
         builder.Property(d => d.Line).HasColumnName("line");
         builder.Property(d => d.Column).HasColumnName("column");
         builder.Property(d => d.DetailsJson).HasColumnName("details").HasColumnType("jsonb");
-        
+
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<MetadataRun>().WithMany().HasForeignKey(d => d.MetadataRunId).OnDelete(DeleteBehavior.Cascade);

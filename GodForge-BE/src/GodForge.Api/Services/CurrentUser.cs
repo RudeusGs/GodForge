@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using GodForge.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
 
 namespace GodForge.Api.Services;
 

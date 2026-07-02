@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\GodForge.Application\GodForge.Application.csproj" />
+    <ProjectReference Include="..\..\src\GodForge.Domain\GodForge.Domain.csproj" />
   </ItemGroup>
 
 </Project>

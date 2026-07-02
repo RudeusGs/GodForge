@@ -19,7 +19,7 @@ public sealed class UserInviteConfiguration : IEntityTypeConfiguration<UserInvit
         builder.Property(i => i.InvitedBy).HasColumnName("invited_by").HasColumnType("uuid").IsRequired();
         builder.Property(i => i.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(i => i.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz").IsRequired();
-        
+
         builder.Property(i => i.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(i => i.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

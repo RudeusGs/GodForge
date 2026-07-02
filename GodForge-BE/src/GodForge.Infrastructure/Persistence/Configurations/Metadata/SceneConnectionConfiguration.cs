@@ -19,7 +19,7 @@ public sealed class SceneConnectionConfiguration : IEntityTypeConfiguration<Scen
         builder.Property(c => c.ToNodePath).HasColumnName("to_node_path").HasMaxLength(1000).IsRequired();
         builder.Property(c => c.MethodName).HasColumnName("method_name").HasMaxLength(255).IsRequired();
         builder.Property(c => c.Flags).HasColumnName("flags");
-        
+
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Scene>().WithMany().HasForeignKey(c => c.SceneId).OnDelete(DeleteBehavior.Cascade);

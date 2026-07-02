@@ -29,7 +29,7 @@ public class AuthorizationService : IAuthorizationService
             // If the user isn't a member, check if the project is public/internal?
             // For MVP simplicity, requiring membership for all permissions except maybe read on public, 
             // but for simplicity let's stick to membership based here.
-            return false; 
+            return false;
         }
 
         var permissions = RolePermissions.GetPermissionsForRole(membership.Role);

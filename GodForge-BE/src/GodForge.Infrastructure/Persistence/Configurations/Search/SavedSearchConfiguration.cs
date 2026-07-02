@@ -1,5 +1,5 @@
-using GodForge.Domain.Entities.Search;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Search;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,7 +18,7 @@ public sealed class SavedSearchConfiguration : IEntityTypeConfiguration<SavedSea
         builder.Property(s => s.Name).HasColumnName("name").HasMaxLength(120).IsRequired();
         builder.Property(s => s.Query).HasColumnName("query").HasColumnType("text").IsRequired();
         builder.Property(s => s.FiltersJson).HasColumnName("filters").HasColumnType("jsonb");
-        
+
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(s => s.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

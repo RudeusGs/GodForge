@@ -1,5 +1,5 @@
-using GodForge.Domain.Common;
 using System.Collections.Generic;
+using GodForge.Domain.Common;
 
 namespace GodForge.Domain.Entities.Ops;
 

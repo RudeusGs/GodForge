@@ -16,9 +16,9 @@ public sealed class StubJobPublisher : IJobPublisher
     public Task PublishAsync(Guid jobId, Guid projectId, JobType type, string correlationId, string? inputHash, CancellationToken cancellationToken = default)
     {
         // This is a stub for development. In production, this would publish to RabbitMQ.
-        _logger.LogInformation("Job published to stub queue: {JobId}, Type: {JobType}, Project: {ProjectId}, CorrelationId: {CorrelationId}", 
+        _logger.LogInformation("Job published to stub queue: {JobId}, Type: {JobType}, Project: {ProjectId}, CorrelationId: {CorrelationId}",
             jobId, type, projectId, correlationId);
-            
+
         return Task.CompletedTask;
     }
 }

@@ -1,6 +1,6 @@
-using GodForge.Domain.Entities.Storage;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -22,7 +22,7 @@ public sealed class ArtifactConfiguration : IEntityTypeConfiguration<Artifact>
         builder.Property(a => a.ObjectPath).HasColumnName("object_path").HasMaxLength(500).IsRequired();
         builder.Property(a => a.MimeType).HasColumnName("mime_type").HasMaxLength(120);
         builder.Property(a => a.CreatedBy).HasColumnName("created_by").HasColumnType("uuid").IsRequired();
-        
+
         builder.Property(a => a.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(a => a.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

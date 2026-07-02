@@ -19,7 +19,7 @@ public sealed class WebhookEventConfiguration : IEntityTypeConfiguration<Webhook
         builder.Property(e => e.DeliveryId).HasColumnName("delivery_id").HasMaxLength(120).IsRequired();
         builder.Property(e => e.PayloadJson).HasColumnName("payload").HasColumnType("jsonb").IsRequired();
         builder.Property(e => e.ProcessedAt).HasColumnName("processed_at").HasColumnType("timestamptz");
-        
+
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<GitRepository>().WithMany().HasForeignKey(e => e.RepositoryId).OnDelete(DeleteBehavior.Cascade);

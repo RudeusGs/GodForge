@@ -18,7 +18,7 @@ public sealed class GitRefConfiguration : IEntityTypeConfiguration<GitRef>
         builder.Property(r => r.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
         builder.Property(r => r.CommitHash).HasColumnName("commit_hash").HasMaxLength(40).IsRequired();
         builder.Property(r => r.IsDefault).HasColumnName("is_default").IsRequired();
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

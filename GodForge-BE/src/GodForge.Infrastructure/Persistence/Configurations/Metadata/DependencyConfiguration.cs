@@ -23,7 +23,7 @@ public sealed class DependencyConfiguration : IEntityTypeConfiguration<Dependenc
         builder.Property(d => d.TargetPath).HasColumnName("target_path").HasMaxLength(800).IsRequired();
         builder.Property(d => d.Relation).HasColumnName("relation").HasMaxLength(40).IsRequired();
         builder.Property(d => d.IsMissing).HasColumnName("is_missing").IsRequired();
-        
+
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<GitRepository>().WithMany().HasForeignKey(d => d.RepositoryId).OnDelete(DeleteBehavior.Cascade);

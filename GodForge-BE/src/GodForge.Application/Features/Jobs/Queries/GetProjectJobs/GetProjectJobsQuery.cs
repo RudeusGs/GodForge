@@ -1,6 +1,6 @@
-using MediatR;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Jobs.DTOs;
+using MediatR;
 
 namespace GodForge.Application.Features.Jobs.Queries.GetProjectJobs;
 

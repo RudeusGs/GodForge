@@ -21,7 +21,7 @@ public sealed class AdminActionConfiguration : IEntityTypeConfiguration<AdminAct
         builder.Property(a => a.Reason).HasColumnName("reason").HasColumnType("text").IsRequired();
         builder.Property(a => a.Outcome).HasColumnName("outcome").HasMaxLength(30).IsRequired();
         builder.Property(a => a.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
-        
+
         builder.Property(a => a.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<User>().WithMany().HasForeignKey(a => a.AdminUserId).OnDelete(DeleteBehavior.Restrict);

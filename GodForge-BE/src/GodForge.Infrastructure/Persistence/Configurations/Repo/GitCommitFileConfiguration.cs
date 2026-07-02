@@ -1,6 +1,6 @@
-using GodForge.Domain.Entities.Repo;
-using GodForge.Domain.Entities.Identity;
 using GodForge.Domain.Entities.Core;
+using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Repo;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

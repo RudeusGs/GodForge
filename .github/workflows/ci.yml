@@ -1,0 +1,48 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 9.0.x
+    - name: Restore dependencies
+      run: cd GodForge-BE && dotnet restore
+    - name: Build
+      run: cd GodForge-BE && dotnet build --no-restore
+    - name: Test
+      run: cd GodForge-BE && dotnet test --no-build
+    - name: Format Check
+      run: cd GodForge-BE && dotnet format --verify-no-changes
+    - name: Vulnerability Check
+      run: cd GodForge-BE && dotnet list package --vulnerable
+
+  frontend-quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+    - name: Install dependencies
+      run: cd GodForge-FE && npm ci
+    - name: Lint
+      run: cd GodForge-FE && npm run lint
+    - name: Typecheck
+      run: cd GodForge-FE && npm run typecheck
+    - name: Test
+      run: cd GodForge-FE && npm run test:unit
+    - name: Build
+      run: cd GodForge-FE && npm run build
+    - name: Audit
+      run: cd GodForge-FE && npm audit --audit-level=critical

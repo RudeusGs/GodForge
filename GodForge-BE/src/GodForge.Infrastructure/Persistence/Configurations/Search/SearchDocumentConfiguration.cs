@@ -1,6 +1,6 @@
-using GodForge.Domain.Entities.Search;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Repo;
+using GodForge.Domain.Entities.Search;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -26,7 +26,7 @@ public sealed class SearchDocumentConfiguration : IEntityTypeConfiguration<Searc
         builder.Property(d => d.Path).HasColumnName("path").HasMaxLength(800);
         builder.Property(d => d.SearchVector).HasColumnName("search_vector").HasColumnType("tsvector");
         builder.Property(d => d.MetadataJson).HasColumnName("metadata").HasColumnType("jsonb");
-        
+
         builder.Property(d => d.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(d => d.ProjectId).OnDelete(DeleteBehavior.Cascade);

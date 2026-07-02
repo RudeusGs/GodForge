@@ -19,7 +19,7 @@ public sealed class HealthRuleConfiguration : IEntityTypeConfiguration<HealthRul
         builder.Property(r => r.DefaultSeverity).HasColumnName("default_severity").HasMaxLength(20).IsRequired();
         builder.Property(r => r.IsEnabled).HasColumnName("is_enabled").IsRequired();
         builder.Property(r => r.ConfigJson).HasColumnName("config").HasColumnType("jsonb");
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

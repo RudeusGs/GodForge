@@ -8,9 +8,9 @@ public static class RolePermissions
     {
         return role switch
         {
-            ProjectRole.Viewer => new HashSet<string> 
-            { 
-                Permissions.ProjectsRead, 
+            ProjectRole.Viewer => new HashSet<string>
+            {
+                Permissions.ProjectsRead,
                 Permissions.RepositoryRead,
                 Permissions.GitRead,
                 Permissions.MetadataRead,

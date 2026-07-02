@@ -17,7 +17,7 @@ public sealed class ProjectSettingConfiguration : IEntityTypeConfiguration<Proje
         builder.Property(s => s.DefaultRole).HasColumnName("default_role").HasMaxLength(40).IsRequired();
         builder.Property(s => s.Visibility).HasColumnName("visibility").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(s => s.FeaturesJson).HasColumnName("features").HasColumnType("jsonb");
-        
+
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(s => s.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

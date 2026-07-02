@@ -20,7 +20,7 @@ public sealed class PurgeRequestConfiguration : IEntityTypeConfiguration<PurgeRe
         builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.RequestedBy).HasColumnName("requested_by").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.ApprovedBy).HasColumnName("approved_by").HasColumnType("uuid");
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
 

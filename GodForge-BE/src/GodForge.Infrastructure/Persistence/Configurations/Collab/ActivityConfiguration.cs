@@ -25,7 +25,7 @@ public sealed class ActivityConfiguration : IEntityTypeConfiguration<Activity>
         builder.Property(a => a.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(a => a.MetadataJson).HasColumnName("metadata_json").HasColumnType("jsonb");
         builder.Property(a => a.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
-        
+
         builder.Property(a => a.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);

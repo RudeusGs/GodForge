@@ -18,7 +18,7 @@ public sealed class GitRepositoryRepository : IGitRepositoryRepository
     {
         return await _context.GitRepositories.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
     }
-    
+
     public async Task AddAsync(GitRepository repository, CancellationToken cancellationToken = default)
     {
         await _context.GitRepositories.AddAsync(repository, cancellationToken);

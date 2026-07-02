@@ -16,7 +16,7 @@ public class CorrelationIdMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var correlationId = GetCorrelationId(context);
-        
+
         context.Items["CorrelationId"] = correlationId;
 
         // Add to response header

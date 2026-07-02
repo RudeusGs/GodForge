@@ -25,7 +25,7 @@ public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(l => l.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
         builder.Property(l => l.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
         builder.Property(l => l.DetailsJson).HasColumnName("details").HasColumnType("jsonb");
-        
+
         builder.Property(l => l.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(l => l.ProjectId).OnDelete(DeleteBehavior.SetNull);

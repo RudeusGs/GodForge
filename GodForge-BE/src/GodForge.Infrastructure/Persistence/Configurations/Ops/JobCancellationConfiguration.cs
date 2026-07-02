@@ -1,5 +1,5 @@
-using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Ops;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +17,7 @@ public sealed class JobCancellationConfiguration : IEntityTypeConfiguration<JobC
         builder.Property(c => c.JobId).HasColumnName("job_id").HasColumnType("uuid").IsRequired();
         builder.Property(c => c.RequestedBy).HasColumnName("requested_by").HasColumnType("uuid").IsRequired();
         builder.Property(c => c.Reason).HasColumnName("reason").HasColumnType("text");
-        
+
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Job>().WithMany().HasForeignKey(c => c.JobId).OnDelete(DeleteBehavior.Restrict);

@@ -1,5 +1,5 @@
-using GodForge.Domain.Entities.Storage;
 using GodForge.Domain.Entities.Core;
+using GodForge.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +19,7 @@ public sealed class ReportExportConfiguration : IEntityTypeConfiguration<ReportE
         builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.FilePath).HasColumnName("file_path").HasMaxLength(500);
         builder.Property(r => r.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz");
-        
+
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);

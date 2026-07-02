@@ -6,6 +6,6 @@ public interface ICurrentUser
     bool IsAuthenticated { get; }
     string? Email { get; }
     string? SystemRole { get; }
-    
+
     Guid GetId(); // Throws if not authenticated
 }

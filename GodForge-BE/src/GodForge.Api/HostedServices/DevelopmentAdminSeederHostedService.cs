@@ -18,8 +18,8 @@ public sealed class DevelopmentAdminSeederHostedService : IHostedService
     private readonly ILogger<DevelopmentAdminSeederHostedService> _logger;
 
     public DevelopmentAdminSeederHostedService(
-        IServiceProvider serviceProvider, 
-        IConfiguration configuration, 
+        IServiceProvider serviceProvider,
+        IConfiguration configuration,
         IHostEnvironment environment,
         ILogger<DevelopmentAdminSeederHostedService> logger)
     {
@@ -43,7 +43,7 @@ public sealed class DevelopmentAdminSeederHostedService : IHostedService
 
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<GodForgeDbContext>();
-        
+
         bool.TryParse(_configuration["RunMigrationsOnStartup"], out var runMigrations);
         if (runMigrations)
         {
@@ -70,19 +70,19 @@ public sealed class DevelopmentAdminSeederHostedService : IHostedService
         {
             var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-            
+
             var passwordHash = hasher.HashPassword(seedAdminPassword);
-            
+
             var admin = User.Create(
-                seedAdminEmail, 
-                "System Admin", 
-                passwordHash, 
-                SystemRole.SystemAdmin, 
+                seedAdminEmail,
+                "System Admin",
+                passwordHash,
+                SystemRole.SystemAdmin,
                 clock.UtcNow);
 
             context.Users.Add(admin);
             await context.SaveChangesAsync(cancellationToken);
-            
+
             _logger.LogInformation("Seeded development admin user: {Email}", seedAdminEmail);
         }
     }

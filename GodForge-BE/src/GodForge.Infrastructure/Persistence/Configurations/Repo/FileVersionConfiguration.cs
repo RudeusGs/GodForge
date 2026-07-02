@@ -18,7 +18,7 @@ public sealed class FileVersionConfiguration : IEntityTypeConfiguration<FileVers
         builder.Property(v => v.BlobHash).HasColumnName("blob_hash").HasMaxLength(40).IsRequired();
         builder.Property(v => v.Size).HasColumnName("size").HasColumnType("bigint").IsRequired();
         builder.Property(v => v.Action).HasColumnName("action").HasConversion<string>().HasMaxLength(30).IsRequired();
-        
+
         builder.Property(v => v.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<RepositoryFile>().WithMany().HasForeignKey(v => v.FileId).OnDelete(DeleteBehavior.Cascade);

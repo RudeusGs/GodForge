@@ -1,7 +1,7 @@
-using GodForge.Domain.Entities.Search;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Repo;
+using GodForge.Domain.Entities.Search;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

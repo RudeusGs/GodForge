@@ -18,7 +18,7 @@ public sealed class RepositoryFileConfiguration : IEntityTypeConfiguration<Repos
         builder.Property(f => f.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(f => f.Size).HasColumnName("size").HasColumnType("bigint").IsRequired();
         builder.Property(f => f.LastCommitHash).HasColumnName("last_commit_hash").HasMaxLength(40).IsRequired();
-        
+
         builder.Property(f => f.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(f => f.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

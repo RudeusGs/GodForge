@@ -37,8 +37,8 @@ public sealed class ProjectRepository : IProjectRepository
         // Active projects where user is a member OR project is public/internal
         var query = _context.Projects
             .Where(p => p.Status != ProjectStatus.Deleted)
-            .Where(p => 
-                p.Visibility == ProjectVisibility.Internal || 
+            .Where(p =>
+                p.Visibility == ProjectVisibility.Internal ||
                 _context.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId));
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -47,7 +47,7 @@ public sealed class ProjectRepository : IProjectRepository
         }
 
         var totalItems = await query.CountAsync(cancellationToken);
-        
+
         var items = await query
             .AsNoTracking()
             .OrderByDescending(p => p.CreatedAt)

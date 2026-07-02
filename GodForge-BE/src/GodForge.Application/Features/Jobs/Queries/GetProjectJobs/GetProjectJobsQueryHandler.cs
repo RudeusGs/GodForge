@@ -1,8 +1,8 @@
-using MediatR;
-using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Jobs.DTOs;
+using MediatR;
 
 namespace GodForge.Application.Features.Jobs.Queries.GetProjectJobs;
 

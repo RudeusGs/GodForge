@@ -1,6 +1,6 @@
-using MediatR;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Activities.DTOs;
+using MediatR;
 
 namespace GodForge.Application.Features.Activities.Queries.GetProjectActivities;
 

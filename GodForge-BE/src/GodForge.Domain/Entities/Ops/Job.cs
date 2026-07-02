@@ -91,21 +91,21 @@ public sealed class Job : BaseAuditableEntity
         LastHeartbeatAt = now;
         UpdatedAt = now;
     }
-    
+
     public void RequestCancellation(DateTimeOffset now)
     {
         if (Status is JobStatus.Completed or JobStatus.Failed or JobStatus.Cancelled or JobStatus.DeadLettered)
             return;
-            
+
         CancellationRequestedAt = now;
         UpdatedAt = now;
     }
-    
+
     public void Cancel(DateTimeOffset now)
     {
         if (Status is JobStatus.Completed or JobStatus.Failed or JobStatus.Cancelled or JobStatus.DeadLettered)
             return;
-            
+
         Status = JobStatus.Cancelled;
         CancelledAt = now;
         LastHeartbeatAt = now;

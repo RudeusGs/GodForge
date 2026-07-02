@@ -18,7 +18,7 @@ public sealed class SecurityEventConfiguration : IEntityTypeConfiguration<Securi
         builder.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
         builder.Property(e => e.DeviceName).HasColumnName("device_name").HasMaxLength(200);
         builder.Property(e => e.MetadataJson).HasColumnName("metadata").HasColumnType("jsonb");
-        
+
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);

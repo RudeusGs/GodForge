@@ -19,7 +19,7 @@ public sealed class WorkspaceStateConfiguration : IEntityTypeConfiguration<Works
         builder.Property(s => s.IsLocked).HasColumnName("is_locked").IsRequired();
         builder.Property(s => s.LockedBy).HasColumnName("locked_by").HasMaxLength(120);
         builder.Property(s => s.LockedAt).HasColumnName("locked_at").HasColumnType("timestamptz");
-        
+
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(s => s.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

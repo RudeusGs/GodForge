@@ -1,6 +1,6 @@
 using GodForge.Application.Common.Interfaces;
-using GodForge.Application.Common.Security;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Projects.Commands.CreateProject;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
@@ -58,7 +58,7 @@ public class CreateProjectCommandHandlerTests
         var actorId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
         mockClock.Setup(c => c.UtcNow).Returns(now);
-        
+
         mockProjectRepo.Setup(r => r.NameExistsAsync(actorId, "New Project", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
@@ -79,7 +79,7 @@ public class CreateProjectCommandHandlerTests
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
         Assert.Equal("New Project", result.Value.Name);
-        
+
         mockProjectRepo.Verify(r => r.AddAsync(It.Is<Project>(p => p.Name == "New Project" && p.Status == ProjectStatus.Draft), It.IsAny<CancellationToken>()), Times.Once);
         mockMemberRepo.Verify(r => r.AddAsync(It.Is<ProjectMember>(m => m.UserId == actorId && m.Role == ProjectRole.ProjectOwner), It.IsAny<CancellationToken>()), Times.Once);
         mockUow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);

@@ -1,5 +1,5 @@
-using GodForge.Domain.Entities.Storage;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
