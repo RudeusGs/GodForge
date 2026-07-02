@@ -1,3 +1,4 @@
+using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
@@ -19,8 +20,13 @@ public sealed class GetProjectActivitiesQueryHandler : IRequestHandler<GetProjec
 
     public async Task<Result<PagedResult<ActivityDto>>> Handle(GetProjectActivitiesQuery request, CancellationToken cancellationToken)
     {
-        if (!await _auth.HasPermissionAsync(request.ActorId, request.ProjectId, Permissions.ActivityRead, cancellationToken))
-            return ApplicationError.Forbidden("FORBIDDEN", "You do not have permission to read activities in this project.");
+        bool canViewActivities = await _auth.HasPermissionAsync(request.ActorId, request.ProjectId, Permissions.ActivityRead, cancellationToken);
+        if (!canViewActivities)
+        {
+            return Result<PagedResult<ActivityDto>>.Failure(
+                ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission to view activities for this project.")
+            );
+        }
 
         var pagedActivities = await _activities.GetProjectActivitiesAsync(request.ProjectId, request.Page, request.PageSize, cancellationToken);
         var dtos = pagedActivities.Items.Select(ActivityDto.From).ToList();

@@ -37,19 +37,19 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<D
         var user = await _users.GetByEmailAsync(request.Email, cancellationToken);
 
         if (user is null)
-            return ApplicationError.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password.");
+            return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
 
         if (user.Status == UserStatus.Disabled)
-            return ApplicationError.Forbidden("ACCOUNT_DISABLED", "Account is disabled.");
+            return ApplicationError.Forbidden("AUTH_ACCOUNT_DISABLED", "Account is disabled.");
 
         if (user.Status == UserStatus.Locked && user.LockedUntil > now)
-            return ApplicationError.Forbidden("ACCOUNT_LOCKED", "Account is temporarily locked.");
+            return ApplicationError.Forbidden("AUTH_ACCOUNT_LOCKED", "Account is temporarily locked.");
 
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
             user.RecordLoginFailure(now, 5, TimeSpan.FromMinutes(15));
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ApplicationError.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password.");
+            return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
         }
 
         user.RecordLoginSuccess(now);

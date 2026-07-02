@@ -16,7 +16,26 @@ public abstract class BaseApiController : ControllerBase
             if (result.Value is null)
                 return NoContent();
 
-            return Ok(new { data = result.Value });
+            if (result.Value is IPagedResult pagedResult)
+            {
+                return Ok(new
+                {
+                    data = pagedResult.ItemsObject,
+                    meta = new
+                    {
+                        correlationId = CorrelationId,
+                        page = pagedResult.Page,
+                        pageSize = pagedResult.PageSize,
+                        totalCount = pagedResult.TotalItems
+                    }
+                });
+            }
+
+            return Ok(new 
+            { 
+                data = result.Value, 
+                meta = new { correlationId = CorrelationId } 
+            });
         }
 
         return result.Error!.Type switch

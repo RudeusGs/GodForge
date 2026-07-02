@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
         services.AddScoped<IJobPublisher, StubJobPublisher>();
+        services.AddScoped<IAdminSeeder, GodForge.Infrastructure.Initialization.DevelopmentAdminSeeder>();
 
         return services;
     }

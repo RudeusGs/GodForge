@@ -1,3 +1,4 @@
+using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
@@ -19,8 +20,13 @@ public sealed class GetProjectJobsQueryHandler : IRequestHandler<GetProjectJobsQ
 
     public async Task<Result<PagedResult<JobDto>>> Handle(GetProjectJobsQuery request, CancellationToken cancellationToken)
     {
-        if (!await _auth.HasPermissionAsync(request.ActorId, request.ProjectId, Permissions.JobsRead, cancellationToken))
-            return ApplicationError.Forbidden("FORBIDDEN", "You do not have permission to read jobs in this project.");
+        var canViewJobs = await _auth.HasPermissionAsync(request.ActorId, request.ProjectId, Permissions.JobsRead, cancellationToken);
+        if (!canViewJobs)
+        {
+            return Result<PagedResult<JobDto>>.Failure(
+                ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission to view jobs for this project.")
+            );
+        }
 
         var pagedJobs = await _jobs.GetProjectJobsAsync(request.ProjectId, request.Page, request.PageSize, cancellationToken);
         var dtos = pagedJobs.Items.Select(JobDto.From).ToList();

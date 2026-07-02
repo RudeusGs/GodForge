@@ -17,7 +17,8 @@ public sealed class CurrentUser : ICurrentUser
     {
         get
         {
-            var idClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier);
+            var idClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)
+                       ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
             if (idClaim != null && Guid.TryParse(idClaim.Value, out var id))
             {
                 return id;
@@ -28,7 +29,8 @@ public sealed class CurrentUser : ICurrentUser
 
     public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
 
-    public string? Email => _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value;
+    public string? Email => _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value
+                         ?? _httpContextAccessor.HttpContext?.User?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Email)?.Value;
 
     public string? SystemRole => _httpContextAccessor.HttpContext?.User?.FindFirst("role")?.Value;
 

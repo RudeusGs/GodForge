@@ -1,8 +1,18 @@
 namespace GodForge.Application.Common.Models;
 
-public class PagedResult<T>
+public interface IPagedResult
+{
+    object ItemsObject { get; }
+    int Page { get; }
+    int PageSize { get; }
+    int TotalItems { get; }
+    int TotalPages { get; }
+}
+
+public class PagedResult<T> : IPagedResult
 {
     public IReadOnlyList<T> Items { get; }
+    public object ItemsObject => Items;
     public int Page { get; }
     public int PageSize { get; }
     public int TotalItems { get; }
