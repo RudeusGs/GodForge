@@ -12,7 +12,7 @@ The Scene Diff module compares changes in Godot scenes based on node/property st
 
 ## Scope
 
-- Compare scenes between two commits or branch tips.
+- Compare scenes between two commits, branches, or snapshots already synced to the server.
 - Display added, removed, modified, moved, and unchanged nodes.
 - Display property-level diffs.
 - Cache diff artifacts in MinIO.

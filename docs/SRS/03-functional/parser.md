@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Parser module extracts metadata from Godot repositories for use by the Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff, and Project Health modules without requiring real-time parsing.
+The Parser module extracts metadata from Godot repositories for use by the Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff, and Project Health modules. The parser works by analyzing server-side repository snapshots after a repository is synced (e.g., via pull, fetch, commit on Git UI, or remote push), and does not parse local files or perform real-time local sync.
 
 ## Actors
 

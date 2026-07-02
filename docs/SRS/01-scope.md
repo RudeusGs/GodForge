@@ -29,6 +29,14 @@ GodForge does **not** provide the following capabilities in the current version.
 - It does not provide plugin marketplace, AI assistant, desktop client, MCP server, or Godot editor plugin as required MVP capabilities.
 - It does not expose server-side repository workspace paths to users or clients.
 - It does not store Git credentials in plain text or return secrets through API responses.
+- It does not track real-time uncommitted local file changes on the user's machine.
+- It does not read the user's local working directory directly from the web browser.
+- It does not auto-detect file changes in the Godot editor unless committed and pushed to the remote.
+- It does not auto-sync local uncommitted files.
+
+## Future Phases
+
+While the MVP focuses on remote Git synchronization and server-side parsing, future milestones may introduce a **GodForge Local Agent / Desktop Agent**. This agent would watch the local Godot project folder, detect file changes in real-time, read local Git status, and send events/metadata directly to the GodForge API for local uncommitted change tracking.
 
 ## System Boundary
 

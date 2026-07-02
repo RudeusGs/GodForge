@@ -23,7 +23,7 @@ The Dependency Graph visualizes the relationships between scenes, scripts, resou
 | ID | Requirement Name | Description | Priority | Actor |
 | --- | --- | --- | --- | --- |
 | FR-11 | Dependency Graph | Build and visualize dependency graphs between resources in a Godot project. | Must | Viewer+ |
-| BR-50 | Data Source | Graph data is read from the `dependencies` table. | Must | System |
+| BR-50 | Data Source | Graph data is read from the `dependencies` table generated from the server-side workspace, not from real-time local editor state. | Must | System |
 | BR-51 | Project Scope | The graph only displays data belonging to the current project. | Must | System |
 | BR-52 | Analyze Required | Projects that have not been analyzed display an empty state and an analyze action if authorized. | Must | Viewer+, Developer |
 | BR-53 | Client Layout | The graph layout uses a force-directed layout on the client. | Should | Frontend |

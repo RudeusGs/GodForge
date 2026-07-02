@@ -2,7 +2,9 @@
 
 ## Purpose
 
-The Git module allows projects to connect to a Git repository, perform common Git operations via the web interface, and ensures dangerous operations are locked, audited, and safely handled.
+The Git module allows projects to connect to a remote Git repository, perform common Git operations via the web interface on the server-side cloned workspace, and ensures dangerous operations are locked, audited, and safely handled.
+
+**Scope Note:** The Git UI displays branches, commit history, and the repository status of the server-side cloned workspace. It does **not** track real-time uncommitted local file changes on the user's machine.
 
 ## Actors
 
