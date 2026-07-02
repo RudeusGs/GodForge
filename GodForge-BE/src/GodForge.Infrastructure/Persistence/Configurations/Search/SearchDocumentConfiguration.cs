@@ -24,7 +24,15 @@ public sealed class SearchDocumentConfiguration : IEntityTypeConfiguration<Searc
         builder.Property(d => d.Subtitle).HasColumnName("subtitle").HasMaxLength(500);
         builder.Property(d => d.Content).HasColumnName("content").HasColumnType("text");
         builder.Property(d => d.Path).HasColumnName("path").HasMaxLength(800);
-        builder.Property(d => d.SearchVector).HasColumnName("search_vector").HasColumnType("tsvector");
+#pragma warning disable CS0618 // Type or member is obsolete: Client-side parsing of NpgsqlTsVector is unreliable. Used here solely to bridge Clean Architecture string property to DB tsvector without leaking Npgsql to Domain.
+        builder.Property(d => d.SearchVector)
+            .HasColumnName("search_vector")
+            .HasColumnType("tsvector")
+            .HasConversion(
+                v => string.IsNullOrEmpty(v) ? null : NpgsqlTypes.NpgsqlTsVector.Parse(v),
+                v => v == null ? null : v.ToString()
+            );
+#pragma warning restore CS0618
         builder.Property(d => d.MetadataJson).HasColumnName("metadata").HasColumnType("jsonb");
 
         builder.Property(d => d.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
