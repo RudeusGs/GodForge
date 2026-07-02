@@ -21,7 +21,7 @@ public sealed class ReviewThreadCommentConfiguration : IEntityTypeConfiguration<
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<ReviewThread>().WithMany().HasForeignKey(c => c.ThreadId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<ReviewThread>().WithMany().HasForeignKey(c => c.ThreadId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(c => c.AuthorId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(c => new { c.ThreadId, c.CreatedAt }).HasDatabaseName("ix_review_thread_comments_thread_time").IsDescending(false, true);

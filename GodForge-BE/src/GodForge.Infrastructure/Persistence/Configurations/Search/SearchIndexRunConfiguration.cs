@@ -19,7 +19,7 @@ public sealed class SearchIndexRunConfiguration : IEntityTypeConfiguration<Searc
         builder.Property(r => r.ProjectId).HasColumnName("project_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.SnapshotId).HasColumnName("snapshot_id").HasColumnType("uuid");
         builder.Property(r => r.JobId).HasColumnName("job_id").HasColumnType("uuid");
-        builder.Property(r => r.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.DocumentCount).HasColumnName("document_count").IsRequired();
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");

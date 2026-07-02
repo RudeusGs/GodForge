@@ -15,8 +15,8 @@ public sealed class ReportExportConfiguration : IEntityTypeConfiguration<ReportE
         builder.Property(r => r.Id).HasColumnName("id").HasColumnType("uuid");
 
         builder.Property(r => r.ProjectId).HasColumnName("project_id").HasColumnType("uuid").IsRequired();
-        builder.Property(r => r.Type).HasColumnName("type").HasMaxLength(40).IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(40).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.FilePath).HasColumnName("file_path").HasMaxLength(500);
         builder.Property(r => r.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz");
         

@@ -17,7 +17,7 @@ public sealed class ArtifactConfiguration : IEntityTypeConfiguration<Artifact>
 
         builder.Property(a => a.ProjectId).HasColumnName("project_id").HasColumnType("uuid").IsRequired();
         builder.Property(a => a.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
-        builder.Property(a => a.Type).HasColumnName("type").HasMaxLength(40).IsRequired();
+        builder.Property(a => a.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(a => a.Size).HasColumnName("size").HasColumnType("bigint").IsRequired();
         builder.Property(a => a.ObjectPath).HasColumnName("object_path").HasMaxLength(500).IsRequired();
         builder.Property(a => a.MimeType).HasColumnName("mime_type").HasMaxLength(120);

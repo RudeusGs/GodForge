@@ -10,6 +10,7 @@ public sealed class MetadataRun : BaseEntity
     public Guid? JobId { get; private set; }
     public string RunType { get; private set; } = default!;
     public string Status { get; private set; } = default!;
+    public string SchemaVersion { get; private set; } = "1.0";
     public int FileCount { get; private set; }
     public int SceneCount { get; private set; }
     public int AssetCount { get; private set; }

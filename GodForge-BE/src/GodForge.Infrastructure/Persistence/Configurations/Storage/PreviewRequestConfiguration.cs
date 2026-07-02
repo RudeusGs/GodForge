@@ -16,7 +16,7 @@ public sealed class PreviewRequestConfiguration : IEntityTypeConfiguration<Previ
 
         builder.Property(r => r.ProjectId).HasColumnName("project_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.AssetId).HasColumnName("asset_id").HasMaxLength(100).IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.OutputPath).HasColumnName("output_path").HasMaxLength(500);
         builder.Property(r => r.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
         

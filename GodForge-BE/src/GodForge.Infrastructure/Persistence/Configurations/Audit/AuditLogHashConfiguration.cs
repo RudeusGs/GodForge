@@ -19,6 +19,6 @@ public sealed class AuditLogHashConfiguration : IEntityTypeConfiguration<AuditLo
         
         builder.Property(h => h.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<AuditLog>().WithOne().HasForeignKey<AuditLogHash>(h => h.AuditLogId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<AuditLog>().WithOne().HasForeignKey<AuditLogHash>(h => h.AuditLogId).OnDelete(DeleteBehavior.Restrict);
     }
 }

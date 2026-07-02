@@ -17,7 +17,7 @@ public sealed class AdminActionConfiguration : IEntityTypeConfiguration<AdminAct
         builder.Property(a => a.AdminUserId).HasColumnName("admin_user_id").HasColumnType("uuid").IsRequired();
         builder.Property(a => a.TargetType).HasColumnName("target_type").HasMaxLength(100).IsRequired();
         builder.Property(a => a.TargetId).HasColumnName("target_id").HasColumnType("uuid");
-        builder.Property(a => a.Action).HasColumnName("action").HasMaxLength(120).IsRequired();
+        builder.Property(a => a.Action).HasColumnName("action").HasConversion<string>().HasMaxLength(120).IsRequired();
         builder.Property(a => a.Reason).HasColumnName("reason").HasColumnType("text").IsRequired();
         builder.Property(a => a.Outcome).HasColumnName("outcome").HasMaxLength(30).IsRequired();
         builder.Property(a => a.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();

@@ -16,7 +16,7 @@ public sealed class ProjectInviteConfiguration : IEntityTypeConfiguration<Projec
 
         builder.Property(i => i.ProjectId).HasColumnName("project_id").HasColumnType("uuid").IsRequired();
         builder.Property(i => i.Email).HasColumnName("email").HasMaxLength(255).IsRequired();
-        builder.Property(i => i.Role).HasColumnName("role").HasMaxLength(40).IsRequired();
+        builder.Property(i => i.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(i => i.TokenHash).HasColumnName("token_hash").HasMaxLength(255).IsRequired();
         builder.Property(i => i.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(i => i.InvitedBy).HasColumnName("invited_by").HasColumnType("uuid").IsRequired();

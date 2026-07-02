@@ -15,7 +15,7 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
 
         builder.Property(i => i.MessageId).HasColumnName("message_id").HasMaxLength(160).IsRequired();
         builder.Property(i => i.ConsumerName).HasColumnName("consumer_name").HasMaxLength(120).IsRequired();
-        builder.Property(i => i.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(i => i.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(i => i.ReceivedAt).HasColumnName("received_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(i => i.ProcessedAt).HasColumnName("processed_at").HasColumnType("timestamptz");
         builder.Property(i => i.ErrorMessage).HasColumnName("error_message").HasColumnType("text");

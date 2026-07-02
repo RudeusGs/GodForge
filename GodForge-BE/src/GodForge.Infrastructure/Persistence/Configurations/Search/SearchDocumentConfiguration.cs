@@ -30,7 +30,7 @@ public sealed class SearchDocumentConfiguration : IEntityTypeConfiguration<Searc
         builder.Property(d => d.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(d => d.ProjectId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Repository>().WithMany().HasForeignKey(d => d.RepositoryId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(d => d.RepositoryId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(d => d.SnapshotId).OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(d => new { d.ProjectId, d.EntityType }).HasDatabaseName("ix_search_documents_project_type");

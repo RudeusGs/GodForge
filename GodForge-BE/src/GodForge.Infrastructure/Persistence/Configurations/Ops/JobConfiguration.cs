@@ -46,8 +46,8 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(j => j.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Project>().WithMany().HasForeignKey(j => j.ProjectId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Repository>().WithMany().HasForeignKey(j => j.RepositoryId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<Project>().WithMany().HasForeignKey(j => j.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(j => j.RepositoryId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<User>().WithMany().HasForeignKey(j => j.TriggeredBy).OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(j => new { j.Status, j.AvailableAt, j.Priority, j.CreatedAt })

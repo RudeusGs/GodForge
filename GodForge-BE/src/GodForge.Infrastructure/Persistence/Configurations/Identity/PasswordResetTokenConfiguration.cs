@@ -20,7 +20,7 @@ public sealed class PasswordResetTokenConfiguration : IEntityTypeConfiguration<P
         
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(t => t.TokenHash).HasDatabaseName("ux_password_reset_tokens_hash").IsUnique();
         builder.HasIndex(t => new { t.UserId, t.ExpiresAt })

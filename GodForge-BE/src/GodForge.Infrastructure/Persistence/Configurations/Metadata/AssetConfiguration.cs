@@ -28,7 +28,7 @@ public sealed class AssetConfiguration : IEntityTypeConfiguration<Asset>
         builder.Property(a => a.FileHash).HasColumnName("file_hash").HasMaxLength(80).IsRequired();
         builder.Property(a => a.ImportedMetadataJson).HasColumnName("imported_metadata").HasColumnType("jsonb");
 
-        builder.HasOne<Repository>().WithMany().HasForeignKey(a => a.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(a => a.RepositoryId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(a => a.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<MetadataRun>().WithMany().HasForeignKey(a => a.MetadataRunId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<Artifact>().WithMany().HasForeignKey(a => a.ThumbnailArtifactId).OnDelete(DeleteBehavior.SetNull);

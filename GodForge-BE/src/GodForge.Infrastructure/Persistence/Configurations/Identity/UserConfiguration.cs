@@ -13,10 +13,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasKey(u => u.Id);
         builder.Property(u => u.Id).HasColumnName("id").HasColumnType("uuid");
 
-        builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(255).IsRequired();
-        builder.Property(u => u.NormalizedEmail).HasColumnName("normalized_email").HasMaxLength(255).IsRequired();
-        builder.Property(u => u.DisplayName).HasColumnName("display_name").HasMaxLength(120).IsRequired();
-        builder.Property(u => u.PasswordHash).HasColumnName("password_hash").HasMaxLength(255).IsRequired();
+        builder.Property(u => u.Email).HasColumnName("email").HasConversion<string>().HasMaxLength(255).IsRequired();
+        builder.Property(u => u.NormalizedEmail).HasColumnName("normalized_email").HasConversion<string>().HasMaxLength(255).IsRequired();
+        builder.Property(u => u.DisplayName).HasColumnName("display_name").HasConversion<string>().HasMaxLength(120).IsRequired();
+        builder.Property(u => u.PasswordHash).HasColumnName("password_hash").HasConversion<string>().HasMaxLength(255).IsRequired();
         builder.Property(u => u.SystemRole).HasColumnName("system_role").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(u => u.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         
@@ -27,9 +27,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.FailedLoginCount).HasColumnName("failed_login_count").HasDefaultValue(0);
         builder.Property(u => u.LockedUntil).HasColumnName("locked_until").HasColumnType("timestamptz");
         
-        builder.Property(u => u.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(500);
-        builder.Property(u => u.SecurityStamp).HasColumnName("security_stamp").HasMaxLength(100).IsRequired();
-        builder.Property(u => u.ConcurrencyStamp).HasColumnName("concurrency_stamp").HasMaxLength(100).IsRequired().IsConcurrencyToken();
+        builder.Property(u => u.AvatarUrl).HasColumnName("avatar_url").HasConversion<string>().HasMaxLength(500);
+        builder.Property(u => u.SecurityStamp).HasColumnName("security_stamp").HasConversion<string>().HasMaxLength(100).IsRequired();
+        builder.Property(u => u.ConcurrencyStamp).HasColumnName("concurrency_stamp").HasConversion<string>().HasMaxLength(100).IsRequired().IsConcurrencyToken();
         
         builder.Property(u => u.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(u => u.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();

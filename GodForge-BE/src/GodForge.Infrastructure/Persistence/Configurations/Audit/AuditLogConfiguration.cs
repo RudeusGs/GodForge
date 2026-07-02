@@ -17,7 +17,7 @@ public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 
         builder.Property(l => l.ProjectId).HasColumnName("project_id").HasColumnType("uuid");
         builder.Property(l => l.ActorUserId).HasColumnName("actor_user_id").HasColumnType("uuid");
-        builder.Property(l => l.EventType).HasColumnName("event_type").HasMaxLength(120).IsRequired();
+        builder.Property(l => l.EventType).HasColumnName("event_type").HasConversion<string>().HasMaxLength(120).IsRequired();
         builder.Property(l => l.ResourceType).HasColumnName("resource_type").HasMaxLength(100);
         builder.Property(l => l.ResourceId).HasColumnName("resource_id").HasColumnType("uuid");
         builder.Property(l => l.Outcome).HasColumnName("outcome").HasMaxLength(30).IsRequired();

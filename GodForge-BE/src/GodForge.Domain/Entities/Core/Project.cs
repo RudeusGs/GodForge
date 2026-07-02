@@ -28,7 +28,7 @@ public sealed class Project : BaseAuditableEntity, ISoftDeletable
             Description = description,
             GodotVersion = godotVersion,
             Visibility = visibility,
-            Status = ProjectStatus.Active,
+            Status = ProjectStatus.Draft,
             CreatedBy = createdBy,
             CreatedAt = now,
             UpdatedAt = now

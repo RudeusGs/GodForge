@@ -18,7 +18,7 @@ public sealed class JobDependencyConfiguration : IEntityTypeConfiguration<JobDep
         
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Job>().WithMany().HasForeignKey(d => d.JobId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Job>().WithMany().HasForeignKey(d => d.JobId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Job>().WithMany().HasForeignKey(d => d.DependsOnJobId).OnDelete(DeleteBehavior.Restrict);
     }
 }

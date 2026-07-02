@@ -28,7 +28,7 @@ public sealed class SceneConfiguration : IEntityTypeConfiguration<Scene>
         builder.Property(s => s.FileHash).HasColumnName("file_hash").HasMaxLength(80).IsRequired();
         builder.Property(s => s.ParsedAt).HasColumnName("parsed_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Repository>().WithMany().HasForeignKey(s => s.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(s => s.RepositoryId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(s => s.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<MetadataRun>().WithMany().HasForeignKey(s => s.MetadataRunId).OnDelete(DeleteBehavior.Cascade);
 

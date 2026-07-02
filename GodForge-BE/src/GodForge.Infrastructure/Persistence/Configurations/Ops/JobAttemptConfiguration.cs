@@ -17,7 +17,7 @@ public sealed class JobAttemptConfiguration : IEntityTypeConfiguration<JobAttemp
         builder.Property(a => a.AttemptNumber).HasColumnName("attempt_number").IsRequired();
         builder.Property(a => a.WorkerName).HasColumnName("worker_name").HasMaxLength(100);
         builder.Property(a => a.WorkerInstanceId).HasColumnName("worker_instance_id").HasMaxLength(120);
-        builder.Property(a => a.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(a => a.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(a => a.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(a => a.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
         builder.Property(a => a.DurationMs).HasColumnName("duration_ms");
@@ -25,7 +25,7 @@ public sealed class JobAttemptConfiguration : IEntityTypeConfiguration<JobAttemp
         builder.Property(a => a.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
         builder.Property(a => a.StackTraceHash).HasColumnName("stack_trace_hash").HasMaxLength(100);
 
-        builder.HasOne<Job>().WithMany().HasForeignKey(a => a.JobId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Job>().WithMany().HasForeignKey(a => a.JobId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(a => new { a.JobId, a.AttemptNumber }).HasDatabaseName("ux_job_attempts_job_number").IsUnique();
     }

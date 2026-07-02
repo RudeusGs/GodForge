@@ -15,11 +15,11 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
 
         builder.Property(o => o.AggregateType).HasColumnName("aggregate_type").HasMaxLength(100).IsRequired();
         builder.Property(o => o.AggregateId).HasColumnName("aggregate_id").HasColumnType("uuid");
-        builder.Property(o => o.EventType).HasColumnName("event_type").HasMaxLength(120).IsRequired();
+        builder.Property(o => o.EventType).HasColumnName("event_type").HasConversion<string>().HasMaxLength(120).IsRequired();
         builder.Property(o => o.PayloadJson).HasColumnName("payload").HasColumnType("jsonb").IsRequired();
         builder.Property(o => o.HeadersJson).HasColumnName("headers").HasColumnType("jsonb");
         builder.Property(o => o.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
-        builder.Property(o => o.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(o => o.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(o => o.Attempts).HasColumnName("attempts").IsRequired();
         builder.Property(o => o.AvailableAt).HasColumnName("available_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(o => o.ProcessedAt).HasColumnName("processed_at").HasColumnType("timestamptz");

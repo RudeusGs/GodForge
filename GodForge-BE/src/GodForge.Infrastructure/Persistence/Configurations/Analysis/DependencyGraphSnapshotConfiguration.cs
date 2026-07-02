@@ -27,7 +27,7 @@ public sealed class DependencyGraphSnapshotConfiguration : IEntityTypeConfigurat
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Repository>().WithMany().HasForeignKey(s => s.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(s => s.RepositoryId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(s => s.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<AnalysisRun>().WithMany().HasForeignKey(s => s.AnalysisRunId).OnDelete(DeleteBehavior.Cascade);
     }

@@ -77,7 +77,7 @@ public class GodForgeDbContext : DbContext
     public DbSet<PurgeRequest> PurgeRequests => Set<PurgeRequest>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ReportExport> ReportExports => Set<ReportExport>();
-    public DbSet<Repository> Repositories => Set<Repository>();
+    public DbSet<GitRepository> GitRepositories => Set<GitRepository>();
     public DbSet<RepositoryCredential> RepositoryCredentials => Set<RepositoryCredential>();
     public DbSet<RepositoryCredentialVersion> RepositoryCredentialVersions => Set<RepositoryCredentialVersion>();
     public DbSet<RepositoryFile> RepositoryFiles => Set<RepositoryFile>();

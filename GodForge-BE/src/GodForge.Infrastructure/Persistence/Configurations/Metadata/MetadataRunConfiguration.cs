@@ -21,7 +21,8 @@ public sealed class MetadataRunConfiguration : IEntityTypeConfiguration<Metadata
         builder.Property(r => r.SnapshotId).HasColumnName("snapshot_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.JobId).HasColumnName("job_id").HasColumnType("uuid");
         builder.Property(r => r.RunType).HasColumnName("run_type").HasMaxLength(40).IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(r => r.SchemaVersion).HasColumnName("schema_version").HasMaxLength(20).IsRequired().HasDefaultValue("1.0");
         builder.Property(r => r.FileCount).HasColumnName("file_count").IsRequired();
         builder.Property(r => r.SceneCount).HasColumnName("scene_count").IsRequired();
         builder.Property(r => r.AssetCount).HasColumnName("asset_count").IsRequired();
@@ -34,7 +35,7 @@ public sealed class MetadataRunConfiguration : IEntityTypeConfiguration<Metadata
         builder.Property(r => r.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Project>().WithMany().HasForeignKey(r => r.ProjectId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Repository>().WithMany().HasForeignKey(r => r.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(r => r.RepositoryId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(r => r.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Job>().WithMany().HasForeignKey(r => r.JobId).OnDelete(DeleteBehavior.SetNull);
 

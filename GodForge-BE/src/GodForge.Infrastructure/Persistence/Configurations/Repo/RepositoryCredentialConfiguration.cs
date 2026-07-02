@@ -21,7 +21,7 @@ public sealed class RepositoryCredentialConfiguration : IEntityTypeConfiguration
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Repository>().WithMany().HasForeignKey(c => c.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(c => c.RepositoryId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(c => new { c.RepositoryId, c.IsActive }).HasDatabaseName("ix_repository_credentials_repo_active");
     }

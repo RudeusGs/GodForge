@@ -17,7 +17,7 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
 
         builder.Property(n => n.UserId).HasColumnName("user_id").HasColumnType("uuid").IsRequired();
         builder.Property(n => n.ProjectId).HasColumnName("project_id").HasColumnType("uuid");
-        builder.Property(n => n.Type).HasColumnName("type").HasMaxLength(40).IsRequired();
+        builder.Property(n => n.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(n => n.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
         builder.Property(n => n.Message).HasColumnName("message").HasColumnType("text").IsRequired();
         builder.Property(n => n.Link).HasColumnName("link").HasMaxLength(500);
@@ -25,8 +25,8 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
         
         builder.Property(n => n.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Project>().WithMany().HasForeignKey(n => n.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<User>().WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Project>().WithMany().HasForeignKey(n => n.ProjectId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(n => new { n.UserId, n.CreatedAt }).HasDatabaseName("ix_notifications_user_time").IsDescending(false, true);
         builder.HasIndex(n => new { n.UserId, n.IsRead }).HasDatabaseName("ix_notifications_user_read");

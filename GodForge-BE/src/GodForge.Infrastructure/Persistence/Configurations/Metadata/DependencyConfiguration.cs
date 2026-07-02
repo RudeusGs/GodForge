@@ -26,7 +26,7 @@ public sealed class DependencyConfiguration : IEntityTypeConfiguration<Dependenc
         
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Repository>().WithMany().HasForeignKey(d => d.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(d => d.RepositoryId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(d => d.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<MetadataRun>().WithMany().HasForeignKey(d => d.MetadataRunId).OnDelete(DeleteBehavior.Cascade);
 

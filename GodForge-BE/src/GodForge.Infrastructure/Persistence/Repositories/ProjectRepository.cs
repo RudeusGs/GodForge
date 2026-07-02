@@ -38,7 +38,6 @@ public sealed class ProjectRepository : IProjectRepository
         var query = _context.Projects
             .Where(p => p.Status != ProjectStatus.Deleted)
             .Where(p => 
-                p.Visibility == ProjectVisibility.Public || 
                 p.Visibility == ProjectVisibility.Internal || 
                 _context.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId));
 

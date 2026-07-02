@@ -24,7 +24,7 @@ public sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSess
         builder.Property(s => s.RevokedAt).HasColumnName("revoked_at").HasColumnType("timestamptz");
         builder.Property(s => s.RevokedReason).HasColumnName("revoked_reason").HasMaxLength(100);
 
-        builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(s => new { s.UserId, s.ExpiresAt })
                .HasDatabaseName("ix_user_sessions_user_active")

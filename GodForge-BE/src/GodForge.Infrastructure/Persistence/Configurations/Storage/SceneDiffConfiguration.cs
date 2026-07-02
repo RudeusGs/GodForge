@@ -19,11 +19,11 @@ public sealed class SceneDiffConfiguration : IEntityTypeConfiguration<SceneDiff>
         builder.Property(d => d.HeadCommit).HasColumnName("head_commit").HasMaxLength(40).IsRequired();
         builder.Property(d => d.ScenePath).HasColumnName("scene_path").HasMaxLength(500).IsRequired();
         builder.Property(d => d.DiffJsonPath).HasColumnName("diff_json_path").HasMaxLength(500);
-        builder.Property(d => d.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(d => d.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Repository>().WithMany().HasForeignKey(d => d.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(d => d.RepositoryId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(d => new { d.RepositoryId, d.BaseCommit, d.HeadCommit, d.ScenePath }).HasDatabaseName("ux_scene_diffs_repo_commits_path").IsUnique();
     }

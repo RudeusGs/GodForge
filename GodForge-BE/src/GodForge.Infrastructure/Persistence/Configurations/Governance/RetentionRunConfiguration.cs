@@ -14,12 +14,12 @@ public sealed class RetentionRunConfiguration : IEntityTypeConfiguration<Retenti
         builder.Property(r => r.Id).HasColumnName("id").HasColumnType("uuid");
 
         builder.Property(r => r.PolicyId).HasColumnName("policy_id").HasColumnType("uuid").IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.AffectedCount).HasColumnName("affected_count").IsRequired();
         
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
 
-        builder.HasOne<RetentionPolicy>().WithMany().HasForeignKey(r => r.PolicyId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<RetentionPolicy>().WithMany().HasForeignKey(r => r.PolicyId).OnDelete(DeleteBehavior.Restrict);
     }
 }

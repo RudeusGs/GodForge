@@ -14,7 +14,7 @@ public sealed class SystemHealthCheckConfiguration : IEntityTypeConfiguration<Sy
         builder.Property(c => c.Id).HasColumnName("id").HasColumnType("uuid");
 
         builder.Property(c => c.Component).HasColumnName("component").HasMaxLength(100).IsRequired();
-        builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(c => c.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(c => c.DetailsJson).HasColumnName("details").HasColumnType("jsonb");
         builder.Property(c => c.CheckedAt).HasColumnName("checked_at").HasColumnType("timestamptz").IsRequired();
     }

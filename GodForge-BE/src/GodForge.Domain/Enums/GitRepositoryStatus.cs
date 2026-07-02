@@ -1,8 +1,9 @@
 namespace GodForge.Domain.Enums;
 
-public enum CloneStatus
+public enum GitRepositoryStatus
 {
-    Pending,
+    Unconfigured,
+    Configured,
     Cloning,
     Ready,
     Error,

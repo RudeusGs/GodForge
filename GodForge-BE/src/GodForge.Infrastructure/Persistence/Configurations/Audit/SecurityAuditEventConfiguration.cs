@@ -15,7 +15,7 @@ public sealed class SecurityAuditEventConfiguration : IEntityTypeConfiguration<S
         builder.Property(e => e.Id).HasColumnName("id").HasColumnType("uuid");
 
         builder.Property(e => e.UserId).HasColumnName("user_id").HasColumnType("uuid");
-        builder.Property(e => e.EventType).HasColumnName("event_type").HasMaxLength(120).IsRequired();
+        builder.Property(e => e.EventType).HasColumnName("event_type").HasConversion<string>().HasMaxLength(120).IsRequired();
         builder.Property(e => e.Severity).HasColumnName("severity").HasMaxLength(30).IsRequired();
         builder.Property(e => e.DetailsJson).HasColumnName("details").HasColumnType("jsonb");
         builder.Property(e => e.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();

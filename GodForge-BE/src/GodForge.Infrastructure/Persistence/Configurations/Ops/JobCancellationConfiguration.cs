@@ -20,7 +20,7 @@ public sealed class JobCancellationConfiguration : IEntityTypeConfiguration<JobC
         
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Job>().WithMany().HasForeignKey(c => c.JobId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Job>().WithMany().HasForeignKey(c => c.JobId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(c => c.RequestedBy).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace GodForge.Infrastructure.Persistence.Configurations.Repo;
 
-public sealed class RepositoryConfiguration : IEntityTypeConfiguration<Repository>
+public sealed class GitRepositoryConfiguration : IEntityTypeConfiguration<GitRepository>
 {
-    public void Configure(EntityTypeBuilder<Repository> builder)
+    public void Configure(EntityTypeBuilder<GitRepository> builder)
     {
         builder.ToTable("repositories", "repo");
 
@@ -19,7 +19,7 @@ public sealed class RepositoryConfiguration : IEntityTypeConfiguration<Repositor
         builder.Property(r => r.Provider).HasColumnName("provider").HasConversion<string>().HasMaxLength(50).IsRequired();
         builder.Property(r => r.DefaultBranch).HasColumnName("default_branch").HasMaxLength(150).IsRequired();
         builder.Property(r => r.WorkspaceKey).HasColumnName("workspace_key").HasMaxLength(200);
-        builder.Property(r => r.CloneStatus).HasColumnName("clone_status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(r => r.GitRepositoryStatus).HasColumnName("clone_status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.LastSyncedAt).HasColumnName("last_synced_at").HasColumnType("timestamptz");
         builder.Property(r => r.RepoSizeBytes).HasColumnName("repo_size_bytes").HasColumnType("bigint");
         builder.Property(r => r.CurrentCommitHash).HasColumnName("current_commit_hash").HasMaxLength(80);
@@ -35,7 +35,7 @@ public sealed class RepositoryConfiguration : IEntityTypeConfiguration<Repositor
                .IsUnique()
                .HasFilter("deleted_at IS NULL");
 
-        builder.HasIndex(r => new { r.ProjectId, r.CloneStatus })
+        builder.HasIndex(r => new { r.ProjectId, r.GitRepositoryStatus })
                .HasDatabaseName("ix_repositories_org_status");
 
         builder.HasQueryFilter(r => r.DeletedAt == null);

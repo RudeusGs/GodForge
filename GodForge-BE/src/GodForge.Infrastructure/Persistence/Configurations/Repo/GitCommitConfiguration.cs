@@ -24,7 +24,7 @@ public sealed class GitCommitConfiguration : IEntityTypeConfiguration<GitCommit>
         
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Repository>().WithMany().HasForeignKey(c => c.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(c => c.RepositoryId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(c => new { c.RepositoryId, c.Hash }).HasDatabaseName("ux_git_commits_repo_hash").IsUnique();
         builder.HasIndex(c => new { c.RepositoryId, c.CommittedAt }).HasDatabaseName("ix_git_commits_repo_time").IsDescending(false, true);

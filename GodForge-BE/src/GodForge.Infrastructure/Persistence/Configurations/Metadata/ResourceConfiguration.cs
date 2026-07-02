@@ -23,7 +23,7 @@ public sealed class ResourceConfiguration : IEntityTypeConfiguration<Resource>
         builder.Property(r => r.FileHash).HasColumnName("file_hash").HasMaxLength(80).IsRequired();
         builder.Property(r => r.PropertiesJson).HasColumnName("properties").HasColumnType("jsonb");
 
-        builder.HasOne<Repository>().WithMany().HasForeignKey(r => r.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(r => r.RepositoryId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(r => r.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<MetadataRun>().WithMany().HasForeignKey(r => r.MetadataRunId).OnDelete(DeleteBehavior.Cascade);
 

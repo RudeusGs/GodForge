@@ -16,7 +16,7 @@ public sealed class MigrationRunConfiguration : IEntityTypeConfiguration<Migrati
         builder.Property(r => r.MigrationName).HasColumnName("migration_name").HasMaxLength(200).IsRequired();
         builder.Property(r => r.MigrationVersion).HasColumnName("migration_version").HasMaxLength(100).IsRequired();
         builder.Property(r => r.Checksum).HasColumnName("checksum").HasMaxLength(120);
-        builder.Property(r => r.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
         builder.Property(r => r.ExecutedBy).HasColumnName("executed_by").HasMaxLength(120);

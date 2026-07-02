@@ -23,7 +23,7 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(t => t.RevokedAt).HasColumnName("revoked_at").HasColumnType("timestamptz");
 
-        builder.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(x => x.TokenHash).HasDatabaseName("ux_refresh_tokens_hash").IsUnique();
         builder.HasIndex(x => new { x.UserId, x.ExpiresAt })

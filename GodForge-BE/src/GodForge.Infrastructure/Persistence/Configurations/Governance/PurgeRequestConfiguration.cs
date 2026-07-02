@@ -17,7 +17,7 @@ public sealed class PurgeRequestConfiguration : IEntityTypeConfiguration<PurgeRe
         builder.Property(r => r.TargetType).HasColumnName("target_type").HasMaxLength(80).IsRequired();
         builder.Property(r => r.TargetId).HasColumnName("target_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.Reason).HasColumnName("reason").HasColumnType("text").IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.RequestedBy).HasColumnName("requested_by").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.ApprovedBy).HasColumnName("approved_by").HasColumnType("uuid");
         

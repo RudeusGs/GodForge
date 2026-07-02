@@ -1,9 +1,9 @@
 using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
-using GodForge.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -11,7 +11,7 @@ namespace GodForge.Api;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         services.AddControllers();
         services.AddEndpointsApiExplorer();
@@ -19,10 +19,20 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
-        services.AddHostedService<SeedDataService>();
+        services.AddHostedService<GodForge.Api.HostedServices.DevelopmentAdminSeederHostedService>();
 
         // Configure JWT Authentication
-        var jwtSecret = configuration["Jwt:Secret"] ?? "SuperSecretKeyForDevelopmentOnlyPleaseChangeInProduction123!";
+        var jwtSecret = configuration["Jwt:Secret"];
+        
+        if (!environment.IsDevelopment())
+        {
+            if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32 || jwtSecret == "SuperSecretKeyForDevelopmentOnlyPleaseChangeInProduction123!")
+            {
+                throw new InvalidOperationException("A secure Jwt:Secret of at least 32 characters is required in non-development environments.");
+            }
+        }
+        
+        jwtSecret ??= "SuperSecretKeyForDevelopmentOnlyPleaseChangeInProduction123!";
         var key = Encoding.UTF8.GetBytes(jwtSecret);
 
         services.AddAuthentication(x =>
@@ -32,7 +42,7 @@ public static class DependencyInjection
         })
         .AddJwtBearer(x =>
         {
-            x.RequireHttpsMetadata = false;
+            x.RequireHttpsMetadata = !environment.IsDevelopment();
             x.SaveToken = true;
             x.TokenValidationParameters = new TokenValidationParameters
             {

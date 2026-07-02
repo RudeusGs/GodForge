@@ -21,7 +21,7 @@ public sealed class JobLeaseConfiguration : IEntityTypeConfiguration<JobLease>
         builder.Property(l => l.RenewedAt).HasColumnName("renewed_at").HasColumnType("timestamptz");
         builder.Property(l => l.ReleasedAt).HasColumnName("released_at").HasColumnType("timestamptz");
 
-        builder.HasOne<Job>().WithMany().HasForeignKey(l => l.JobId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Job>().WithMany().HasForeignKey(l => l.JobId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(l => l.LeasedUntil).HasDatabaseName("ix_job_leases_expired");
         builder.HasIndex(l => l.JobId)

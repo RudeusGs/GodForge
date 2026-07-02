@@ -17,7 +17,7 @@ public sealed class ArtifactAccessLogConfiguration : IEntityTypeConfiguration<Ar
         builder.Property(l => l.ArtifactId).HasColumnName("artifact_id").HasColumnType("uuid").IsRequired();
         builder.Property(l => l.UserId).HasColumnName("user_id").HasColumnType("uuid").IsRequired();
         builder.Property(l => l.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
-        builder.Property(l => l.Action).HasColumnName("action").HasMaxLength(40).IsRequired();
+        builder.Property(l => l.Action).HasColumnName("action").HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(l => l.AccessedAt).HasColumnName("accessed_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<Artifact>().WithMany().HasForeignKey(l => l.ArtifactId).OnDelete(DeleteBehavior.Cascade);

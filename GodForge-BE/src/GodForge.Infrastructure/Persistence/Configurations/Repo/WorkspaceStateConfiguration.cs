@@ -23,7 +23,7 @@ public sealed class WorkspaceStateConfiguration : IEntityTypeConfiguration<Works
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(s => s.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Repository>().WithOne().HasForeignKey<WorkspaceState>(s => s.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<GitRepository>().WithOne().HasForeignKey<WorkspaceState>(s => s.RepositoryId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(s => s.RepositoryId).HasDatabaseName("ux_workspace_states_repo").IsUnique();
     }

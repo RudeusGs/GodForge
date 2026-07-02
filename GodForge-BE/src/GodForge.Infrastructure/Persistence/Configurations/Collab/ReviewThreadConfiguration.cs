@@ -19,14 +19,14 @@ public sealed class ReviewThreadConfiguration : IEntityTypeConfiguration<ReviewT
         builder.Property(t => t.ProjectId).HasColumnName("project_id").HasColumnType("uuid").IsRequired();
         builder.Property(t => t.RepositoryId).HasColumnName("repository_id").HasColumnType("uuid").IsRequired();
         builder.Property(t => t.TargetId).HasColumnName("target_id").HasMaxLength(100).IsRequired();
-        builder.Property(t => t.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(t => t.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(t => t.CreatedBy).HasColumnName("created_by").HasColumnType("uuid").IsRequired();
         
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(t => t.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<Project>().WithMany().HasForeignKey(t => t.ProjectId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Repository>().WithMany().HasForeignKey(t => t.RepositoryId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Project>().WithMany().HasForeignKey(t => t.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<GitRepository>().WithMany().HasForeignKey(t => t.RepositoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(t => t.CreatedBy).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(t => new { t.RepositoryId, t.TargetId }).HasDatabaseName("ix_review_threads_target");

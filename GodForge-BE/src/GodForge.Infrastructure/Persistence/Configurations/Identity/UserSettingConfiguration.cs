@@ -22,7 +22,7 @@ public sealed class UserSettingConfiguration : IEntityTypeConfiguration<UserSett
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(s => s.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.HasOne<User>().WithOne().HasForeignKey<UserSetting>(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<User>().WithOne().HasForeignKey<UserSetting>(s => s.UserId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(s => s.UserId).HasDatabaseName("ux_user_settings_user_id").IsUnique();
     }

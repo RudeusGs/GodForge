@@ -36,11 +36,16 @@ public sealed class JwtTokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
+        if (!int.TryParse(_configuration["Jwt:ExpiryMinutes"], out var expiryMinutes))
+        {
+            expiryMinutes = 15;
+        }
+
         var token = new JwtSecurityToken(
             issuer,
             audience,
             claims,
-            expires: DateTime.UtcNow.AddMinutes(15),
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

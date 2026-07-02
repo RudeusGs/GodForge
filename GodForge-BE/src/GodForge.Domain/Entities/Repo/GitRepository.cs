@@ -3,39 +3,39 @@ using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Repo;
 
-public sealed class Repository : BaseAuditableEntity, ISoftDeletable
+public sealed class GitRepository : BaseAuditableEntity, ISoftDeletable
 {
     public Guid ProjectId { get; private set; }
     public string RemoteUrl { get; private set; } = default!;
     public GitProvider Provider { get; private set; }
     public string DefaultBranch { get; private set; } = default!;
     public string? WorkspaceKey { get; private set; }
-    public CloneStatus CloneStatus { get; private set; }
+    public GitRepositoryStatus GitRepositoryStatus { get; private set; }
     public DateTimeOffset? LastSyncedAt { get; private set; }
     public long? RepoSizeBytes { get; private set; }
     public string? CurrentCommitHash { get; private set; }
     public DateTimeOffset? DeletedAt { get; private set; }
 
-    private Repository() { }
+    private GitRepository() { }
 
-    public static Repository Create(Guid projectId, string remoteUrl, GitProvider provider, string defaultBranch, DateTimeOffset now)
+    public static GitRepository Create(Guid projectId, string remoteUrl, GitProvider provider, string defaultBranch, DateTimeOffset now)
     {
-        return new Repository
+        return new GitRepository
         {
             Id = Guid.NewGuid(),
             ProjectId = projectId,
             RemoteUrl = remoteUrl,
             Provider = provider,
             DefaultBranch = defaultBranch,
-            CloneStatus = CloneStatus.Pending,
+            GitRepositoryStatus = GitRepositoryStatus.Unconfigured,
             CreatedAt = now,
             UpdatedAt = now
         };
     }
 
-    public void UpdateCloneStatus(CloneStatus cloneStatus, DateTimeOffset now)
+    public void UpdateGitRepositoryStatus(GitRepositoryStatus newStatus, DateTimeOffset now)
     {
-        CloneStatus = cloneStatus;
+        GitRepositoryStatus = newStatus;
         UpdatedAt = now;
     }
     
@@ -43,7 +43,7 @@ public sealed class Repository : BaseAuditableEntity, ISoftDeletable
     {
         if (DeletedAt is not null) return;
         DeletedAt = now;
-        CloneStatus = CloneStatus.Disabled;
+        GitRepositoryStatus = GitRepositoryStatus.Disabled;
         UpdatedAt = now;
     }
 }
