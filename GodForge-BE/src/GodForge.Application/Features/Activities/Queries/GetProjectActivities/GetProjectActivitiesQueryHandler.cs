@@ -1,0 +1,31 @@
+using MediatR;
+using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Security;
+using GodForge.Application.Features.Activities.DTOs;
+
+namespace GodForge.Application.Features.Activities.Queries.GetProjectActivities;
+
+public sealed class GetProjectActivitiesQueryHandler : IRequestHandler<GetProjectActivitiesQuery, Result<PagedResult<ActivityDto>>>
+{
+    private readonly IActivityRepository _activities;
+    private readonly IAuthorizationService _auth;
+
+    public GetProjectActivitiesQueryHandler(IActivityRepository activities, IAuthorizationService auth)
+    {
+        _activities = activities;
+        _auth = auth;
+    }
+
+    public async Task<Result<PagedResult<ActivityDto>>> Handle(GetProjectActivitiesQuery request, CancellationToken cancellationToken)
+    {
+        if (!await _auth.HasPermissionAsync(request.ActorId, request.ProjectId, Permissions.ActivityRead, cancellationToken))
+            return ApplicationError.Forbidden("FORBIDDEN", "You do not have permission to read activities in this project.");
+
+        var pagedActivities = await _activities.GetProjectActivitiesAsync(request.ProjectId, request.Page, request.PageSize, cancellationToken);
+        var dtos = pagedActivities.Items.Select(ActivityDto.From).ToList();
+
+        var result = new PagedResult<ActivityDto>(dtos, pagedActivities.Page, pagedActivities.PageSize, pagedActivities.TotalItems);
+        return Result<PagedResult<ActivityDto>>.Success(result);
+    }
+}

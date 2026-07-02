@@ -32,3 +32,8 @@ bld/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Secrets
+.env
+.env.*
+scratch/
