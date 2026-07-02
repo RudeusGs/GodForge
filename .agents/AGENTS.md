@@ -669,3 +669,17 @@ Before saying a task is complete, verify:
 - `dotnet build` passes with zero warnings.
 - `dotnet test` passes.
 - Documentation is updated when behavior, API, DB, worker, or security contracts changed.
+
+---
+
+## 23. Hardened AI Agent Rules
+
+1. **Definition of Ready**: You must explicitly verify the `docs/DEFINITION_OF_READY.md` checklist is satisfied before beginning any coding task. Do not write code if the requirements are ambiguous or missing.
+2. **Skill Usage**: You must use the correct specialized skill for the task at hand.
+3. **Docs-Sync Check**: You must use the `docs-sync` skill to update documentation (`docs/SRS/*`) after changing backend behavior, architecture, or database rules.
+4. **ADR Update**: You must proactively draft or update Architecture Decision Records (`docs/ADR/*`) when changing the architecture, using the `architecture-decision` skill.
+5. **Frontend Rules**: You must use the `frontend-feature` skill when touching `GodForge-FE`. No business authorization should be enforced only in the UI.
+6. **Security Review**: You must use the `security-review` skill when auditing or modifying auth, RBAC, secrets, Git operations, path handling, or input validation.
+7. **Test Quality**: You must use the `test-quality` skill when implementing tests.
+8. **CI Quality Gate**: You must use the `ci-quality-gate` skill before reporting completion to the user.
+9. **Prohibition on Missing Requirements**: Do not code against missing SRS, API, DB, or security requirements. If `04-database.md`, an API contract, RBAC rules, or Acceptance Criteria are missing, implementation is strictly blocked until the documentation is written and approved.

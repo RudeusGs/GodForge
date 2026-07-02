@@ -2807,3 +2807,38 @@ The `core` schema owns projects, project settings, project membership, and proje
 
 ---
 
+## 4.25 Hardened Database Rules
+
+To prevent AI-agent drift and ensure strict compliance, the following rules apply universally to the GodForge database:
+
+### 1. Conventions & Types
+- **Schemas**: Group tables logically using PostgreSQL schemas (`identity`, `core`, `repo`, `ops`, `metadata`, `analysis`, `storage`, `collab`, `audit`, `search`, `governance`).
+- **Table Naming**: All tables must use `snake_case` and be pluralized (e.g., `projects`, `job_attempts`).
+- **Column Naming**: All columns must use `snake_case` (e.g., `created_at`, `project_id`).
+- **PostgreSQL Type Conventions**: Use `uuid` for IDs, `timestamptz` for dates in UTC, `jsonb` for unstructured data, `text` for strings unless explicitly bounded.
+
+### 2. Required Table Categories
+- **Core business tables**: Store organizational state (`users`, `projects`, `memberships`). Enforce RBAC ownership via foreign keys.
+- **Repository and credential reference tables**: Store Git repository config and references.
+- **Metadata tables**: Store parsed outputs from `.tscn`, `.tres`, and `.gd`.
+- **Job tables**: Track async tasks (`jobs`, `job_attempts`, `job_leases`).
+- **Activity and notification tables**: Track user events and system alerts.
+
+### 3. Constraints & Relationships
+- **Indexes**: Explicitly declare indexes for all foreign keys, lookup columns, and high-cardinality fields via EF Core configuration.
+- **Unique Constraints**: Explicitly enforce uniqueness where applicable (e.g., `user_id` + `project_id` in membership) at the DB level, not just the application level.
+- **Foreign Keys**: Define explicit foreign key constraints with well-understood delete cascades.
+- **Delete Behavior**: Default to `Restrict` or `NoAction` for critical relations to prevent accidental mass deletion.
+- **Soft-Delete Behavior**: Implement a nullable `deleted_at` column for high-value entities (Projects, Repositories). Queries must globally filter out soft-deleted records.
+- **Retention Behavior**: High-volume tables (logs, older job attempts) must have partition/retention rules for automatic cleanup after X days.
+- **Metadata Versioning**: Parsed metadata MUST be versioned by `project_id`, `repository_id`, `commit_hash`, and `job_id` to prevent cross-contamination.
+
+### 4. Implementation Rules
+- **Migration Rules**: Migrations must be generated explicitly via EF Core (`dotnet ef migrations add`). Never use `EnsureCreated()`. Never modify applied migrations.
+- **Seed Data Rules**: Required seed data (e.g., predefined roles, system settings) must be defined in `DbContext.OnModelCreating` or executed via explicit SQL in migrations.
+- **Secret and Credential Storage Rules**: Plaintext secrets (PATs) are strictly forbidden. Credentials must be encrypted at rest (e.g., AES-256-GCM) or managed via an external vault.
+
+### 5. Architectural Boundaries
+- **Redis Usage**: Redis is for ephemeral caching, rate limits, and distributed locks. It MUST NOT store durable business records.
+- **RabbitMQ Job-State Boundary**: RabbitMQ is ONLY for transport. Job state (pending, running, failed, completed) MUST reside in PostgreSQL. Do not use the queue to determine if a job exists.
+- **MinIO Artifact Metadata Rules**: MinIO stores the binary blobs. PostgreSQL MUST store the metadata pointers (`object_key`, `size`, `checksum`, `bucket`) for these artifacts.
