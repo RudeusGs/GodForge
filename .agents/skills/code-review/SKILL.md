@@ -20,14 +20,28 @@ Use this skill when auditing existing code, or when the user asks you to review 
 4. Check Git safety (distributed locks, sanitized input).
 
 ## Mandatory Checks
-- Ensure CQRS is strictly separated (Commands mutate, Queries return DTOs).
-- Verify async jobs do not run synchronously in API requests.
+- Clean Architecture dependency violations.
+- Controller business logic (controllers must orchestrate, not decide).
+- Application/Domain infrastructure leakage.
+- Missing RBAC.
+- Missing tests.
+- Missing docs sync.
+- Secrets/logging issues.
+- Async job misuse (e.g., synchronous long operations in HTTP requests).
+- Migration risks (e.g., editing applied migrations).
+- Frontend permission-only security mistakes.
 
 ## Forbidden Actions
 - Do not rubber-stamp code without checking documentation alignment.
 
 ## Completion Checklist
-- [ ] Boundaries checked.
-- [ ] Error codes verified.
+- [ ] Clean Architecture violations checked.
+- [ ] Controller logic checked.
 - [ ] RBAC audited.
-- [ ] Git locks verified.
+- [ ] Tests and docs sync checked.
+- [ ] Secrets and logging audited.
+- [ ] Async job and migration risks checked.
+- [ ] Frontend security checked.
+
+## Output Expectations
+Provide a detailed review listing issues categorized by the mandatory checks above.

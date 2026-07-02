@@ -615,11 +615,21 @@ feat(auth): add jwt refresh token rotation
 
 Branching:
 
-- `main` is stable and production-ready.
-- `develop` is the integration branch.
-- `feature/*` is for new features.
-- `fix/*` is for bug fixes.
-- `release/*` is for release preparation.
+Each branch must represent exactly one task.
+
+- `feat/*`
+- `fix/*`
+- `refactor/*`
+- `docs/*`
+- `test/*`
+- `chore/*`
+- `ci/*`
+- `build/*`
+- `perf/*`
+- `release/*`
+- `hotfix/*`
+
+Keep Conventional Commit types aligned with branch types.
 
 ---
 

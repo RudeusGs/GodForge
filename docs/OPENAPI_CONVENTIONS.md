@@ -2,7 +2,10 @@
 
 ## Route Structure
 - All routes must be prefixed with `/api/v1/`.
-- Routes should be plural nouns (`/api/v1/projects/{projectId}/repositories`).
+- Project collection routes use plural nouns (e.g., `/api/v1/projects`).
+- **Exception**: Since MVP has one primary repository per project, the one-to-one project repository route uses `/api/v1/projects/{projectId}/repository` (singular).
+- Collection-like nested resources use plural nouns (e.g., `/api/v1/projects/{projectId}/members`).
+- Route parameter naming should prefer `{projectId}` over `{id}` in docs unless the endpoint is generic.
 
 ## Request/Response Envelopes
 - Successful responses return `200 OK` or `201 Created` with a standardized envelope:
