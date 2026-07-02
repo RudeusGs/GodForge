@@ -31,10 +31,10 @@ public abstract class BaseApiController : ControllerBase
                 });
             }
 
-            return Ok(new 
-            { 
-                data = result.Value, 
-                meta = new { correlationId = CorrelationId } 
+            return Ok(new
+            {
+                data = result.Value,
+                meta = new { correlationId = CorrelationId }
             });
         }
 

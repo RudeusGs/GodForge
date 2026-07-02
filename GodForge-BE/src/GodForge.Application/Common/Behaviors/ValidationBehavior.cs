@@ -34,7 +34,7 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
         if (failures.Count != 0)
         {
             var errors = string.Join("; ", failures.Select(f => $"{f.PropertyName}: {f.ErrorMessage}"));
-            
+
             // If TResponse is Result<T> or Result, we should return a failed result
             var responseType = typeof(TResponse);
             if (responseType.IsGenericType && responseType.GetGenericTypeDefinition() == typeof(Result<>))

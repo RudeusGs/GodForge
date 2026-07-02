@@ -41,7 +41,7 @@ public class JwtTokenServiceTests
 
         Assert.Equal("TestIssuer", token.Issuer);
         Assert.Equal("TestAudience", token.Audiences.First());
-        
+
         var subClaim = token.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
         Assert.NotNull(subClaim);
         Assert.Equal(user.Id.ToString(), subClaim.Value);

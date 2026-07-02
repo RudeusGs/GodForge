@@ -36,10 +36,10 @@ public class ProjectsController : BaseApiController
         var result = await _mediator.Send(command, cancellationToken);
         if (result.IsSuccess)
         {
-            return StatusCode(201, new 
-            { 
-                data = result.Value, 
-                meta = new { correlationId = CorrelationId } 
+            return StatusCode(201, new
+            {
+                data = result.Value,
+                meta = new { correlationId = CorrelationId }
             });
         }
         return HandleResult(result);
