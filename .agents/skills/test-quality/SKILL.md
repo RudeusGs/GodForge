@@ -32,3 +32,7 @@ Use this skill when developing unit, integration, or regression tests for backen
 - [ ] Boundary layers are respected.
 - [ ] Tests pass locally.
 - [ ] Code coverage is acceptable.
+
+## Output Expectations
+- Provide a summary of the changes made.
+- List any quality gates run and their results.

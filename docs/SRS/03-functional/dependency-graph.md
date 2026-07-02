@@ -72,9 +72,9 @@ The Dependency Graph visualizes the relationships between scenes, scripts, resou
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{id}/dependencies` | `viewer+` | root, depth, type | Graph nodes/edges | `ANALYZE_REQUIRED` |
-| GET | `/api/v1/projects/{id}/health/{reportId}/issues` | `viewer+` | issue type | Cycle/missing issues | `REPORT_NOT_FOUND` |
-| POST | `/api/v1/projects/{id}/analyze` | `developer+` | options | Analyze job | `PARSE_REQUIRED` |
+| GET | `/api/v1/projects/{projectId}/dependencies` | `viewer+` | root, depth, type | Graph nodes/edges | `ANALYZE_REQUIRED` |
+| GET | `/api/v1/projects/{projectId}/health/{reportId}/issues` | `viewer+` | issue type | Cycle/missing issues | `REPORT_NOT_FOUND` |
+| POST | `/api/v1/projects/{projectId}/analyze` | `developer+` | options | Analyze job | `PARSE_REQUIRED` |
 
 ## Related Database Tables
 

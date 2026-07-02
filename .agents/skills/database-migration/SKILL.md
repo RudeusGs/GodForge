@@ -3,11 +3,21 @@ name: database-migration
 description: Skill for creating and managing Entity Framework Core migrations for the GodForge ASP.NET Core backend using PostgreSQL. Use when adding or changing database tables, columns, constraints, indexes, schemas, EF Core entity configurations, migration files, seed data, soft-delete behavior, metadata tables, job state tables, audit/activity tables, or any database change that must follow the GodForge SRS data model, schema versioning, security, and migration conventions.
 ---
 
-# Database Migration
+
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this skill when creating, reviewing, or updating Entity Framework Core database migrations for the GodForge backend.
 
-## Core Principles
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - Treat the SRS as the source of truth before changing schema.
 - Keep core business data and generated metadata separate by schema or clearly separated namespace.
@@ -17,7 +27,12 @@ Use this skill when creating, reviewing, or updating Entity Framework Core datab
 - Do not store secrets in plain text. Store only secret references such as `credential_ref`, or encrypted values if the architecture explicitly supports them.
 - Prefer additive, backward-compatible schema changes when API, worker, and frontend deployments may not happen at the same time.
 
-## 1. Read the SRS and Identify the Data Domain
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Before writing code, inspect the relevant SRS section and confirm:
 
@@ -35,7 +50,12 @@ Use this default domain split unless the repository already defines a different 
 | Core business data | `core` or default `public` | `users`, `roles`, `projects`, `project_members`, `repositories`, `branches`, `activities`, `notifications`, `jobs` |
 | Metadata data | `metadata` | `metadata_versions`, `scenes`, `scene_nodes`, `assets`, `resources`, `scripts`, `dependencies`, `statistics`, `health_reports`, `health_issues`, search/materialized metadata tables |
 
-## 2. Design the Entity and Configuration
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Place EF Core configurations in:
 
@@ -125,11 +145,21 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
 }
 ```
 
-## 3. Type Mapping Rules
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use explicit PostgreSQL column types for important columns.
 
-| C# type | PostgreSQL type | Notes |
+| C
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 | --- | --- | --- |
 | `Guid` | `uuid` | Use `gen_random_uuid()` when DB-generated IDs are expected. |
 | `string` | `varchar(n)` or `text` | Use bounded `varchar(n)` for codes, names, states, slugs, and refs. Use `text` for long descriptions/messages. |
@@ -141,7 +171,12 @@ Use explicit PostgreSQL column types for important columns.
 | `Dictionary`, object payloads, summaries | `jsonb` | Use for flexible metadata such as `properties_json`, `metrics_json`, `summary_json`, `permissions`. |
 | enum/state value | `varchar(32)` or `varchar(64)` | Store controlled strings unless the project standard uses PostgreSQL enum types. |
 
-## 4. Index and Constraint Strategy
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Create indexes only for documented access patterns or high-value queries.
 
@@ -173,7 +208,12 @@ builder.HasIndex(project => new { project.CreatedBy, project.Name })
     .HasDatabaseName("ux_projects_created_by_name_active");
 ```
 
-## 5. Relationship and Delete Behavior Rules
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use explicit delete behavior. Do not rely on EF Core defaults.
 
@@ -199,7 +239,12 @@ builder.HasOne(activity => activity.Actor)
     .HasConstraintName("fk_activities_users_actor_id");
 ```
 
-## 6. State, Versioning, and Async Job Tables
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 When adding stateful entities, use controlled state values and make them compatible with API/worker flows.
 
@@ -225,7 +270,12 @@ correlation_id
 created_at/generated_at
 ```
 
-## 7. Create the Migration
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Run EF Core commands from the backend repository root:
 
@@ -254,7 +304,12 @@ dotnet ef migrations add <MigrationName> \
   --startup-project src/GodForge.Api
 ```
 
-## 8. Review the Generated Migration
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Before applying the migration, inspect the generated file carefully.
 
@@ -277,7 +332,12 @@ For destructive changes:
 - Never drop or rename production columns without a rollback/backfill plan.
 - For renames, prefer explicit `RenameColumn`/`RenameTable` instead of drop/create when preserving data matters.
 
-## 9. Apply and Validate the Migration
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Apply locally or to the target environment according to deployment rules:
 
@@ -300,7 +360,12 @@ where table_schema in ('core', 'metadata', 'public')
 order by table_schema, table_name;
 ```
 
-## 10. Rollback Guidance
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 For local development, rollback to a previous migration when needed:
 
@@ -314,7 +379,12 @@ For shared environments:
 - Prefer a forward-fix migration unless the deployment plan explicitly supports rollback.
 - Check worker compatibility because queued jobs may still reference older schema or payload versions.
 
-## 11. Final Review Checklist
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - [ ] SRS data model and relevant workflow/state machine were checked.
 - [ ] Core data and metadata data are separated appropriately.
@@ -329,3 +399,29 @@ For shared environments:
 - [ ] Migration was reviewed before applying.
 - [ ] Migration can be applied from a clean database and from the previous migration.
 - [ ] Tests or smoke checks were run after applying the migration.
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Ensure all steps in the workflow are followed.
+- Follow all rules defined in AGENTS.md.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Do not violate architecture boundaries.
+- Do not skip the required tests.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Provide a summary of the changes made.
+- List any quality gates run and their results.

@@ -34,3 +34,7 @@ Use this skill to audit features related to authentication, RBAC, secret storage
 - [ ] No secrets are logged.
 - [ ] SQL and Path injections are mitigated.
 - [ ] Git workspace locks are utilized.
+
+## Output Expectations
+- Provide a summary of the changes made.
+- List any quality gates run and their results.

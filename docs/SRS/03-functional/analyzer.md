@@ -69,7 +69,7 @@ Out of scope:
 
 The API must only orchestrate and return lightweight responses.
 
-- `POST /api/v1/projects/{id}/analyze` must not run heavy analysis inline.
+- `POST /api/v1/projects/{projectId}/analyze` must not run heavy analysis inline.
 - It must return `202 Accepted` with `data.jobId`, `data.status`, and `correlationId` when a job is queued.
 - It may return an existing queued/running/completed job when the same idempotency key is requested again.
 - It must reject requests without completed parse metadata for the target commit.
@@ -170,13 +170,13 @@ Rules:
 
 | Method | Path | Permission | Request | Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/projects/{id}/analyze` | `developer+` | `branch`, `commitHash`, `ruleSetVersion`, `options` | `202` with analyze job | `PARSE_REQUIRED`, `REPO_NOT_READY`, `FORBIDDEN` |
-| `GET` | `/api/v1/projects/{id}/health` | `viewer+` | none | Latest health report summary | `HEALTH_NOT_READY`, `FORBIDDEN` |
-| `GET` | `/api/v1/projects/{id}/health/history` | `viewer+` | pagination, branch/commit filters | Health report history | `FORBIDDEN` |
-| `GET` | `/api/v1/projects/{id}/health/{reportId}` | `viewer+` | report id | Full report summary | `REPORT_NOT_FOUND`, `FORBIDDEN` |
-| `GET` | `/api/v1/projects/{id}/health/{reportId}/issues` | `viewer+` | severity, rule code, entity type, pagination | Health issues | `REPORT_NOT_FOUND`, `FORBIDDEN` |
-| `PATCH` | `/api/v1/projects/{id}/health/issues/{issueId}` | `developer+` or configured role | status/comment | Issue acknowledgement/ignore state | `ISSUE_NOT_FOUND`, `FORBIDDEN` |
-| `GET` | `/api/v1/projects/{id}/jobs/{jobId}` | project member | job id | Job status and progress | `JOB_NOT_FOUND`, `FORBIDDEN` |
+| `POST` | `/api/v1/projects/{projectId}/analyze` | `developer+` | `branch`, `commitHash`, `ruleSetVersion`, `options` | `202` with analyze job | `PARSE_REQUIRED`, `REPO_NOT_READY`, `FORBIDDEN` |
+| `GET` | `/api/v1/projects/{projectId}/health` | `viewer+` | none | Latest health report summary | `HEALTH_NOT_READY`, `FORBIDDEN` |
+| `GET` | `/api/v1/projects/{projectId}/health/history` | `viewer+` | pagination, branch/commit filters | Health report history | `FORBIDDEN` |
+| `GET` | `/api/v1/projects/{projectId}/health/{reportId}` | `viewer+` | report id | Full report summary | `REPORT_NOT_FOUND`, `FORBIDDEN` |
+| `GET` | `/api/v1/projects/{projectId}/health/{reportId}/issues` | `viewer+` | severity, rule code, entity type, pagination | Health issues | `REPORT_NOT_FOUND`, `FORBIDDEN` |
+| `PATCH` | `/api/v1/projects/{projectId}/health/issues/{issueId}` | `developer+` or configured role | status/comment | Issue acknowledgement/ignore state | `ISSUE_NOT_FOUND`, `FORBIDDEN` |
+| `GET` | `/api/v1/projects/{projectId}/jobs/{jobId}` | project member | job id | Job status and progress | `JOB_NOT_FOUND`, `FORBIDDEN` |
 
 ## Response Shape
 

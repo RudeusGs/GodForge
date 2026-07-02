@@ -56,10 +56,10 @@ The Scene Explorer displays Godot scene structures as interactive node trees, he
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{id}/scenes` | `viewer+` | pagination, search | Scene list | `METADATA_NOT_READY` |
-| GET | `/api/v1/projects/{id}/scenes/{sceneId}` | `viewer+` | scene id | Scene detail + summary | `SCENE_NOT_FOUND` |
-| GET | `/api/v1/projects/{id}/scenes/{sceneId}/nodes` | `viewer+` | tree/flat, search, type | Node tree/list | `SCENE_NOT_FOUND` |
-| POST | `/api/v1/projects/{id}/parse` | `developer+` | options | Parse job | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/scenes` | `viewer+` | pagination, search | Scene list | `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/scenes/{sceneId}` | `viewer+` | scene id | Scene detail + summary | `SCENE_NOT_FOUND` |
+| GET | `/api/v1/projects/{projectId}/scenes/{sceneId}/nodes` | `viewer+` | tree/flat, search, type | Node tree/list | `SCENE_NOT_FOUND` |
+| POST | `/api/v1/projects/{projectId}/parse` | `developer+` | options | Parse job | `REPO_NOT_READY` |
 
 ## Related Database Tables
 

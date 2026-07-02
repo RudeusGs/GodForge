@@ -55,9 +55,9 @@ Search helps users quickly find projects, scenes, nodes, assets, scripts, and co
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/search` | Authenticated | q, type, projectId, page, pageSize | Search results, pagination | `VALIDATION_ERROR` |
-| GET | `/api/v1/projects/{id}/scenes` | `viewer+` | search/filter | Scene results | `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/assets` | `viewer+` | search/filter | Asset results | `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/git/commits` | `viewer+` | author/date/search | Commit results | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/scenes` | `viewer+` | search/filter | Scene results | `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/assets` | `viewer+` | search/filter | Asset results | `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/git/commits` | `viewer+` | author/date/search | Commit results | `REPO_NOT_READY` |
 
 ## Related Database Tables
 

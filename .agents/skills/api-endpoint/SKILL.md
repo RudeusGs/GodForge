@@ -3,11 +3,21 @@ name: api-endpoint
 description: guidance for adding or modifying api endpoints in the godforge backend. use this skill when implementing asp.net core endpoints, controller actions, request/response dtos, command/query handlers, fluentvalidation rules, rbac checks, standardized api responses, error mapping, activity logging, async job endpoints, git/repository endpoints, or any backend api work that must follow the godforge srs conventions.
 ---
 
-# API Endpoint
+
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this skill to add or update API endpoints in the GodForge backend while staying aligned with the SRS, API specification, RBAC model, async-job rules, and backend architecture boundaries.
 
-## Core Rules
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - Treat `docs/SRS/05-api.md` as the source of truth for method, path, request body, response body, validation, permissions, success status, and error cases.
 - Cross-check security requirements in `docs/SRS/06-security.md`, non-functional requirements in `docs/SRS/07-non-functional.md`, workflow rules in `docs/SRS/08-workflows.md`, and worker/job rules in `docs/SRS/12-worker-processing.md` when relevant.
@@ -16,9 +26,19 @@ Use this skill to add or update API endpoints in the GodForge backend while stay
 - Never return EF/domain entities directly from the API. Always map to response DTOs.
 - Never expose secrets, stack traces, raw internal exception details, Git credentials, token values, or sensitive paths in responses, logs, activity messages, or notifications.
 
-## Implementation Workflow
+#
 
-### 1. Confirm the API Contract
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Before writing code, inspect the SRS and record:
 
@@ -35,7 +55,12 @@ Before writing code, inspect the SRS and record:
 
 Do not invent a new route or response shape if the endpoint exists in `05-api.md`. If the SRS is missing or ambiguous, implement the smallest consistent endpoint and add a TODO or update request for the SRS/API spec.
 
-### 2. Create Request and Response DTOs
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Place request contracts at the API boundary, for example:
 
@@ -69,7 +94,12 @@ public sealed record ProjectDto(
 
 Avoid over-posting by only exposing fields the client is allowed to set.
 
-### 3. Add FluentValidation
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Create a validator for every request body or complex query model.
 
@@ -96,7 +126,12 @@ public sealed class CreateProjectRequestValidator : AbstractValidator<CreateProj
 
 Validation failures must map to the standard error response and must not leak internal implementation details.
 
-### 4. Add Command or Query
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use a command for write operations and a query for read operations. Include actor context explicitly.
 
@@ -118,7 +153,12 @@ The handler should:
 - Return typed failures with stable error codes.
 - Avoid direct HTTP concepts unless the project has an established application result abstraction.
 
-### 5. Add Controller Action
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Controller actions should bind input, call MediatR, and convert the result to the standardized API response.
 
@@ -159,7 +199,12 @@ public async Task<IActionResult> Create(
 
 Use `[Authorize]` for authenticated endpoints, but do not rely only on controller attributes for project-level authorization. Project-level RBAC must be enforced in the application use case because it needs project membership and target-resource context.
 
-### 6. Use Standard Response Format
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Successful single-resource response:
 
@@ -200,7 +245,12 @@ Error response:
 
 Error details must be safe for clients. Do not include stack traces, raw SQL, full Git command output, credential values, or internal filesystem paths.
 
-### 7. Map Error Codes Consistently
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use stable, SRS-aligned error codes. Prefer module-prefixed codes when available.
 
@@ -219,14 +269,19 @@ Common mappings:
 
 For security-sensitive resources, follow the project convention on whether to return `403` or mask existence with `404`.
 
-### 8. Apply RBAC Correctly
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use the RBAC matrix from `06-security.md`.
 
 General pattern:
 
 - System admin may bypass project-level restrictions when SRS allows it.
-- Project owner/admin can manage settings, members, and repository configuration.
+- project_owner/admin can manage settings, members, and repository configuration.
 - Developer can perform allowed Git operations and trigger permitted parse/analyze operations.
 - Reviewer and viewer are read-oriented unless the SRS explicitly grants write permissions.
 - Notification ownership must be checked against the actor.
@@ -248,7 +303,12 @@ if (!permission.Allowed)
 
 Do not put project membership queries inside the controller.
 
-### 9. Implement Pagination and Filtering
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 For list endpoints, use a query model rather than many loose parameters when filters grow.
 
@@ -268,7 +328,12 @@ Rules:
 - Validate sort fields against an allow-list.
 - Apply permission filters before returning results.
 
-### 10. Handle Async Job Endpoints
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Endpoints that trigger clone, parse, analyze, diff, preview, or other heavy work must not run the work inside the request.
 
@@ -305,7 +370,12 @@ Job-producing handlers should:
 - Publish a RabbitMQ message after persisting the job.
 - Return quickly and let the worker update progress, heartbeat, timeout, and final status.
 
-### 11. Handle Git and Repository Endpoints
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 For repository and Git operations:
 
@@ -316,7 +386,12 @@ For repository and Git operations:
 - Convert known Git failures into stable API errors, such as rejected push, merge conflict, dirty working tree, invalid branch, or repository locked.
 - Write activity logs for successful and failed write operations.
 
-### 12. Add Activity Log and Notifications
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Write activity logs for important state changes, including:
 
@@ -331,7 +406,12 @@ Activity logs must include actor, action, target type, target id, status, timest
 
 Create notifications only when the workflow requires them, and ensure the recipient is authorized to see the linked object.
 
-### 13. Maintain Observability
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Every request should carry or create a correlation id. Ensure errors and important operational events can be traced through logs and job records.
 
@@ -342,7 +422,12 @@ For endpoint code and handlers:
 - Do not log secrets, tokens, credentials, raw authorization headers, or sensitive files.
 - Preserve cancellation token usage through async calls.
 
-### 14. Update Tests
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Add or update tests for:
 
@@ -356,7 +441,12 @@ Add or update tests for:
 - Job creation and queue publication for async endpoints.
 - Repository lock behavior for Git operations.
 
-## Endpoint Implementation Checklist
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - [ ] Endpoint method and path match `docs/SRS/05-api.md`.
 - [ ] Related functional requirement ID is identified.
@@ -375,3 +465,29 @@ Add or update tests for:
 - [ ] Sensitive data is never returned or logged.
 - [ ] Cancellation tokens are passed through async calls.
 - [ ] Unit/integration tests cover success, validation, auth, RBAC, conflict, and error cases.
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Ensure all steps in the workflow are followed.
+- Follow all rules defined in AGENTS.md.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Do not violate architecture boundaries.
+- Do not skip the required tests.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Provide a summary of the changes made.
+- List any quality gates run and their results.

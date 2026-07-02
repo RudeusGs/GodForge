@@ -72,12 +72,12 @@ The Parser module extracts metadata from Godot repositories for use by the Scene
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/projects/{id}/parse` | `developer+` | branch/commit/options | `202` parse job | `REPO_NOT_READY` |
-| GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | job id | Job status/progress | `JOB_NOT_FOUND` |
-| GET | `/api/v1/projects/{id}/scenes` | `viewer+` | pagination/filter | Parsed scenes | `METADATA_NOT_READY` |
-| GET | `/api/v1/projects/{id}/assets` | `viewer+` | pagination/filter | Parsed assets | `METADATA_NOT_READY` |
-| GET | `/api/v1/projects/{id}/scripts` | `viewer+` | pagination/filter | Parsed scripts | `METADATA_NOT_READY` |
-| GET | `/api/v1/projects/{id}/resources` | `viewer+` | pagination/filter | Parsed resources | `METADATA_NOT_READY` |
+| POST | `/api/v1/projects/{projectId}/parse` | `developer+` | branch/commit/options | `202` parse job | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/jobs/{jobId}` | Project member | job id | Job status/progress | `JOB_NOT_FOUND` |
+| GET | `/api/v1/projects/{projectId}/scenes` | `viewer+` | pagination/filter | Parsed scenes | `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/assets` | `viewer+` | pagination/filter | Parsed assets | `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/scripts` | `viewer+` | pagination/filter | Parsed scripts | `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/resources` | `viewer+` | pagination/filter | Parsed resources | `METADATA_NOT_READY` |
 
 ## Related Database Tables
 

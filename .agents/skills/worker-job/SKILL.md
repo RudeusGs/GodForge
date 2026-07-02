@@ -3,13 +3,23 @@ name: worker-job
 description: skill for implementing async background jobs and worker processing in the godforge backend. use when adding or changing rabbitmq producers/consumers, clone/fetch/parse/analyze/diff/preview jobs, job lifecycle handling, retry/dlq behavior, progress reporting, idempotency, distributed repository locks, observability, and worker regression tests.
 ---
 
-# Worker Job
+
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this skill when implementing or modifying GodForge background jobs for long-running work such as repository clone/fetch, project parse, project analyze, scene diff, and preview generation.
 
 GodForge API requests must stay lightweight. Any operation that can exceed the API latency target or depends on repository/project size must create a durable job, publish a RabbitMQ message, and return a `202 Accepted` response with a `jobId` and `correlationId`.
 
-## Required SRS Sources
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Before coding, read the relevant sections in `docs/SRS/`:
 
@@ -34,7 +44,12 @@ Confirm these items before writing code:
 - Metadata/artifact output target: PostgreSQL, MinIO, or both.
 - Activity log, notification, cache invalidation, and SignalR progress events.
 
-## Canonical Architecture
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 ```text
 API Controller
@@ -56,7 +71,12 @@ RabbitMQ durable queue
 
 Do not put business rules directly in RabbitMQ plumbing or API controllers. API/Application decides whether the job may be created. Worker executes the already-authorized job safely and revalidates stale state before committing results.
 
-## Job Types
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use stable job type names in code and persistence:
 
@@ -71,7 +91,12 @@ Use stable job type names in code and persistence:
 
 Prefer immutable inputs such as `commitHash`, `snapshotRef`, or `metadataVersion`. Avoid workers reading a mutable working tree without a lock.
 
-## Message Contract
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Every job message must include enough data for retries, delayed delivery, stale-message detection, and tracing.
 
@@ -119,7 +144,12 @@ Rules:
 - `InputHash` must be deterministic from job type, project id, repository id, revision/snapshot, and important parameters.
 - Do not include Git credentials, secrets, tokens, raw stdout/stderr with secrets, or large payloads in messages. Store large inputs in PostgreSQL/MinIO and pass references.
 
-## Job Record
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 A job row should be created before publishing the message. At minimum, persist:
 
@@ -133,7 +163,12 @@ timeout_at, cancelled_at, metadata_version, schema_version
 
 The database is the source of truth for job state. RabbitMQ is the transport, not the job database.
 
-## Producer Flow
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this sequence in Application/Service layer:
 
@@ -192,7 +227,12 @@ public async Task<Result<JobDto>> QueueParseAsync(
 }
 ```
 
-## Consumer Flow
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Every worker handler must follow this order:
 
@@ -307,7 +347,12 @@ public sealed class ParseProjectJobHandler : IJobHandler<ParseProjectJobMessage>
 }
 ```
 
-## Lifecycle State Machine
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use these states and only these transitions:
 
@@ -324,7 +369,12 @@ Use these states and only these transitions:
 
 Never allow stale worker completion to overwrite a newer project/repository state. Re-check service-layer state transitions before committing final results.
 
-## Progress, Heartbeat, and SignalR
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Workers must update progress and heartbeat for long jobs.
 
@@ -362,7 +412,12 @@ public sealed class ProgressReporter : IProgressReporter
 }
 ```
 
-## Retry and DLQ Policy
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Classify errors before choosing retry behavior.
 
@@ -385,7 +440,12 @@ Retry defaults:
 - Create a new `MessageId` for each publish attempt.
 - Move poison messages and retry-exhausted messages to the DLQ.
 
-## Idempotency Rules
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Every job must be safe to run more than once.
 
@@ -397,7 +457,12 @@ Every job must be safe to run more than once.
 - Do not create duplicate activity logs unless the event represents a real retry attempt.
 - Git write operations are special: avoid automatic retry if retrying can duplicate commits/pushes. Prefer safe precondition checks and explicit user retry.
 
-## Repository Locks
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use Redis distributed locks for jobs that read or mutate a mutable repository workspace.
 
@@ -415,7 +480,12 @@ Rules:
 - Lock failure should usually become `retrying`, not immediate `failed`.
 - Prefer immutable repository snapshots to reduce lock duration.
 
-## Cancellation and Timeout
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Cancellation must be cooperative:
 
@@ -431,7 +501,12 @@ Timeout handling:
 - A watchdog should mark stale `running` jobs as `timeout` or requeue according to policy.
 - Timeout must not leave repository locks, temp files, partial artifacts, or half-committed metadata as active outputs.
 
-## Output Storage
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use the right storage target:
 
@@ -441,7 +516,12 @@ Use the right storage target:
 
 Any artifact saved to MinIO must include metadata: `project_id`, `job_id`, `content_type`, `checksum`, `created_at`, and retention policy.
 
-## Observability
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Every worker must log structured events with:
 
@@ -464,7 +544,12 @@ Metrics should include:
 
 Never log secrets, credential tokens, raw authorization headers, full Git remote URLs with embedded credentials, or stack traces in API responses.
 
-## Activity Log and Notifications
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Write activity logs for important lifecycle events:
 
@@ -480,7 +565,12 @@ Write activity logs for important lifecycle events:
 
 Notifications should be sent for final user-visible outcomes: completed, failed, timeout, dead-lettered, and cancelled when the actor is not the only audience.
 
-## Cache Invalidation and Events
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Emit domain events after durable state is committed:
 
@@ -491,7 +581,12 @@ Emit domain events after durable state is committed:
 
 Do not publish completion events before outputs are committed.
 
-## Testing Requirements
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Add tests at the correct layer:
 
@@ -510,7 +605,12 @@ dotnet test
 
 When touching RabbitMQ/Redis/MinIO behavior, also run the project integration test profile or docker-compose-based test environment if available.
 
-## Implementation Checklist
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - [ ] SRS job type, producer, consumer, timeout, retry, DLQ, and idempotency rules are confirmed.
 - [ ] API/Application creates a durable job and returns `202 Accepted` with `jobId` and `correlationId`.
@@ -529,7 +629,12 @@ When touching RabbitMQ/Redis/MinIO behavior, also run the project integration te
 - [ ] Unit/integration tests cover success, retry, DLQ, cancellation, timeout, idempotency, and lock behavior.
 - [ ] `dotnet build` and `dotnet test` pass without warnings.
 
-## Do Not
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - Do not run clone, parse, analyze, diff, or preview synchronously inside HTTP requests when the work can exceed API latency targets.
 - Do not treat RabbitMQ as the source of truth for job state.
@@ -538,3 +643,29 @@ When touching RabbitMQ/Redis/MinIO behavior, also run the project integration te
 - Do not let one file parse error crash the whole parse job when partial parse is supported.
 - Do not complete a stale worker job without checking current project/repository state.
 - Do not log credentials, tokens, secrets, or stack traces to client responses.
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Ensure all steps in the workflow are followed.
+- Follow all rules defined in AGENTS.md.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Do not violate architecture boundaries.
+- Do not skip the required tests.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Provide a summary of the changes made.
+- List any quality gates run and their results.

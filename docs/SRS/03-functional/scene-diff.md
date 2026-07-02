@@ -71,9 +71,9 @@ The Scene Diff module compares changes in Godot scenes based on node/property st
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/projects/{id}/diff/scene` | `viewer+` | scenePath, commitA/branchA, commitB/branchB | Diff job or cached result | `REVISION_NOT_FOUND`, `PATH_NOT_ALLOWED` |
-| GET | `/api/v1/projects/{id}/diff/{diffId}` | `viewer+` | diff id | Diff result | `DIFF_NOT_FOUND` |
-| GET | `/api/v1/projects/{id}/git/commits/{hash}/diff` | `viewer+` | commit hash | File diff summary | `COMMIT_NOT_FOUND` |
+| POST | `/api/v1/projects/{projectId}/diff/scene` | `viewer+` | scenePath, commitA/branchA, commitB/branchB | Diff job or cached result | `REVISION_NOT_FOUND`, `PATH_NOT_ALLOWED` |
+| GET | `/api/v1/projects/{projectId}/diff/{diffId}` | `viewer+` | diff id | Diff result | `DIFF_NOT_FOUND` |
+| GET | `/api/v1/projects/{projectId}/git/commits/{hash}/diff` | `viewer+` | commit hash | File diff summary | `COMMIT_NOT_FOUND` |
 
 ## Related Database Tables
 

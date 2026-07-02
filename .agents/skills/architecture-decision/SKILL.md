@@ -29,3 +29,7 @@ Use this skill when proposing a new technical direction, library choice, or fund
 - [ ] Positive and Negative consequences listed.
 - [ ] AI constraints explicitly stated.
 - [ ] README indexed.
+
+## Output Expectations
+- Provide a summary of the changes made.
+- List any quality gates run and their results.

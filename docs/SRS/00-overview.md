@@ -39,7 +39,7 @@ GodForge focuses on project management, metadata analysis, change review, collab
 | Role | Primary Goal |
 | --- | --- |
 | System Admin | Administer users, global settings, storage/queue integrations, system audit logs, and recovery operations. |
-| Organization Owner | Business role representing the owner of a team or workspace. In MVP, this role is mapped to project-level `project_owner` or `project_admin`; no separate organization entity is introduced. |
+| project_owner | Business role representing the owner of a team or workspace. In MVP, this role is mapped to project-level `project_owner` or `project_admin`; no separate organization entity is introduced. |
 | Project Admin | Manage project settings, repository configuration, members, roles, branch policies, analysis settings, and project-level administrative actions. |
 | Developer | Use Git UI, inspect metadata, run parse/analyze jobs, review dependency and health information, and work with repository state. |
 | Reviewer / QA | Review commits, scene diffs, dependency impact, health reports, and related activity before accepting changes. |
@@ -53,7 +53,7 @@ Heavy operations such as repository clone/fetch, metadata parse, health analysis
 
 ## MVP Decisions
 
-- Do not introduce a separate Organization database or API model in MVP. The `Organization Owner` concept remains a documented business role and is mapped to project-level roles.
+- Do not introduce a separate Organization database or API model in MVP. The `project_owner` concept remains a documented business role and is mapped to project-level roles.
 - Prioritize in-app notification and setup-token flows for MVP. Email/SMTP delivery is optional when infrastructure is available.
 - Keep `GodForge.Worker` as a shared worker host for MVP, but structure it internally as independent logical consumers and handlers so each worker type can be split into a separate process later.
 - Treat PostgreSQL as the source of truth for durable job state. Queue messages trigger work but do not replace job records.

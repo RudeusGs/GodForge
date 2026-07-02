@@ -76,9 +76,9 @@ The Jobs module provides user-facing APIs for monitoring asynchronous background
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{id}/jobs` | Project member | type, status, page | Job list | `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | job id | Job detail/progress | `JOB_NOT_FOUND` |
-| POST | `/api/v1/projects/{id}/jobs/{jobId}/cancel` | `developer+` | none | Job cancelled | `JOB_NOT_CANCELLABLE`, `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/jobs` | Project member | type, status, page | Job list | `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/jobs/{jobId}` | Project member | job id | Job detail/progress | `JOB_NOT_FOUND` |
+| POST | `/api/v1/projects/{projectId}/jobs/{jobId}/cancel` | `developer+` | none | Job cancelled | `JOB_NOT_CANCELLABLE`, `FORBIDDEN` |
 
 ## Related Database Tables
 

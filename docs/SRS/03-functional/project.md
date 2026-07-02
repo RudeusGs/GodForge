@@ -7,7 +7,7 @@ The Project module manages the Godot project lifecycle within GodForge, as well 
 ## Actors
 
 - System Admin
-- Organization Owner (Note: Mapped to project-level owner/admin in MVP; no standalone Organization entity exists)
+- project_owner (Note: Mapped to project-level owner/admin in MVP; no standalone Organization entity exists)
 - Project Admin
 - Developer
 - Reviewer/QA
@@ -58,7 +58,7 @@ The Project module manages the Godot project lifecycle within GodForge, as well 
 
 ### Soft Delete and Restore
 
-1. Project Owner confirms the project deletion.
+1. project_owner confirms the project deletion.
 2. Backend sets `deleted_at`, hides the project from normal lists, and logs `project.deleted`.
 3. System Admin can restore a soft-deleted project by removing `deleted_at`.
 
@@ -90,16 +90,16 @@ The Project module manages the Godot project lifecycle within GodForge, as well 
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/projects` | Authenticated | pagination/filter | Project list according to permission | `FORBIDDEN` |
 | POST | `/api/v1/projects` | Authenticated | name, description, godotVersion, visibility | Project created | `PROJECT_NAME_EXISTS`, `VALIDATION_ERROR` |
-| GET | `/api/v1/projects/{id}` | Project member | project id | Project detail | `PROJECT_NOT_FOUND` |
-| PUT | `/api/v1/projects/{id}` | `project_admin+` | project fields | Project updated | `FORBIDDEN`, `VALIDATION_ERROR` |
-| DELETE | `/api/v1/projects/{id}` | `project_owner` | confirmation | Project soft-deleted | `FORBIDDEN` |
-| POST | `/api/v1/projects/{id}/restore` | `system_admin` | none | Project restored | `PROJECT_NOT_FOUND` |
-| GET | `/api/v1/projects/{id}/members` | Project member | pagination | Member list | `FORBIDDEN` |
-| POST | `/api/v1/projects/{id}/members` | `project_admin+` | email, role | Member added/invited | `ALREADY_MEMBER`, `USER_NOT_FOUND` |
-| PUT | `/api/v1/projects/{id}/members/{userId}` | `project_admin+` | role | Role updated | `LAST_OWNER_CANNOT_BE_REMOVED` |
-| DELETE | `/api/v1/projects/{id}/members/{userId}` | `project_admin+` | none | Member removed | `LAST_OWNER_CANNOT_BE_REMOVED` |
-| GET | `/api/v1/projects/{id}/settings` | `project_admin+` | none | Project settings | `FORBIDDEN` |
-| PUT | `/api/v1/projects/{id}/settings` | `project_admin+` | settings payload | Settings updated | `VALIDATION_ERROR` |
+| GET | `/api/v1/projects/{projectId}` | Project member | project id | Project detail | `PROJECT_NOT_FOUND` |
+| PUT | `/api/v1/projects/{projectId}` | `project_admin+` | project fields | Project updated | `FORBIDDEN`, `VALIDATION_ERROR` |
+| DELETE | `/api/v1/projects/{projectId}` | `project_owner` | confirmation | Project soft-deleted | `FORBIDDEN` |
+| POST | `/api/v1/projects/{projectId}/restore` | `system_admin` | none | Project restored | `PROJECT_NOT_FOUND` |
+| GET | `/api/v1/projects/{projectId}/members` | Project member | pagination | Member list | `FORBIDDEN` |
+| POST | `/api/v1/projects/{projectId}/members` | `project_admin+` | email, role | Member added/invited | `ALREADY_MEMBER`, `USER_NOT_FOUND` |
+| PUT | `/api/v1/projects/{projectId}/members/{userId}` | `project_admin+` | role | Role updated | `LAST_OWNER_CANNOT_BE_REMOVED` |
+| DELETE | `/api/v1/projects/{projectId}/members/{userId}` | `project_admin+` | none | Member removed | `LAST_OWNER_CANNOT_BE_REMOVED` |
+| GET | `/api/v1/projects/{projectId}/settings` | `project_admin+` | none | Project settings | `FORBIDDEN` |
+| PUT | `/api/v1/projects/{projectId}/settings` | `project_admin+` | settings payload | Settings updated | `VALIDATION_ERROR` |
 | PUT | `/api/v1/users/me/settings` | Authenticated | user settings | Settings updated | `VALIDATION_ERROR` |
 
 ## Related Database Tables

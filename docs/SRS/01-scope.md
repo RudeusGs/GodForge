@@ -49,7 +49,7 @@ GodForge does **not** provide the following capabilities in the current version.
 | Role | Access Scope |
 | --- | --- |
 | System Admin | Manage users and system configuration, inspect audit/operational data, perform recovery operations, and bypass project-level RBAC only for explicit administrative purposes. |
-| Organization Owner | Business role representing a team or organization owner. In the MVP, this is mapped to project-level `project_owner` or `project_admin`; no standalone organization entity/API is required. |
+| project_owner | Business role representing a team or project_owner. In the MVP, this is mapped to project-level `project_owner` or `project_admin`; no standalone organization entity/API is required. |
 | Project Admin | Manage project settings, members, repository settings, analysis settings, retention settings, and administrative project actions. |
 | Developer | Use Git operations according to granted permissions, trigger parse/analyze jobs, inspect metadata, view dependency/health data, and review scene diffs. |
 | Reviewer / QA | View commit history, scene diff, dependency graph, health reports, activities, and review-relevant metadata. Write access is limited to review/QA actions explicitly allowed by RBAC. |
@@ -70,7 +70,7 @@ All API queries and commands must enforce server-side RBAC using the authenticat
 ## MVP Decisions
 
 - No standalone organization database model or organization API is implemented in the MVP.
-- `Organization Owner` remains a business/documentation role and is mapped to project-level ownership or administration.
+- `project_owner` remains a business/documentation role and is mapped to project-level ownership or administration.
 - Project soft-delete keeps project data for 30 days before it becomes eligible for hard-delete. The default retention is 30 days and should be configurable per environment.
 - Invite and notification capabilities prioritize in-app notifications and setup tokens. SMTP/email delivery is optional when infrastructure is available.
 - A shared `GodForge.Worker` host may be used for MVP deployment simplicity, but each queue must still have separate consumer and handler/service abstractions so logical workers can be split later.

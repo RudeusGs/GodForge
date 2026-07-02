@@ -7,7 +7,7 @@ The Auth module provides user authentication, session management, refresh token 
 ## Actors
 
 - System Admin
-- Organization Owner (Note: Mapped to project-level owner/admin in MVP; no standalone Organization entity exists)
+- project_owner (Note: Mapped to project-level owner/admin in MVP; no standalone Organization entity exists)
 - Project Admin
 - Developer
 - Reviewer/QA

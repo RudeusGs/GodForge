@@ -69,10 +69,10 @@ The Dashboard provides an actionable overview of the project: health score, repo
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{id}/dashboard` | `viewer+` | optional time range | Dashboard summary | `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/jobs` | Project member | pagination | Recent jobs | `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/activities` | Project member | pagination | Activity feed | `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/health` | `viewer+` | none | Latest health report | `HEALTH_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/dashboard` | `viewer+` | optional time range | Dashboard summary | `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/jobs` | Project member | pagination | Recent jobs | `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/activities` | Project member | pagination | Activity feed | `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/health` | `viewer+` | none | Latest health report | `HEALTH_NOT_READY` |
 
 ## Related Database Tables
 

@@ -127,12 +127,12 @@ All API errors must include `correlationId` and must not expose stack traces, in
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{id}/assets` | `viewer+` | `type`, `status`, `search`, `page`, `pageSize`, `sortBy`, `sortOrder`, optional `metadataVersionId` | Paginated asset list | `METADATA_NOT_READY`, `FORBIDDEN`, `ASSET_QUERY_INVALID` |
-| GET | `/api/v1/projects/{id}/assets/{assetId}` | `viewer+` | Asset id, optional metadata scope | Asset detail | `ASSET_NOT_FOUND`, `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/assets/{assetId}/usage` | `viewer+` | Asset id, filters, pagination | Reverse references from dependency graph | `ASSET_NOT_FOUND`, `METADATA_NOT_READY` |
-| GET | `/api/v1/projects/{id}/dependencies` | `viewer+` | `root`, `target`, `type`, pagination | Usage/dependency graph data | `METADATA_NOT_READY` |
-| POST | `/api/v1/projects/{id}/assets/{assetId}/preview` | `developer+` | Asset id, optional metadata scope | `202` preview job | `ASSET_NOT_FOUND`, `PREVIEW_UNSUPPORTED`, `METADATA_NOT_READY` |
-| GET | `/api/v1/projects/{id}/jobs/{jobId}` | Project member | Job id | Job status/progress | `JOB_NOT_FOUND` |
+| GET | `/api/v1/projects/{projectId}/assets` | `viewer+` | `type`, `status`, `search`, `page`, `pageSize`, `sortBy`, `sortOrder`, optional `metadataVersionId` | Paginated asset list | `METADATA_NOT_READY`, `FORBIDDEN`, `ASSET_QUERY_INVALID` |
+| GET | `/api/v1/projects/{projectId}/assets/{assetId}` | `viewer+` | Asset id, optional metadata scope | Asset detail | `ASSET_NOT_FOUND`, `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/assets/{assetId}/usage` | `viewer+` | Asset id, filters, pagination | Reverse references from dependency graph | `ASSET_NOT_FOUND`, `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/dependencies` | `viewer+` | `root`, `target`, `type`, pagination | Usage/dependency graph data | `METADATA_NOT_READY` |
+| POST | `/api/v1/projects/{projectId}/assets/{assetId}/preview` | `developer+` | Asset id, optional metadata scope | `202` preview job | `ASSET_NOT_FOUND`, `PREVIEW_UNSUPPORTED`, `METADATA_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/jobs/{jobId}` | Project member | Job id | Job status/progress | `JOB_NOT_FOUND` |
 
 ## Related Database Tables
 

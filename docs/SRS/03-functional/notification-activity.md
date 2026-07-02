@@ -91,7 +91,7 @@ The Notification and Activity Log module helps users receive notifications about
 | GET | `/api/v1/notifications/unread-count` | Authenticated | none | Unread count | `FORBIDDEN` |
 | PUT | `/api/v1/notifications/{id}/read` | Owner | notification id | Read state updated | `NOTIFICATION_NOT_FOUND` |
 | PUT | `/api/v1/notifications/read-all` | Authenticated | none | All read | `FORBIDDEN` |
-| GET | `/api/v1/projects/{id}/activities` | Project member | pagination/filter | Project activity | `FORBIDDEN` |
+| GET | `/api/v1/projects/{projectId}/activities` | Project member | pagination/filter | Project activity | `FORBIDDEN` |
 | GET | `/api/v1/activities` | `system_admin` | pagination/filter | System activity | `FORBIDDEN` |
 
 ## Related Database Tables

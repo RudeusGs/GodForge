@@ -3,11 +3,21 @@ name: implement-feature
 description: Skill for implementing new GodForge backend features using Clean Architecture, CQRS/MediatR, ASP.NET Core .NET 9, EF Core, PostgreSQL, RabbitMQ workers, RBAC, activity logging, and SRS-driven acceptance criteria. Use when adding or changing backend functionality across Domain, Application, Infrastructure, API, Worker, persistence, and tests.
 ---
 
-# Implement Feature
+
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this skill to implement a new backend feature for GodForge. Always implement from the SRS outward: requirements first, domain/application rules second, infrastructure/API last.
 
-## Core Rules
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - Treat `docs/SRS/` as the source of truth before writing code.
 - Keep business rules out of controllers and infrastructure adapters.
@@ -19,7 +29,12 @@ Use this skill to implement a new backend feature for GodForge. Always implement
 - Do not log secrets, tokens, credentials, raw Git credentials, or sensitive repository content.
 - Do not automatically resolve Git conflicts or rewrite project files unless the SRS and user action explicitly allow it.
 
-## 1. Read the SRS Before Coding
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Before making code changes, identify and write down:
 
@@ -33,9 +48,19 @@ Before making code changes, identify and write down:
 
 Do not start implementation if the expected behavior, permission, data model, and error cases are unclear.
 
-## 2. Choose the Correct Architectural Path
+#
 
-### Synchronous feature
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this path only for lightweight work that can complete inside the API latency target.
 
@@ -48,7 +73,12 @@ Flow:
 5. Infrastructure persists data or calls external adapters through interfaces.
 6. Controller returns `ApiResponse<T>` or standardized error response.
 
-### Asynchronous feature
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this path for clone, parse, analyze, diff, preview, large Git operations, large metadata processing, or anything likely to exceed API latency targets.
 
@@ -61,9 +91,19 @@ Flow:
 5. Worker consumes the message, acquires required Redis/repository lock, updates heartbeat/progress, executes the engine, persists output, releases lock, updates job status, invalidates cache, and emits notification/activity events.
 6. Failed worker work transitions to `Retrying`, `Failed`, or `DeadLettered` according to retry policy.
 
-## 3. Implement in Dependency Order
+#
 
-### Step 1: Domain Layer
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Domain/`
 
@@ -150,7 +190,12 @@ public sealed class Project
 }
 ```
 
-### Step 2: Application Layer
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Application/`
 
@@ -267,7 +312,12 @@ Async job command rules:
 - Include `correlationId`, `actorId`, and input hash in the message.
 - Return job DTO, not the eventual result.
 
-### Step 3: Infrastructure Layer
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Infrastructure/`
 
@@ -354,7 +404,12 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
 }
 ```
 
-### Step 4: Worker Layer
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use a worker implementation when the feature consumes RabbitMQ jobs or performs heavy processing.
 
@@ -369,7 +424,12 @@ Rules:
 - Emit notifications and dashboard invalidation events only after successful persistence.
 - Never swallow exceptions silently; convert them to structured job errors and safe logs.
 
-### Step 5: API Layer
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Api/`
 
@@ -463,7 +523,12 @@ public async Task<IActionResult> Analyze(
 }
 ```
 
-### Step 6: Tests
+##
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Create tests in the appropriate test project:
 
@@ -492,7 +557,12 @@ Minimum coverage:
 
 Do not change tests just to match broken behavior. If an existing test is wrong because the SRS changed, document the SRS reference in the test update.
 
-## 4. Error Handling Standard
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - Use stable SRS/project error codes such as `PROJECT_NAME_EXISTS`, `FORBIDDEN`, `REPOSITORY_LOCKED`, `JOB_ALREADY_RUNNING`, or module-specific equivalents.
 - Map validation errors to 400.
@@ -502,7 +572,12 @@ Do not change tests just to match broken behavior. If an existing test is wrong 
 - For worker errors, update job state and notification instead of trying to return worker exceptions through the original request.
 - Include safe `details` only when useful and non-sensitive.
 
-## 5. Security and RBAC Checklist
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - [ ] Backend enforces permission for every read/write endpoint.
 - [ ] Queries include project scope or owner scope where required.
@@ -512,7 +587,12 @@ Do not change tests just to match broken behavior. If an existing test is wrong 
 - [ ] Credentials are stored as encrypted references or secret-manager references only.
 - [ ] Frontend checks are treated as UX only, never as security.
 
-## 6. Observability Checklist
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - [ ] Correlation id exists at request entry.
 - [ ] Correlation id is included in commands, worker messages, logs, job records, activity log, and error responses.
@@ -520,7 +600,12 @@ Do not change tests just to match broken behavior. If an existing test is wrong 
 - [ ] Metrics are emitted for API latency/errors, queue depth/retry/DLQ, worker duration/failures, Git command duration/failures, and lock wait time where applicable.
 - [ ] Logs do not include secrets, tokens, raw credentials, or unsafe repository content.
 
-## 7. Completion Checklist
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - [ ] SRS FR, AC, API, database, security, and workflow requirements were checked.
 - [ ] Correct path chosen: synchronous API or asynchronous job.
@@ -539,7 +624,12 @@ Do not change tests just to match broken behavior. If an existing test is wrong 
 - [ ] `dotnet test` passes.
 - [ ] Manual API verification is done when the feature changes externally visible behavior.
 
-## 8. Commit Convention
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use concise conventional commits:
 
@@ -550,3 +640,29 @@ feat(health): publish health report after analysis
 ```
 
 For fixes discovered during implementation, use a separate `fix(scope): ...` commit when practical.
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Ensure all steps in the workflow are followed.
+- Follow all rules defined in AGENTS.md.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Do not violate architecture boundaries.
+- Do not skip the required tests.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Provide a summary of the changes made.
+- List any quality gates run and their results.

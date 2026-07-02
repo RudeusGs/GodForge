@@ -108,24 +108,24 @@ The Git module allows projects to connect to a Git repository, perform common Gi
 
 | Method | Path | Permission | Main Request | Main Response | Main Errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/projects/{id}/repository` | `project_admin+` | remoteUrl, personalAccessToken | Clone job | `INVALID_REPO_URL`, `REPO_ALREADY_CONNECTED` |
-| GET | `/api/v1/projects/{id}/repository` | Project member | none | Repository detail | `REPO_NOT_CONNECTED` |
-| PUT | `/api/v1/projects/{id}/repository/credential` | `project_admin+` | personalAccessToken | Credential updated | `FORBIDDEN` |
-| DELETE | `/api/v1/projects/{id}/repository` | `project_admin+` | confirmation | Repository disconnected | `REPO_LOCKED` |
-| POST | `/api/v1/projects/{id}/repository/sync` | `developer+` | branch/options | Fetch job/result | `REPO_NOT_READY` |
-| GET | `/api/v1/projects/{id}/git/status` | `developer+` | branch | Git status | `REPO_NOT_READY` |
-| POST | `/api/v1/projects/{id}/git/stage` | `developer+` | file paths | Stage result | `PATH_NOT_ALLOWED` |
-| POST | `/api/v1/projects/{id}/git/unstage` | `developer+` | file paths | Unstage result | `PATH_NOT_ALLOWED` |
-| POST | `/api/v1/projects/{id}/git/commit` | `developer+` | message | Commit result | `NO_STAGED_FILES` |
-| POST | `/api/v1/projects/{id}/git/push` | `developer+` | branch/remote | Push result | `NON_FAST_FORWARD`, `REPO_LOCKED` |
-| POST | `/api/v1/projects/{id}/git/pull` | `developer+` | branch | Pull result | `GIT_CONFLICT`, `REPO_LOCKED` |
-| GET | `/api/v1/projects/{id}/git/branches` | `viewer+` | none | Branch list | `REPO_NOT_READY` |
-| POST | `/api/v1/projects/{id}/git/branches` | `developer+` | name, source | Branch created | `BRANCH_EXISTS` |
-| POST | `/api/v1/projects/{id}/git/branches/checkout` | `developer+` | branch | Checkout result | `DIRTY_WORKTREE` |
-| DELETE | `/api/v1/projects/{id}/git/branches/{name}` | `project_admin+` | branch name | Branch deleted | `CURRENT_BRANCH_DELETE_DENIED` |
-| POST | `/api/v1/projects/{id}/git/merge` | `developer+` | source, target | Merge result | `GIT_CONFLICT` |
-| GET | `/api/v1/projects/{id}/git/commits` | `viewer+` | pagination/filter | Commit list | `REPO_NOT_READY` |
-| GET | `/api/v1/projects/{id}/git/commits/{hash}` | `viewer+` | hash | Commit detail | `COMMIT_NOT_FOUND` |
+| POST | `/api/v1/projects/{projectId}/repository` | `project_admin+` | remoteUrl, personalAccessToken | Clone job | `INVALID_REPO_URL`, `REPO_ALREADY_CONNECTED` |
+| GET | `/api/v1/projects/{projectId}/repository` | Project member | none | Repository detail | `REPO_NOT_CONNECTED` |
+| PUT | `/api/v1/projects/{projectId}/repository/credential` | `project_admin+` | personalAccessToken | Credential updated | `FORBIDDEN` |
+| DELETE | `/api/v1/projects/{projectId}/repository` | `project_admin+` | confirmation | Repository disconnected | `REPO_LOCKED` |
+| POST | `/api/v1/projects/{projectId}/repository/sync` | `developer+` | branch/options | Fetch job/result | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/git/status` | `developer+` | branch | Git status | `REPO_NOT_READY` |
+| POST | `/api/v1/projects/{projectId}/git/stage` | `developer+` | file paths | Stage result | `PATH_NOT_ALLOWED` |
+| POST | `/api/v1/projects/{projectId}/git/unstage` | `developer+` | file paths | Unstage result | `PATH_NOT_ALLOWED` |
+| POST | `/api/v1/projects/{projectId}/git/commit` | `developer+` | message | Commit result | `NO_STAGED_FILES` |
+| POST | `/api/v1/projects/{projectId}/git/push` | `developer+` | branch/remote | Push result | `NON_FAST_FORWARD`, `REPO_LOCKED` |
+| POST | `/api/v1/projects/{projectId}/git/pull` | `developer+` | branch | Pull result | `GIT_CONFLICT`, `REPO_LOCKED` |
+| GET | `/api/v1/projects/{projectId}/git/branches` | `viewer+` | none | Branch list | `REPO_NOT_READY` |
+| POST | `/api/v1/projects/{projectId}/git/branches` | `developer+` | name, source | Branch created | `BRANCH_EXISTS` |
+| POST | `/api/v1/projects/{projectId}/git/branches/checkout` | `developer+` | branch | Checkout result | `DIRTY_WORKTREE` |
+| DELETE | `/api/v1/projects/{projectId}/git/branches/{name}` | `project_admin+` | branch name | Branch deleted | `CURRENT_BRANCH_DELETE_DENIED` |
+| POST | `/api/v1/projects/{projectId}/git/merge` | `developer+` | source, target | Merge result | `GIT_CONFLICT` |
+| GET | `/api/v1/projects/{projectId}/git/commits` | `viewer+` | pagination/filter | Commit list | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/git/commits/{hash}` | `viewer+` | hash | Commit detail | `COMMIT_NOT_FOUND` |
 
 ## Related Database Tables
 

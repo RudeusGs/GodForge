@@ -3,15 +3,30 @@ name: debug-issue
 description: Skill for systematically debugging and fixing issues in the GodForge backend. Use when investigating API, worker, Git, parser, analyzer, metadata, RBAC, database, or background-job failures. Covers SRS-first diagnosis, correlation-id tracing, structured logs, architectural layer ownership, root-cause analysis, safe fixes, regression tests, and verification without leaking secrets or hiding failures.
 ---
 
-# Debug Issue
+
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use this skill to debug and fix GodForge backend issues without violating the SRS architecture, security, observability, or testing conventions.
 
-## Core Principle
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Always debug from the externally visible failure back to the owning layer. Do not patch the nearest symptom. Preserve module boundaries, keep controllers thin, keep business rules in Application/Domain, and keep infrastructure concerns in Infrastructure/engines/workers.
 
-## 1. Capture the Failure Context
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Collect the minimum facts before changing code:
 
@@ -23,7 +38,12 @@ Collect the minimum facts before changing code:
 
 For API errors, use the response `correlationId` to find request logs. For async failures, trace the job record, job logs, emitted events, worker attempts, DLQ status, and persisted job `error_code`.
 
-## 2. Trace Through Observability Data
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use structured logs and metrics; avoid relying only on raw text search.
 
@@ -42,7 +62,12 @@ Never log or expose:
 
 Production default should remain `Information` for lifecycle logs and `Warning`/`Error` for abnormal events. Enable debug logs only temporarily and only after confirming they do not leak secrets.
 
-## 3. Classify the Owning Layer
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Map the bug to the layer that owns the failing responsibility.
 
@@ -60,7 +85,12 @@ Map the bug to the layer that owns the failing responsibility.
 
 Do not fix a domain/application bug inside a controller for convenience. Do not place business rules in workers just because the failure occurred during a job; workers should call the same application/domain logic used by API entry points.
 
-## 4. Check SRS and Acceptance Criteria First
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Before writing the fix:
 
@@ -79,7 +109,12 @@ Common SRS checks:
 - Git operations must use repository locking and must not auto-resolve conflicts without explicit policy/user confirmation.
 - Metadata-not-ready must be distinguished from an empty search/list result.
 
-## 5. Reproduce With the Smallest Failing Case
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Create a deterministic reproduction before fixing:
 
@@ -92,7 +127,12 @@ Create a deterministic reproduction before fixing:
 
 If the bug cannot be reproduced, improve observability first or add a failing characterization test around the suspected boundary.
 
-## 6. Fix Safely in the Correct Layer
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Apply the smallest fix that corrects root cause and preserves SRS behavior.
 
@@ -117,7 +157,12 @@ Do not:
 - Auto-resolve Git conflicts or overwrite repository state without explicit policy and confirmation.
 - Break module dependency direction or introduce circular references.
 
-## 7. Update Tests as Regression Proof
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Every bug fix must add or update tests that fail before the fix and pass after it.
 
@@ -133,7 +178,12 @@ Choose the right test level:
 
 Test both the success path and the failure path if the bug involves permissions, async jobs, Git conflicts, parse errors, or error responses.
 
-## 8. Verify Locally
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Run verification appropriate to the changed area:
 
@@ -154,7 +204,12 @@ Manual verification checklist:
 - No secret appears in logs, response body, activity log, or persisted job error details.
 - Metrics/logs allow tracing the same correlation id across request, job, event, engine, and worker.
 
-## 9. Commit and Document the Fix
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 Use Conventional Commits:
 
@@ -179,7 +234,12 @@ In the PR or implementation notes, include:
 - Tests added/updated.
 - Operational notes, migrations, config changes, or dashboard/log queries if relevant.
 
-## Quick Checklist
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
 
 - [ ] Captured correlation id, actor, project/repository/job context.
 - [ ] Read the related SRS requirement, workflow, API contract, NFR, or error catalog.
@@ -189,3 +249,29 @@ In the PR or implementation notes, include:
 - [ ] Added regression tests at the correct level.
 - [ ] Verified build, tests, response format, logs, audit, and job state.
 - [ ] Used `fix(scope): ...` commit format.
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Ensure all steps in the workflow are followed.
+- Follow all rules defined in AGENTS.md.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Do not violate architecture boundaries.
+- Do not skip the required tests.
+
+#
+
+## Required Reading
+- docs/SRS/README.md
+- .agents/AGENTS.md
+Use this skill when performing tasks related to its name.
+- Provide a summary of the changes made.
+- List any quality gates run and their results.
