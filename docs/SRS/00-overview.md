@@ -10,7 +10,7 @@ The goal of this document set is to give product, engineering, QA, operations, a
 
 GodForge is a web platform that helps Godot development teams manage multiple projects, connect Git repositories, analyze project metadata, and visualize key information such as scene trees, asset usage, dependency graphs, scene-aware diffs, and project health.
 
-GodForge focuses on project management, metadata analysis, change review, collaboration, traceability, and auditability. It does **not** replace the Godot Editor, an IDE, a full Git client, or a game build/export system.
+GodForge focuses on project management, metadata analysis, change review, collaboration, traceability, and auditability. It does **not** replace the Godot Editor, an IDE, a full Git client, or a game build/export system. It does **not** track real-time uncommitted local file changes.
 
 ## Product Value
 
@@ -18,7 +18,7 @@ GodForge focuses on project management, metadata analysis, change review, collab
 | --- | --- |
 | Centralized project management | Track Godot projects, repositories, members, project roles, analysis status, jobs, and recent activity in one web interface. |
 | Project structure visibility | Parse `.tscn`, `.tres`, `.gd`, and asset files to build the Scene Explorer, Asset Explorer, Dependency Graph, statistics, and health reports. |
-| Better change review | Provide Git UI, commit history, and Scene Diff Viewer so reviewers can understand changes by scene/node/property structure instead of relying only on text diffs. |
+| Better change review | Provide Repository integration, snapshot history, and Scene Diff Viewer so reviewers can understand changes by scene/node/property structure instead of relying only on text diffs. |
 | Project health monitoring | Detect missing resources, missing scripts, broken references, cyclic dependencies, unused assets, oversized scenes, parser failures, and other metadata issues. |
 | Audit and operations | Record Activity Log entries, notifications, job state, correlation IDs, structured logs, metrics, and operational events for troubleshooting and traceability. |
 
@@ -26,7 +26,7 @@ GodForge focuses on project management, metadata analysis, change review, collab
 
 - Provide a web portal for managing Godot projects and connected Git repositories.
 - Support authentication and authorization using system-level and project-level roles.
-- Provide Git UI workflows for common operations: status, stage, unstage, commit, push, pull, branch, merge, and commit history.
+- Provide Repository integration workflows for common operations: connect repository, sync server-side snapshots, and view commit/branch history.
 - Parse Godot metadata from `.tscn`, `.tres`, `.gd`, and asset files.
 - Build Scene Explorer, Asset Explorer, Dependency Graph, Project Health, and Dashboard views from parsed metadata.
 - Provide a Scene Diff Viewer that compares scene changes by node, property, resource, and structure.
@@ -41,7 +41,7 @@ GodForge focuses on project management, metadata analysis, change review, collab
 | System Admin | Administer users, global settings, storage/queue integrations, system audit logs, and recovery operations. |
 | project_owner | Business role representing the owner of a team or workspace. In MVP, this role is mapped to project-level `project_owner` or `project_admin`; no separate organization entity is introduced. |
 | Project Admin | Manage project settings, repository configuration, members, roles, branch policies, analysis settings, and project-level administrative actions. |
-| Developer | Use Git UI, inspect metadata, run parse/analyze jobs, review dependency and health information, and work with repository state. |
+| Developer | Work with repository snapshots, inspect metadata, run parse/analyze jobs, review dependency and health information, and work with repository state. |
 | Reviewer / QA | Review commits, scene diffs, dependency impact, health reports, and related activity before accepting changes. |
 | Viewer | Read dashboard, scene, asset, dependency, health, activity, and report information within granted permissions. |
 
@@ -81,9 +81,12 @@ Heavy operations such as repository clone/fetch, metadata parse, health analysis
 
 ## Non-Goals for Current Scope
 
-- Do not provide an in-browser code editor.
+- Do not provide an in-browser code editor or web IDE.
 - Do not provide a scene editor or direct asset editor.
-- Do not run the game or export builds in the current scope.
-- Do not replace the Godot Editor, a full IDE, or an advanced Git client.
-- Do not automatically modify source code, refactor projects, or resolve Git conflicts without explicit user confirmation and a future approved workflow.
+- Do not run the game, render runtime scenes, or export builds in the current scope.
+- Do not replace the Godot Editor or act as a GitHub Desktop/GitKraken clone.
+- Do not track real-time uncommitted local changes or watch local file systems in MVP.
+- Do not read the user's local working directory directly from the web browser.
+- Do not automatically modify source code, refactor projects, or resolve Git conflicts on the web UI.
+- Do not handle advanced Git operations like rebase, cherry-pick, stash, or merge conflict resolution in MVP.
 - Do not store Git credentials, access tokens, passwords, or secrets in plain text.

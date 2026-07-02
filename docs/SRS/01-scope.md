@@ -8,7 +8,7 @@ GodForge includes the following capabilities in the current SRS scope.
 | --- | --- |
 | Authentication and RBAC | Login, logout, token refresh, invitation flow, user profile management, system roles, project roles, and server-side authorization checks for every protected API and worker-triggering action. |
 | Project Management | Create, view, update, soft-delete, restore, search, and configure Godot projects; manage project members, roles, visibility, default branch, analysis settings, retention settings, and project status. |
-| Repository and Git | Connect HTTPS Git repositories, securely store credential references, clone/fetch repositories, inspect working tree status, stage/unstage files, commit, push, pull, create/switch/delete branches, merge branches, and view commit history. |
+| Repository Integration | Connect HTTPS Git repositories, securely store credential references, clone/fetch server-side workspaces, sync server-side snapshots, view commit/branch metadata, and select snapshots for analysis. |
 | Parser and Metadata | Parse `.tscn`, `.tres`, `.res` where supported, `.gd`, and asset files; extract scenes, nodes, resources, scripts, asset metadata, references, dependencies, parse status, and parse errors. |
 | Analyzer and Project Health | Build dependency graphs, detect cyclic or broken dependencies, run health rules, calculate health score, store health reports/history, and provide issue severity, location, and suggestions. |
 | Explorer and Visualization | Provide Dashboard, Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff Viewer, health report views, commit detail views, and search/navigation across project metadata. |
@@ -33,6 +33,8 @@ GodForge does **not** provide the following capabilities in the current version.
 - It does not read the user's local working directory directly from the web browser.
 - It does not auto-detect file changes in the Godot editor unless committed and pushed to the remote.
 - It does not auto-sync local uncommitted files.
+- It does not automatically modify source code, refactor projects, or resolve Git conflicts on the web UI.
+- It does not handle advanced Git operations like rebase, cherry-pick, stash, or merge conflict resolution in MVP.
 
 ## Future Phases
 
@@ -48,7 +50,7 @@ While the MVP focuses on remote Git synchronization and server-side parsing, fut
 | Repository workspace | Repositories are cloned into server-side workspaces managed by backend services/workers. Users must never access internal repository paths directly. |
 | Metadata boundary | Metadata is derived from repository content and can be regenerated. Core business data such as users, projects, memberships, credential references, activities, notifications, and jobs is the source of truth for application behavior. |
 | Job state boundary | PostgreSQL is the source of truth for job state, progress, terminal status, error code, timestamps, and correlation ID. RabbitMQ is a delivery mechanism, not the authoritative job store. |
-| Git operation boundary | Write or conflict-prone Git operations must go through Git service/worker logic, acquire a distributed repository lock with an owner token, respect cancellation/timeout rules, and record activity logs. |
+| Git operation boundary | Repository operations (clone/fetch) must go through Git service/worker logic, acquire a distributed repository lock with an owner token, respect cancellation/timeout rules, and record activity logs. |
 | Credential boundary | Git credentials and tokens must be encrypted or stored through a secret manager reference. Secrets must not appear in API responses, logs, activity logs, job payloads, or exception messages. |
 | External systems | Remote Git providers, SMTP/email, object storage, Redis, RabbitMQ, monitoring tools, and deployment infrastructure are external dependencies. Their failures must be handled gracefully and surfaced through actionable errors. |
 
@@ -59,7 +61,7 @@ While the MVP focuses on remote Git synchronization and server-side parsing, fut
 | System Admin | Manage users and system configuration, inspect audit/operational data, perform recovery operations, and bypass project-level RBAC only for explicit administrative purposes. |
 | project_owner | Business role representing a team or project_owner. In the MVP, this is mapped to project-level `project_owner` or `project_admin`; no standalone organization entity/API is required. |
 | Project Admin | Manage project settings, members, repository settings, analysis settings, retention settings, and administrative project actions. |
-| Developer | Use Git operations according to granted permissions, trigger parse/analyze jobs, inspect metadata, view dependency/health data, and review scene diffs. |
+| Developer | Work with repository snapshots, trigger parse/analyze jobs, inspect metadata, view dependency/health data, and review scene diffs. |
 | Reviewer / QA | View commit history, scene diff, dependency graph, health reports, activities, and review-relevant metadata. Write access is limited to review/QA actions explicitly allowed by RBAC. |
 | Viewer | Read-only access to permitted project dashboard, scenes, assets, dependency graph, health report, personal notifications, and visible activity entries. |
 

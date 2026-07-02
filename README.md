@@ -8,7 +8,7 @@ Dự án này được phát triển dưới hình thức **Đồ án tốt nghi
 
 - **Quản lý dự án tập trung (Centralized Project Management):** Quản trị danh mục dự án Godot, tích hợp trực tiếp với Git repositories, phân quyền truy cập và vai trò thành viên dựa trên Role-Based Access Control (RBAC).
 - **Trực quan hóa cấu trúc dự án (Project Structure Visibility):** Tự động phân tích (parse) các tệp tin đặc thù của Godot (`.tscn`, `.tres`, `.gd`) cùng dữ liệu tài nguyên (assets) nhằm tái tạo Cây cấu trúc cảnh (Scene Explorer), Asset Explorer và Biểu đồ phụ thuộc (Dependency Graph).
-- **Kiểm duyệt thay đổi thông minh (Advanced Change Review):** Cung cấp giao diện thao tác Git tích hợp (Stage, Commit, Push, Pull, Merge) kết hợp **Scene Diff Viewer** - công cụ đối chiếu thay đổi ở cấp độ node và thuộc tính (property), khắc phục hạn chế của text diff truyền thống.
+- **Kiểm duyệt thay đổi thông minh (Advanced Change Review):** Tích hợp với Repository (lấy snapshot/commit từ remote) kết hợp **Scene Diff Viewer** - công cụ đối chiếu thay đổi ở cấp độ node và thuộc tính (property) giữa các bản phân tích, khắc phục hạn chế của text diff truyền thống.
 - **Giám sát sức khỏe dự án (Project Health Monitoring):** Hệ thống tự động rà soát, phát hiện các tài nguyên thất lạc (missing resources), mã nguồn lỗi, liên kết gãy (broken references), phụ thuộc vòng (cyclic dependencies), tài nguyên rác (unused assets) và cảnh (scene) vượt ngưỡng kích thước cho phép.
 - **Kiểm toán và Vận hành (Audit & Operations):** Lưu trữ toàn vẹn nhật ký hoạt động (Activity Log), hệ thống thông báo (Notifications) và quản lý trạng thái các tiến trình nền (Background Jobs), đảm bảo tính minh bạch và khả năng truy vết (Traceability).
 
@@ -89,4 +89,11 @@ Chi tiết về đặc tả yêu cầu hệ thống và quy trình nghiệp vụ
 
 ## Phạm vi dự án (Disclaimer)
 
-Dự án này được xây dựng và đóng gói hoàn toàn cho mục đích bảo vệ **Đồ án tốt nghiệp**. Phạm vi của GodForge không bao gồm việc thay thế môi trường phát triển Godot Editor hay các Git Client nâng cao. Hệ thống được định vị là một nền tảng phụ trợ, tập trung vào công tác quản trị, phân tích chuyên sâu và áp dụng quy trình DevOps cho các dự án trò chơi phát triển bằng Godot Engine.
+Dự án này được xây dựng và đóng gói hoàn toàn cho mục đích bảo vệ **Đồ án tốt nghiệp**. Phạm vi của GodForge không bao gồm việc thay thế môi trường phát triển Godot Editor hay các Git Desktop Client nâng cao. Hệ thống được định vị là một nền tảng phụ trợ trên Web, tập trung vào công tác quản trị, phân tích chuyên sâu (observability) cho các dự án phát triển bằng Godot Engine. 
+
+**GodForge tuân thủ các nguyên tắc (Non-goals) sau:**
+- Không thay thế Godot Editor.
+- Không chạy hay render game Godot trên trình duyệt.
+- Không đóng vai trò như một Web IDE.
+- Không cung cấp công cụ theo dõi thời gian thực (real-time file watcher) đối với các file cục bộ của người dùng trên máy tính cá nhân.
+- Không xử lý các tác vụ Git phức tạp (như xử lý merge conflict, rebase, cherry-pick) trên Web UI.

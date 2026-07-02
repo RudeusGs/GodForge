@@ -136,25 +136,10 @@ Canonical job status values returned by async APIs and SignalR events: `queued`,
 | PUT | `/api/v1/projects/{projectId}/repository/credential` | `project_admin+` | personalAccessToken | Credential updated | `FORBIDDEN`, `VALIDATION_ERROR` |
 | DELETE | `/api/v1/projects/{projectId}/repository` | `project_admin+` | confirmation | Repository disconnected | `REPO_LOCKED`, `FORBIDDEN` |
 | POST | `/api/v1/projects/{projectId}/repository/sync` | `developer+` | branch/options | Fetch/sync job | `REPO_NOT_READY`, `REPO_LOCKED` |
-
-### Git
-
-| Method | Path | Permission | Request body/query | Main Response | Main Errors |
-| --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{projectId}/git/status` | `developer+` | branch optional | Working tree status | `REPO_NOT_READY`, `FORBIDDEN` |
-| POST | `/api/v1/projects/{projectId}/git/stage` | `developer+` | file paths | Stage result | `PATH_NOT_ALLOWED`, `REPO_LOCKED` |
-| POST | `/api/v1/projects/{projectId}/git/unstage` | `developer+` | file paths | Unstage result | `PATH_NOT_ALLOWED`, `REPO_LOCKED` |
-| POST | `/api/v1/projects/{projectId}/git/commit` | `developer+` | message | Commit hash/result | `NO_STAGED_FILES`, `COMMIT_MESSAGE_TOO_SHORT`, `REPO_LOCKED` |
-| POST | `/api/v1/projects/{projectId}/git/push` | `developer+` | branch, remote optional | Push result | `NON_FAST_FORWARD`, `REPO_LOCKED` |
-| POST | `/api/v1/projects/{projectId}/git/pull` | `developer+` | branch | Pull result | `GIT_CONFLICT`, `REPO_LOCKED` |
-| GET | `/api/v1/projects/{projectId}/git/branches` | `viewer+` | none | Branch list | `REPO_NOT_READY` |
-| POST | `/api/v1/projects/{projectId}/git/branches` | `developer+` | name, sourceBranch | Branch created | `BRANCH_EXISTS`, `VALIDATION_ERROR` |
-| POST | `/api/v1/projects/{projectId}/git/branches/checkout` | `developer+` | branch | Checkout result | `DIRTY_WORKTREE`, `BRANCH_NOT_FOUND` |
-| DELETE | `/api/v1/projects/{projectId}/git/branches/{name}` | `project_admin+` | local/remote flag | Branch deleted | `CURRENT_BRANCH_DELETE_DENIED`, `FORBIDDEN` |
-| POST | `/api/v1/projects/{projectId}/git/merge` | `developer+` | sourceBranch, targetBranch | Merge result | `GIT_CONFLICT`, `REPO_LOCKED` |
-| GET | `/api/v1/projects/{projectId}/git/commits` | `viewer+` | branch, author, date range, pagination | Commit list | `REPO_NOT_READY` |
-| GET | `/api/v1/projects/{projectId}/git/commits/{hash}` | `viewer+` | commit hash | Commit detail | `COMMIT_NOT_FOUND` |
-| GET | `/api/v1/projects/{projectId}/git/commits/{hash}/diff` | `viewer+` | commit hash | File diff summary | `COMMIT_NOT_FOUND` |
+| GET | `/api/v1/projects/{projectId}/repository/branches` | `viewer+` | none | Branch list | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/repository/commits` | `viewer+` | branch, author, date range, pagination | Commit list | `REPO_NOT_READY` |
+| GET | `/api/v1/projects/{projectId}/repository/commits/{hash}` | `viewer+` | commit hash | Commit detail | `COMMIT_NOT_FOUND` |
+| GET | `/api/v1/projects/{projectId}/repository/commits/{hash}/diff` | `viewer+` | commit hash | File diff summary | `COMMIT_NOT_FOUND` |
 
 ### Scenes
 

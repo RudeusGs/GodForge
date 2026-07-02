@@ -2,16 +2,16 @@
 
 ## Purpose
 
-The UI/UX of GodForge must serve repetitive technical workflows: managing projects, checking Git, viewing metadata, reviewing diffs, tracking health, and auditing. The interface prioritizes clarity, appropriate information density, comprehensible system states, and required confirmations for dangerous operations.
+The UI/UX of GodForge must serve repetitive technical workflows: managing projects, syncing snapshots, viewing metadata, reviewing diffs, tracking health, and auditing. The interface prioritizes clarity, appropriate information density, comprehensible system states, and required confirmations for dangerous operations.
 
 ## Main Navigation
 
 | Area | Content |
 | --- | --- |
 | Global header | Project switcher, search, notification bell, user menu. |
-| Project sidebar | Dashboard, Repository/Git, Scenes, Assets, Dependency Graph, Health, Scene Diff, Activity, Settings. |
+| Project sidebar | Dashboard, Repository/Snapshots, Scenes, Assets, Dependency Graph, Health, Scene Diff, Activity, Settings. |
 | Admin area | User Management, System Activity, system settings if user is System Admin. |
-| Context actions | Screen-specific buttons: parse, analyze, commit, push, pull, invite member, connect repository. |
+| Context actions | Screen-specific buttons: parse, analyze, sync snapshot, invite member, connect repository. |
 
 ## Screen List
 
@@ -22,8 +22,7 @@ The UI/UX of GodForge must serve repetitive technical workflows: managing projec
 | Project List | View/search projects. | List/table, search, filters, create project. |
 | Project Detail | View project information. | Summary, members, settings link, repository state. |
 | Repository Settings | Connect/update repository. | Remote URL, credential state, default branch, clone status. |
-| Git UI | Git operations. | Status, staged/unstaged files, commit form, push/pull, conflict panel. |
-| Commit History | View commit history. | Commit list, filters, commit detail, file diff links. |
+| Snapshot History | View repository snapshot history. | Commit list, branches, commit detail, file diff links. |
 | Scene Explorer | View scene tree. | Scene list, node tree, node detail, search/filter, breadcrumb. |
 | Asset Explorer | View assets and usage. | Asset grid/list, detail panel, usage, warnings. |
 | Dependency Graph | View dependencies. | Graph canvas, filter, legend, node detail, cycle highlight. |
@@ -40,7 +39,7 @@ The UI/UX of GodForge must serve repetitive technical workflows: managing projec
 | Create/update/delete project | Yes | No | No | No |
 | Manage members | Yes | No | No | No |
 | Configure repository | Yes | No | No | No |
-| Git commit/push/pull/merge | Yes | Yes | No | No |
+| Sync repository snapshot | Yes | Yes | No | No |
 | Trigger parse/analyze | Yes | Yes | No | No |
 | View scene/asset/graph/health/diff | Yes | Yes | Yes | Yes |
 | View activity | Yes | Yes | Yes | Yes |
@@ -83,9 +82,7 @@ Do not display stack traces, server paths, or credentials.
 | Delete project | Must clearly confirm project name. |
 | Disconnect repository | Must confirm impact on workspace/metadata. |
 | Update Git credential | Confirm replacing old credentials. |
-| Push | Confirm branch/remote if pending commits exist. |
-| Pull/Merge | Warning for potential conflicts. |
-| Delete branch | Warning that checked out branch cannot be deleted. |
+| Sync Snapshot | Warning if a sync/analysis job is already running. |
 | Cancel job | Confirm job may stop in a partial state. |
 
 ## Accessibility

@@ -30,12 +30,12 @@ GodForge is implemented as a modular backend with Clean Architecture boundaries.
 
 | Component | Role |
 | --- | --- |
-| Vue 3 Frontend | Web client for dashboard, projects, Git UI, Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff Viewer, notifications, and admin screens. |
+| Vue 3 Frontend | Web client for dashboard, projects, Snapshot History, Scene Explorer, Asset Explorer, Dependency Graph, Scene Diff Viewer, notifications, and admin screens. |
 | ASP.NET Core API Backend | REST `/api/v1`, authentication, RBAC, validation, orchestration, response/error format, job creation, and SignalR hubs. |
 | Authentication Module | Login, JWT access token, refresh token rotation, password hashing, account state, and RBAC claim construction. |
 | Project Module | Project CRUD, project membership, settings, dashboard orchestration, project-level permission checks, and activity log integration. |
 | Repository Module | Repository registration, credential references, workspace state, repository lock orchestration, and clone/fetch job creation. |
-| Git Module | Status, stage, unstage, commit, push, pull, branch, merge, commit history, conflict detection, and normalized Git errors. |
+| Snapshot Module | Branch list, commit history, file diffs, and normalized snapshot metadata. |
 | Metadata Module | Versioned scene, node, asset, script, resource, dependency, statistics, and health metadata. |
 | Parser Worker | Parses `.tscn`, `.tres`, `.gd`, and asset metadata from a repository snapshot. |
 | Analyze Worker | Builds dependency graph, health reports, health issues, and dashboard aggregates. |
@@ -59,7 +59,7 @@ Recommended logical workers:
 | Logical worker | Queue responsibility | Scale trigger |
 | --- | --- | --- |
 | Repository Clone Worker | Clone/fetch remote repository into managed workspace | Repository I/O or clone queue depth increases |
-| Repository Sync/Git Worker | Mutating Git operations that require repository lock | Git lock wait time or Git command duration increases |
+| Repository Sync Worker | Fetching and snapshot synchronization | Repository lock wait time or fetch duration increases |
 | Metadata Parser Worker | Parse Godot project files into raw metadata | Parse queue backlog or large project size |
 | Metadata Analyzer Worker | Build dependency graph, statistics, and health report | Analyze duration or metadata query pressure increases |
 | Scene Diff Worker | Generate scene-aware diff and diff artifacts | Diff p95 latency or artifact generation time increases |
@@ -78,7 +78,7 @@ flowchart LR
     API --> RBAC[Authorization / RBAC Module]
     API --> Project[Project Module]
     API --> Repo[Repository Module]
-    API --> Git[Git Module]
+    API --> Snapshot[Snapshot Module]
     API --> Metadata[Metadata Module]
     API --> PG[(PostgreSQL)]
     API --> Redis[(Redis)]
@@ -86,7 +86,7 @@ flowchart LR
     API --> MinIO[(MinIO)]
 
     MQ --> CloneWorker[Repository Clone Worker]
-    MQ --> GitWorker[Repository Sync / Git Worker]
+    MQ --> SyncWorker[Repository Sync Worker]
     MQ --> Parser[Metadata Parser Worker]
     MQ --> Analyzer[Metadata Analyzer Worker]
     MQ --> Diff[Scene Diff Worker]
@@ -94,9 +94,9 @@ flowchart LR
     MQ --> Notify[Notification Dispatch Worker]
 
     Repo --> Workspace[(Repository Workspace)]
-    Git --> Workspace
+    Snapshot --> Workspace
     CloneWorker --> Workspace
-    GitWorker --> Workspace
+    SyncWorker --> Workspace
     Parser --> Workspace
     Diff --> Workspace
 
@@ -110,7 +110,7 @@ flowchart LR
 
     API --> Metrics[Prometheus Metrics]
     CloneWorker --> Metrics
-    GitWorker --> Metrics
+    SyncWorker --> Metrics
     Parser --> Metrics
     Analyzer --> Metrics
     Diff --> Metrics
@@ -147,7 +147,6 @@ The API must not hold HTTP requests open for long-running work.
 | Clone/fetch | Create job, publish message, return `202 Accepted` | Execute clone/fetch with repository lock and retry policy |
 | Parse/analyze | Create job, publish message, return `202 Accepted` | Parse metadata, analyze health/dependency, update job progress |
 | Scene diff/preview | Create job, publish message, return `202 Accepted` | Generate artifact, store in MinIO, update metadata/job state |
-| Git mutation | Prefer job for risky or long-running mutation; local quick status may be synchronous | Acquire lock, execute Git engine, normalize errors, release lock |
 
 PostgreSQL is the source of truth for job state. Redis may cache or assist with short-lived progress, but a worker restart must be able to recover from PostgreSQL job records.
 
@@ -185,10 +184,9 @@ Rules:
 
 - every repository belongs to a project;
 - repository credentials are stored as encrypted secrets or credential references, never as plaintext;
-- mutating Git operations must acquire a Redis lock with an owner token;
+- repository clone/fetch operations must acquire a Redis lock with an owner token;
 - lock release must verify the same owner token to avoid releasing another worker's lock;
-- commit, push, pull, merge, checkout, branch deletion, clone, fetch, and analysis of a mutable working tree must not conflict on the same repository;
-- merge conflicts must not be auto-resolved;
+- clone, fetch, and parsing of a repository workspace must not conflict on the same repository;
 - Git errors must be normalized into stable error codes and safe messages;
 - stdout/stderr may be stored only in truncated, sanitized form for debugging.
 
@@ -209,9 +207,9 @@ Rules:
 | --- | --- | --- | --- |
 | Auth | Credentials, refresh token, user/admin actions | JWT, refresh token, account state, audit activity | Never leak whether a user exists during login failure. |
 | Authorization/RBAC | Actor, project id, role, permission | Allow/deny decision | Must run server-side for both commands and queries. |
-| Project | Project/member/settings commands | Project aggregate, membership, settings, cache invalidation, activity | Does not perform Git operations directly; coordinates Repository/Git modules. |
+| Project | Project/member/settings commands | Project aggregate, membership, settings, cache invalidation, activity | Does not perform Git operations directly; coordinates Repository/Snapshot modules. |
 | Repository | Remote URL, credential reference, default branch | Repository record, workspace state, clone/fetch job | Credential values must not be returned to clients. |
-| Git | Repository id, branch, file selection, actor, Git command | Git result, conflict report, commit hash, activity | Mutating operations require lock and normalized error handling. |
+| Snapshot | Repository id, branch, pagination | Branch list, commit history, activity | Fetch operations require lock and normalized error handling. |
 | Metadata | Parser/analyzer output, project id, commit hash, job id | Metadata views, graph dataset, search documents, health report | Metadata must be scoped by project and version/commit. |
 | Dashboard | Project id, actor, branch/range | Dashboard DTO, charts, health summary, activity summary | Do not do heavy computation directly in request path. |
 | Search | Query, filters, project scope, actor | Paginated search result DTOs | Must enforce RBAC and distinguish “not analyzed yet” from “no results.” |

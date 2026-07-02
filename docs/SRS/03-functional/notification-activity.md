@@ -60,7 +60,7 @@ The Notification and Activity Log module helps users receive notifications about
 | Project | `project.created`, `project.updated`, `project.deleted`, `project.restored` | Project lifecycle events. |
 | Member | `project.member_added`, `project.member_removed`, `member.role_changed` | Member management events. |
 | Repository | `repo.connected`, `repo.credential_updated`, `repo.disconnected` | Repository configuration events. |
-| Git | `git.commit`, `git.push`, `git.pull`, `git.merge` | Git operations. |
+| Repository | `repo.sync` | Fetching snapshots. |
 | Job | `job.started`, `job.retrying`, `job.completed`, `job.failed`, `job.cancelled`, `job.timeout`, `job.dead_lettered` | Worker/job lifecycle events. |
 | Health | `health.critical` | New critical health issues. |
 

@@ -59,34 +59,18 @@ Control Point: Do not store/log PAT in plaintext; URL must prevent SSRF based on
 
 Control Point: Clone auth failures do not retry infinitely; network failures may retry.
 
-## WF-05 Git Commit And Push
+## WF-05 Sync Snapshot (Fetch)
 
 | Step | Description |
 | --- | --- |
-| 1 | Developer opens Git UI and views status. |
-| 2 | Selects files to stage. |
-| 3 | Enters commit message (minimum 5 characters). |
-| 4 | API verifies staged files and acquires repository lock. |
-| 5 | Git Service creates commit, releases lock, and records `git.commit`. |
-| 6 | User selects push. |
-| 7 | API acquires lock, pushes to remote, and handles non-fast-forward scenarios. |
-| 8 | Upon successful push, system may trigger parse/analyze depending on settings. |
+| 1 | Developer triggers a repository sync. |
+| 2 | API creates fetch job and returns 202. |
+| 3 | Fetch Worker acquires the repository lock. |
+| 4 | Worker fetches updates from the remote. |
+| 5 | Worker updates repository snapshot metadata (branch heads). |
+| 6 | Upon successful fetch, system may trigger parse/analyze depending on settings. |
 
-Control Point: Do not push when unresolved conflicts exist; lock TTL prevents deadlocks.
-
-## WF-06 Pull With Conflict
-
-| Step | Description |
-| --- | --- |
-| 1 | Developer selects pull. |
-| 2 | API verifies permissions, repository readiness, and acquires lock. |
-| 3 | Git Service executes pull. |
-| 4 | If conflicts arise, API returns a list of conflicted files and conflict state. |
-| 5 | UI lets user select accept ours/theirs or manually resolve according to Git UI scope. |
-| 6 | After resolving, user stages and commits the merge. |
-| 7 | Activity records `git.pull` and `git.merge` if applicable. |
-
-Control Point: GodForge does not automatically resolve conflicts.
+Control Point: Do not mutate working tree; only fetch snapshot metadata.
 
 ## WF-07 Parse Project
 
@@ -176,6 +160,4 @@ Control Point: Scene-aware diff only applies to `.tscn`; other files fallback to
 
 Control Point: Logged metadata must be sanitized and contain no credentials/tokens.
 
-## MVP Decisions
-
-- Manual conflict resolution in MVP is handled outside GodForge: the user resolves conflicts in a local tool/Git client and refreshes the repository status in GodForge. Uploading modified files via UI is a post-MVP expansion.
+- GodForge does not handle advanced Git conflict resolution or mutation from the Web UI. Users resolve conflicts and push changes using their preferred local Git client, then sync snapshots in GodForge for analysis.
