@@ -6,10 +6,10 @@
         "prepare": "husky",
         "format:docs": "prettier --write \"**/*.{json,md,yml,yaml}\"",
         "format:docs:check": "prettier --check \"**/*.{json,md,yml,yaml}\"",
-        "dotnet:restore": "dotnet restore GodForge.Backend.sln",
-        "dotnet:build": "dotnet build GodForge.Backend.sln --no-restore",
-        "dotnet:test": "dotnet test GodForge.Backend.sln --no-build",
-        "dotnet:format:check": "dotnet format GodForge.Backend.sln --verify-no-changes --no-restore",
+        "dotnet:restore": "dotnet restore GodForge.sln",
+        "dotnet:build": "dotnet build GodForge.sln --no-restore",
+        "dotnet:test": "dotnet test GodForge.sln --no-build",
+        "dotnet:format:check": "dotnet format GodForge.sln --verify-no-changes --no-restore",
         "validate": "npm run dotnet:restore && npm run dotnet:build && npm run dotnet:test && npm run dotnet:format:check"
     },
     "devDependencies": {

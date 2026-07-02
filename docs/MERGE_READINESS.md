@@ -8,4 +8,4 @@ Documentation and agent rules may be merged into main when:
 
 After merge:
 - READY_FOR_BOOTSTRAP_IMPLEMENTATION: yes
-- READY_FOR_FEATURE_IMPLEMENTATION: no
+- READY_FOR_FEATURE_IMPLEMENTATION: no (Blocked: The local environment is missing the .NET 9 SDK, which prevents `dotnet test` and `dotnet ef migrations` from running successfully.)

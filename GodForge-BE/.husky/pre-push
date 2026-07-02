@@ -3,7 +3,7 @@
 
 echo "Running backend pre-push validation..."
 
-solution="GodForge.Backend.sln"
+solution="GodForge.sln"
 
 if [ ! -f "$solution" ]; then
   echo "$solution not found. Run ./scaffold.ps1 before enabling .NET pre-push validation."
