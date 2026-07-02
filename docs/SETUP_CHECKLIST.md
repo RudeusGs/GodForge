@@ -14,7 +14,7 @@ This checklist guarantees the project foundation is solid before any functional 
 - [ ] `.editorconfig` exists and defines standard formatting rules. (Proved by file existence; blocked if missing)
 - [ ] `global.json` pins the correct .NET SDK version. (Proved by file existence; blocked if missing)
 - [ ] `Directory.Build.props` enforces compiler flags (e.g., nullable reference types, warnings as errors). (Proved by file existence; blocked if missing)
-- [ ] `.env.example` defines all necessary local environment variables without containing real secrets. (Proved by file inspection; blocked if missing or contains real secrets)
+- [x] `.env.example` defines all necessary local environment variables without containing real secrets. (Proved by file inspection; blocked if missing or contains real secrets)
 - [ ] `docker-compose.yml` supports spinning up PostgreSQL, Redis, RabbitMQ, and MinIO locally. (Proved by `docker-compose up -d` success; blocked if failing)
 
 ## CI/CD and Commands

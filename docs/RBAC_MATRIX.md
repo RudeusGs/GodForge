@@ -11,7 +11,7 @@ Permissions are scoped to specific `project_id`s. (Note: "project_owner" is a bu
 
 - **project_owner**: Creator/Owner of the project.
 - **project_admin**: Can manage settings, credentials, and members.
-- **developer**: Can perform Git operations, sync, trigger jobs.
+- **developer**: Can perform repository sync and trigger jobs.
 - **reviewer**: Can view code, diffs, create reviews.
 - **viewer**: Can view metadata, dashboards, reports.
 
@@ -31,8 +31,7 @@ Permissions are scoped to specific `project_id`s. (Note: "project_owner" is a bu
 | Repository View | `repository:read` | Project | `project_owner`, `project_admin`, `developer`, `reviewer`, `viewer` | `GET /api/v1/projects/{projectId}/repository` |
 | Repository Credential | `repository:update_credential` | Project | `project_owner`, `project_admin` | `PUT /api/v1/projects/{projectId}/repository/credential` |
 | Repository Disconnect | `repository:disconnect` | Project | `project_owner`, `project_admin` | `DELETE /api/v1/projects/{projectId}/repository` |
-| Git Clone/Fetch/Sync | `git:sync` | Project | `project_owner`, `project_admin`, `developer` | `POST /api/v1/projects/{projectId}/repository/sync` |
-| Git Operations | `git:operate` | Project | `project_owner`, `project_admin`, `developer` | `/api/v1/projects/{projectId}/git/*` |
+| Repository Sync Snapshot | `repository:sync` | Project | `project_owner`, `project_admin`, `developer` | `POST /api/v1/projects/{projectId}/repository/sync` |
 | Parse/Analyze Jobs | `jobs:trigger` | Project | `project_owner`, `project_admin`, `developer` | `POST /api/v1/projects/{projectId}/parse`, `POST /api/v1/projects/{projectId}/analyze` |
 | Job List/Detail | `jobs:read` | Project | `project_owner`, `project_admin`, `developer`, `reviewer`, `viewer` | `GET /api/v1/projects/{projectId}/jobs` |
 | Job Cancel/Retry | `jobs:manage` | Project | `project_owner`, `project_admin`, `developer` | `POST /api/v1/projects/{projectId}/jobs/{jobId}/cancel` |

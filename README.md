@@ -1,6 +1,6 @@
 # GodForge
 
-GodForge là một nền tảng Web phục vụ công tác quản lý, phân tích và trực quan hóa các dự án Godot Engine. Hệ thống cung cấp các bộ công cụ chuyên sâu bao gồm Git UI, Scene Diff Viewer, Dependency Graph, Project Health Dashboard và hệ thống trích xuất Metadata tự động. 
+GodForge là một nền tảng Web phục vụ công tác quản lý, phân tích và trực quan hóa các dự án Godot Engine. Hệ thống cung cấp các bộ công cụ chuyên sâu bao gồm Snapshot History, Scene Diff Viewer, Dependency Graph, Project Health Dashboard và hệ thống trích xuất Metadata tự động.
 
 Dự án này được phát triển dưới hình thức **Đồ án tốt nghiệp**, áp dụng kiến trúc phần mềm hiện đại (Clean Architecture) và cơ chế xử lý luồng công việc bất đồng bộ (Asynchronous Processing) nhằm đáp ứng hiệu năng cao.
 

@@ -11,9 +11,9 @@ Traceability mapping ensures that each requirement has corresponding API, databa
 | FR-03 | Project | `/api/v1/projects` | `projects`, `project_members`, `project_settings`, `activities` | Project List, Project Detail | TC-PROJ-001 |
 | FR-03.1 | Project Membership | `GET/POST/PUT/DELETE /api/v1/projects/{projectId}/members` | `project_members`, `users`, `activities` | Project Members | TC-PROJ-MEMBER-001 |
 | FR-04 | Repository | `POST /api/v1/projects/{projectId}/repository` | `repositories`, `jobs`, `activities` | Repository Settings | TC-REPO-001 |
-| FR-05 | Git UI | `/api/v1/projects/{projectId}/git/status`, stage, unstage, commit, push, pull | `repositories`, `jobs`, `activities` | Git UI | TC-GIT-001 |
-| FR-06 | Commit History | `/api/v1/projects/{projectId}/git/commits` | `repositories` | Commit History | TC-GIT-002 |
-| FR-07 | Branch Management | `/api/v1/projects/{projectId}/git/branches`, checkout, merge | `repositories`, `activities` | Git UI, Commit History | TC-GIT-003 |
+| FR-05 | Repository Sync | `POST /api/v1/projects/{projectId}/repository/sync` | `repositories`, `jobs`, `activities` | Snapshot History | TC-GIT-001 |
+| FR-06 | Commit History | `GET /api/v1/projects/{projectId}/repository/commits` | `repositories` | Snapshot History | TC-GIT-002 |
+| FR-07 | Branch Management | `GET /api/v1/projects/{projectId}/repository/branches` | `repositories`, `activities` | Snapshot History | TC-GIT-003 |
 | FR-08 | Parser | `POST /api/v1/projects/{projectId}/parse` | `jobs`, `scenes`, `scene_nodes`, `assets`, `scripts`, `resources`, `dependencies` | Jobs, Scene Explorer, Asset Explorer | TC-PARSE-001 |
 | FR-09 | Scene Explorer | `/api/v1/projects/{projectId}/scenes` | `scenes`, `scene_nodes`, `scripts`, `dependencies` | Scene Explorer | TC-SCENE-001 |
 | FR-10 | Asset Explorer | `/api/v1/projects/{projectId}/assets` | `assets`, `dependencies`, `health_issues` | Asset Explorer | TC-ASSET-001 |

@@ -1,5 +1,7 @@
 # Merge Readiness
 
+# Merge Readiness
+
 Documentation and agent rules may be merged into main when:
 - SRS files exist and references are valid.
 - .agents skills exist and are populated.
@@ -10,23 +12,18 @@ After merge:
 - READY_FOR_BOOTSTRAP_IMPLEMENTATION: yes
 - READY_FOR_FEATURE_IMPLEMENTATION: no
 
-**Blocker**: .NET 9 SDK missing
+**Blocker**: PostgreSQL Authentication Error `28P01`
 
-The local environment is missing the .NET 9 SDK (only .NET 8.0 and .NET 10.0 exist), which causes `dotnet test` and `dotnet ef migrations` to fail.
+The local environment can build and pass tests, but running `dotnet ef database update` fails with a PostgreSQL password authentication error. (Note: The previous `.NET 9 SDK missing` blocker has been resolved, and the `SearchVector` mapping issue was fixed).
 
 **Command fail and error output**:
-Command: `dotnet test --no-build`
+Command: `dotnet ef database update --project GodForge-BE/src/GodForge.Infrastructure --startup-project GodForge-BE/src/GodForge.Api`
 Output:
 ```text
-Testhost process for source(s) '...' exited with error: You must install or update .NET to run this application.
-App: D:\GodForge\GodForge-BE\tests\GodForge.UnitTests\bin\Debug\net9.0\testhost.exe
-Architecture: x64
-Framework: 'Microsoft.AspNetCore.App', version '9.0.0' (x64)
-.NET location: C:\Program Files\dotnet
-The following frameworks were found:
-  8.0.26 at [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
-  10.0.6 at [C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App]
+fail: Microsoft.EntityFrameworkCore.Database.Connection[20004]
+      An error occurred using the connection to database 'godforge' on server 'tcp://localhost:5432'.
+Npgsql.PostgresException (0x80004005): 28P01: password authentication failed for user "postgres"
 ```
 
 **Resolution steps**:
-Install the .NET 9 SDK and ASP.NET Core 9.0 Runtime, then re-run all the backend quality gates.
+Ensure the local PostgreSQL instance is running with the correct credentials defined in `appsettings.json` or `.env` and retry the EF migrations.
