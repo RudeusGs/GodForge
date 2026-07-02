@@ -2,9 +2,10 @@
 
 > **Version:** 1.0  
 > **Status:** Production-grade design draft  
-> **Target:** SaaS website for individual users, teams, and enterprises  
+> **Target:** MVP web platform for individual users and project-level teams  
 > **Primary database:** PostgreSQL  
 > **Supporting stores:** Redis, RabbitMQ, MinIO/S3  
+> **Enterprise tenancy and billing are deferred future scope, not active MVP implementation.**
 
 ---
 
@@ -14,27 +15,25 @@
 2. [Architecture Overview](#41-architecture-overview)
 3. [PostgreSQL Schema Map](#42-postgresql-schema-map)
 4. [Identity Schema](#43-identity-schema)
-5. [Tenant / Organization Schema](#44-tenant--organization-schema)
-6. [Billing / License Schema](#45-billing--license-schema)
-7. [Core Project Schema](#46-core-project-schema)
-8. [Repository / Git Schema](#47-repository--git-schema)
-9. [Ops / Worker Schema](#48-ops--worker-schema)
-10. [Metadata Schema](#49-metadata-schema)
-11. [Analysis / Health / Graph Schema](#410-analysis--health--graph-schema)
-12. [Storage / Artifact Schema](#411-storage--artifact-schema)
-13. [Collaboration Schema](#412-collaboration-schema)
-14. [Audit Schema](#413-audit-schema)
-15. [Search Schema](#414-search-schema)
-16. [Governance Schema](#415-governance-schema)
-17. [Admin / Operations Schema](#416-admin--operations-schema)
-18. [Redis Design](#417-redis-design)
-19. [MinIO / S3 Bucket Design](#418-minio--s3-bucket-design)
-20. [High-volume Tables and Partitioning](#419-high-volume-tables-and-partitioning)
-21. [Data Classification](#420-data-classification)
-22. [Backup, Restore, and PITR](#421-backup-restore-and-pitr)
-23. [Migration Rollout Plan](#422-migration-rollout-plan)
-24. [Production Acceptance Checklist](#423-production-acceptance-checklist)
-25. [Implementation Phasing](#424-implementation-phasing)
+5. [Core Project Schema](#46-core-project-schema)
+6. [Repository / Git Schema](#47-repository--git-schema)
+7. [Ops / Worker Schema](#48-ops--worker-schema)
+8. [Metadata Schema](#49-metadata-schema)
+9. [Analysis / Health / Graph Schema](#410-analysis--health--graph-schema)
+10. [Storage / Artifact Schema](#411-storage--artifact-schema)
+11. [Collaboration Schema](#412-collaboration-schema)
+12. [Audit Schema](#413-audit-schema)
+13. [Search Schema](#414-search-schema)
+14. [Governance Schema](#415-governance-schema)
+15. [Admin / Operations Schema](#416-admin--operations-schema)
+16. [Redis Design](#417-redis-design)
+17. [MinIO / S3 Bucket Design](#418-minio--s3-bucket-design)
+18. [High-volume Tables and Partitioning](#419-high-volume-tables-and-partitioning)
+19. [Data Classification](#420-data-classification)
+20. [Backup, Restore, and PITR](#421-backup-restore-and-pitr)
+21. [Migration Rollout Plan](#422-migration-rollout-plan)
+22. [Production Acceptance Checklist](#423-production-acceptance-checklist)
+23. [Implementation Phasing](#424-implementation-phasing)
 
 ---
 
@@ -42,13 +41,12 @@
 
 GodForge is a web platform for managing, analyzing, reviewing, and visualizing Godot projects. Its database must support both:
 
-1. **Individual users and small teams** working on Godot projects.
-2. **Organizations, studios, and enterprises** that need multi-tenancy, strict RBAC, auditability, credential security, scale, retention, billing, and operational reliability.
+1. **Individual users and project-level teams** working on Godot projects.
+2. (Enterprise tenancy, standalone organizations, and billing are deferred future scope, not active MVP implementation.)
 
 The database design must support:
 
 - Authentication and user security.
-- Organizations and enterprise membership.
 - Project-level RBAC.
 - Git repository connection and workspace tracking.
 - Async worker jobs with retry, lease, idempotency, and DLQ.
@@ -95,8 +93,6 @@ Recommended logical PostgreSQL schemas:
 
 ```text
 identity     -- users, sessions, login security, invites, tokens
- tenant      -- organizations, organization members, teams, tenant settings
-billing      -- plans, subscriptions, usage, invoices
 core         -- projects, project settings, project members, project invites
 repo         -- repositories, credentials, snapshots, file inventory, Git cache
 ops          -- jobs, attempts, leases, outbox, inbox, DLQ, worker heartbeats
@@ -109,6 +105,15 @@ search       -- materialized search documents and indexing runs
 governance   -- retention, purge, legal hold, data classification
 admin        -- app versions, migration runs, backfills, seeds, system checks
 ```
+
+## Deferred / Future Scope — Not for MVP Implementation
+
+- `tenant.*` (organizations, teams, tenant settings)
+- `billing.*` (subscriptions, plans, invoices, usage)
+- Enterprise tenancy and standalone organization concepts
+
+> [!WARNING]
+> Implementation agents must not scaffold, migrate, or implement deferred `tenant.*` or `billing.*` tables for the MVP.
 
 > For early EF Core implementation, tables may initially live in `public`, but schema boundaries should remain reflected in code folders, documentation, migrations, and naming conventions.
 
@@ -414,10 +419,6 @@ Partitioning: monthly.
 
 ---
 
-# 4.4 Tenant / Organization Schema
-
-The `tenant` schema supports individual workspaces, teams, and enterprise organizations.
-
 ---
 
 ## 4.6.1 `core.projects`
@@ -426,7 +427,7 @@ The `tenant` schema supports individual workspaces, teams, and enterprise organi
 | --- | --- | --- | --- |
 | `id` | `uuid` | No | Primary key. |
 | `name` | `varchar(80)` | No | Project name. |
-| `slug` | `varchar(100)` | No | Unique inside organization. |
+| `slug` | `varchar(100)` | No | Globally unique slug. |
 | `description` | `text` | Yes | Project description. |
 | `godot_version` | `varchar(30)` | No | Target Godot version. |
 | `visibility` | `varchar(30)` | No | `private`, `internal`. |
@@ -449,12 +450,12 @@ check (health_score is null or health_score between 0 and 100);
 Indexes:
 
 ```sql
-create unique index ux_projects_org_slug_active
-on core.projects(organization_id, slug)
+create unique index ux_projects_slug_active
+on core.projects(slug)
 where deleted_at is null;
 
-create index ix_projects_org_status
-on core.projects(organization_id, status);
+create index ix_projects_status
+on core.projects(status);
 
 create index ix_projects_created_by
 on core.projects(created_by);
@@ -583,7 +584,7 @@ on repo.repositories(project_id)
 where deleted_at is null;
 
 create index ix_repositories_org_status
-on repo.repositories(organization_id, clone_status);
+on repo.repositories(project_id, clone_status);
 ```
 
 ---
@@ -1921,7 +1922,7 @@ Indexes:
 
 ```sql
 create index ix_audit_logs_org_created
-on audit.audit_logs(organization_id, created_at desc);
+
 
 create index ix_audit_logs_actor_created
 on audit.audit_logs(actor_user_id, created_at desc);
@@ -2335,7 +2336,7 @@ analysis.health_issues
 - Every partitioned table must have a retention policy.
 - Partition creation/drop must be tracked in `admin.db_maintenance_runs`.
 - Partition indexes must match query access patterns.
-- Queries must include tenant/project/time/snapshot filters whenever possible.
+- Queries must include project/time/snapshot filters whenever possible.
 
 ---
 
@@ -2401,8 +2402,6 @@ Do not create one massive migration. Roll out by bounded context.
 
 ```text
 001_identity_foundation
-002_tenant_organization
-003_billing_foundation
 004_core_projects_rbac
 005_repository_git_foundation
 006_ops_jobs_messaging
@@ -2438,8 +2437,7 @@ Each migration must include:
 [ ] Every critical access pattern has an index.
 [ ] Token and secret columns are hash-only or encrypted.
 [ ] Git credentials are versioned and rotation-ready.
-[ ] Tenant isolation exists through organization_id.
-[ ] Organization and project RBAC are both supported.
+[ ] Project RBAC is supported.
 [ ] Metadata is snapshot-aware and run-aware.
 [ ] Scene Flow Table is supported by scene_nodes, scene_node_references, and scene_connections.
 [ ] Worker jobs support lease, retry, attempts, timeout, cancellation, inbox/outbox, and DLQ.
@@ -2723,10 +2721,6 @@ on tenant.team_members(team_id, user_id);
 ```
 
 ---
-
-# 4.5 Billing / License Schema
-
-The `billing` schema supports plans, subscriptions, usage tracking, invoices, and future SaaS monetization.
 
 ---
 
