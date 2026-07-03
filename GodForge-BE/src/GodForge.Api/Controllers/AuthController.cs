@@ -1,6 +1,6 @@
+using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.Commands.Login;
 using GodForge.Application.Features.Auth.Commands.Register;
-using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

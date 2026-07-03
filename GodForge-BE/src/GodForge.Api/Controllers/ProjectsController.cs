@@ -1,9 +1,9 @@
 using GodForge.Application.Common.Interfaces;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Activities.Queries.GetProjectActivities;
 using GodForge.Application.Features.Jobs.Queries.GetProjectJobs;
 using GodForge.Application.Features.Projects.Commands.CreateProject;
 using GodForge.Application.Features.Projects.Queries.GetProjects;
-using GodForge.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
