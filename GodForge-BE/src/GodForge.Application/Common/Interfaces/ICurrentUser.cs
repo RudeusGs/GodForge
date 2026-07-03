@@ -6,6 +6,8 @@ public interface ICurrentUser
     bool IsAuthenticated { get; }
     string? Email { get; }
     string? SystemRole { get; }
+    string? Jti { get; }
+    DateTimeOffset? TokenExpiration { get; }
 
     Guid GetId(); // Throws if not authenticated
 }

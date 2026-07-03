@@ -27,7 +27,7 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
 
     private User() { } // EF Core
 
-    public static User Create(string email, string displayName, string passwordHash, SystemRole systemRole, DateTimeOffset now)
+    public static User Create(string email, string displayName, string passwordHash, DateTimeOffset now)
     {
         return new User
         {
@@ -36,13 +36,18 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
             NormalizedEmail = email.ToUpperInvariant(),
             DisplayName = displayName,
             PasswordHash = passwordHash,
-            SystemRole = systemRole,
+            SystemRole = SystemRole.User,
             Status = UserStatus.Active,
             SecurityStamp = Guid.NewGuid().ToString(),
             ConcurrencyStamp = Guid.NewGuid().ToString(),
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
+
+    public void UpdateSystemRole(SystemRole role)
+    {
+        SystemRole = role;
     }
 
     public void SoftDelete(DateTimeOffset now)

@@ -35,8 +35,24 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
         services.AddScoped<IJobPublisher, StubJobPublisher>();
-        services.AddScoped<IAdminSeeder, GodForge.Infrastructure.Initialization.DevelopmentAdminSeeder>();
 
+        var redisConfiguration = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrEmpty(redisConfiguration))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConfiguration;
+                options.InstanceName = "GodForge:";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
+
+        services.AddMemoryCache();
+        services.AddSingleton<ICacheService, GodForge.Infrastructure.Caching.RedisCacheService>();
+        services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
         return services;
     }
 }

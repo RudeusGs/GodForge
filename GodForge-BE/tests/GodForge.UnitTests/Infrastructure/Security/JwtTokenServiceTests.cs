@@ -28,7 +28,8 @@ public class JwtTokenServiceTests
         _mockConfiguration.Setup(x => x["Jwt:Audience"]).Returns("TestAudience");
         _mockConfiguration.Setup(x => x["Jwt:ExpiryMinutes"]).Returns("15");
 
-        var user = User.Create("test@example.com", "Test User", "hash", SystemRole.SystemAdmin, DateTimeOffset.UtcNow);
+        var user = User.Create("test@example.com", "Test User", "hash", DateTimeOffset.UtcNow);
+        user.UpdateSystemRole(SystemRole.SystemAdmin);
 
         // Act
         var tokenString = _sut.GenerateAccessToken(user);
@@ -56,7 +57,8 @@ public class JwtTokenServiceTests
     {
         // Arrange
         _mockConfiguration.Setup(x => x["Jwt:Secret"]).Returns((string?)null);
-        var user = User.Create("test@example.com", "Test User", "hash", SystemRole.SystemAdmin, DateTimeOffset.UtcNow);
+        var user = User.Create("test@example.com", "Test User", "hash", DateTimeOffset.UtcNow);
+        user.UpdateSystemRole(SystemRole.SystemAdmin);
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() => _sut.GenerateAccessToken(user));

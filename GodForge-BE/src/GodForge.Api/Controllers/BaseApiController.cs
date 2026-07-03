@@ -49,6 +49,24 @@ public abstract class BaseApiController : ControllerBase
         };
     }
 
+    protected ActionResult HandleResult(Result result)
+    {
+        if (result.IsSuccess)
+        {
+            return NoContent();
+        }
+
+        return result.Error!.Type switch
+        {
+            ErrorType.NotFound => NotFound(CreateErrorResponse(result.Error)),
+            ErrorType.Validation => BadRequest(CreateErrorResponse(result.Error)),
+            ErrorType.Conflict => Conflict(CreateErrorResponse(result.Error)),
+            ErrorType.Unauthorized => Unauthorized(CreateErrorResponse(result.Error)),
+            ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, CreateErrorResponse(result.Error)),
+            _ => StatusCode(StatusCodes.Status500InternalServerError, CreateErrorResponse(result.Error))
+        };
+    }
+
     private object CreateErrorResponse(ApplicationError error)
     {
         return new

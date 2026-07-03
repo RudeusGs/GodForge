@@ -48,6 +48,12 @@ public sealed class ProjectRepository : IProjectRepository
 
         var totalItems = await query.CountAsync(cancellationToken);
 
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+        if (page > totalPages)
+        {
+            page = totalPages > 0 ? totalPages : 1;
+        }
+
         var items = await query
             .AsNoTracking()
             .OrderByDescending(p => p.CreatedAt)

@@ -34,5 +34,20 @@ public sealed class CurrentUser : ICurrentUser
 
     public string? SystemRole => _httpContextAccessor.HttpContext?.User?.FindFirst("role")?.Value;
 
+    public string? Jti => _httpContextAccessor.HttpContext?.User?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
+
+    public DateTimeOffset? TokenExpiration
+    {
+        get
+        {
+            var expClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Exp)?.Value;
+            if (expClaim != null && long.TryParse(expClaim, out var expSeconds))
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(expSeconds);
+            }
+            return null;
+        }
+    }
+
     public Guid GetId() => Id ?? throw new UnauthorizedAccessException("User is not authenticated.");
 }
