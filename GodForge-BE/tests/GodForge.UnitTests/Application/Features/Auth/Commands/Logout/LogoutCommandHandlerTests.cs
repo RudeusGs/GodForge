@@ -67,7 +67,7 @@ public class LogoutCommandHandlerTests
 
         _mockClock.Setup(c => c.UtcNow).Returns(now);
         _mockCurrentUser.Setup(c => c.GetId()).Returns(userId);
-        
+
         _mockTokenService.Setup(x => x.HashRefreshToken("my-refresh-token"))
             .Returns("hashed-token");
 
