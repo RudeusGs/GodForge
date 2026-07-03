@@ -3,6 +3,7 @@ using GodForge.Application.Features.Activities.Queries.GetProjectActivities;
 using GodForge.Application.Features.Jobs.Queries.GetProjectJobs;
 using GodForge.Application.Features.Projects.Commands.CreateProject;
 using GodForge.Application.Features.Projects.Queries.GetProjects;
+using GodForge.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +34,7 @@ public class ProjectsController : BaseApiController
             _currentUser.Id.Value,
             CorrelationId);
 
-        var result = await _mediator.Send(command, cancellationToken);
+        Result<GodForge.Application.Features.Projects.DTOs.ProjectDto> result = await _mediator.Send(command, cancellationToken);
         if (result.IsSuccess)
         {
             return StatusCode(201, new
@@ -51,7 +52,7 @@ public class ProjectsController : BaseApiController
         if (_currentUser.Id == null) return Unauthorized();
 
         var query = new GetProjectsQuery(_currentUser.Id.Value, page, pageSize, search);
-        var result = await _mediator.Send(query, cancellationToken);
+        Result<GodForge.Application.Common.Models.PagedResult<GodForge.Application.Features.Projects.DTOs.ProjectDto>> result = await _mediator.Send(query, cancellationToken);
         return HandleResult(result);
     }
 
@@ -61,7 +62,7 @@ public class ProjectsController : BaseApiController
         if (_currentUser.Id == null) return Unauthorized();
 
         var query = new GetProjectJobsQuery(projectId, _currentUser.Id.Value, page, pageSize);
-        var result = await _mediator.Send(query, cancellationToken);
+        Result<GodForge.Application.Common.Models.PagedResult<GodForge.Application.Features.Jobs.DTOs.JobDto>> result = await _mediator.Send(query, cancellationToken);
         return HandleResult(result);
     }
 
@@ -71,7 +72,7 @@ public class ProjectsController : BaseApiController
         if (_currentUser.Id == null) return Unauthorized();
 
         var query = new GetProjectActivitiesQuery(projectId, _currentUser.Id.Value, page, pageSize);
-        var result = await _mediator.Send(query, cancellationToken);
+        Result<GodForge.Application.Common.Models.PagedResult<GodForge.Application.Features.Activities.DTOs.ActivityDto>> result = await _mediator.Send(query, cancellationToken);
         return HandleResult(result);
     }
 }
