@@ -24,4 +24,10 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
     {
         await _context.RefreshTokens.AddAsync(token, cancellationToken);
     }
+
+    public Task DeleteAsync(RefreshToken token, CancellationToken cancellationToken = default)
+    {
+        _context.RefreshTokens.Remove(token);
+        return Task.CompletedTask;
+    }
 }

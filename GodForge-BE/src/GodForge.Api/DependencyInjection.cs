@@ -19,7 +19,7 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
-        services.AddHostedService<GodForge.Api.HostedServices.DevelopmentAdminSeederHostedService>();
+
 
         // Configure JWT Authentication
         var jwtSecret = configuration["Jwt:Secret"];
@@ -54,6 +54,18 @@ public static class DependencyInjection
                 ValidAudience = configuration["Jwt:Audience"] ?? "GodForgeUsers",
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
+            };
+            x.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = async context =>
+                {
+                    var blacklistService = context.HttpContext.RequestServices.GetRequiredService<ITokenBlacklistService>();
+                    var jti = context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
+                    if (!string.IsNullOrEmpty(jti) && await blacklistService.IsBlacklistedAsync(jti))
+                    {
+                        context.Fail("This token has been blacklisted.");
+                    }
+                }
             };
         });
 
