@@ -1,0 +1,39 @@
+{
+  "name": "godforge",
+  "version": "1.0.0",
+  "description": "GodForge là một nền tảng Web phục vụ công tác quản lý, phân tích và trực quan hóa các dự án Godot Engine. Hệ thống cung cấp các bộ công cụ chuyên sâu bao gồm Snapshot History, Scene Diff Viewer, Dependency Graph, Project Health Dashboard và hệ thống trích xuất Metadata tự động.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RudeusGs/GodForge.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/RudeusGs/GodForge/issues"
+  },
+  "homepage": "https://github.com/RudeusGs/GodForge#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.7.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3"
+  },
+  "lint-staged": {
+    "GodForge-BE/**/*.cs": [
+      "dotnet format GodForge-BE/GodForge-BE.sln --include"
+    ],
+    "GodForge-FE/**/*.{vue,js,ts}": [
+      "npm run lint --prefix GodForge-FE"
+    ]
+  }
+}
