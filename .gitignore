@@ -36,5 +36,4 @@ Thumbs.db
 
 # Secrets and local files
 .env
-.env.*
 scratch/

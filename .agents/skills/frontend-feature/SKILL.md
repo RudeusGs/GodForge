@@ -33,6 +33,8 @@ Use this skill when building UI components, pages, forms, or routing logic in `G
 - SignalR subscribe/unsubscribe must be managed correctly.
 - RBAC UI visibility must be properly applied.
 - Basic accessibility standards must be implemented.
+- TailwindCSS must be used for styling; avoid Vanilla CSS.
+- Bootstrap Icons must be used for all icons.
 
 ## Forbidden Actions
 - Do not hardcode backend URLs.

@@ -25,3 +25,8 @@
 - No raw alert boxes.
 - Implement proper Skeleton Loaders for async views.
 - Implement explicit Empty States.
+
+## CSS & Styling
+- **TailwindCSS** is the mandatory CSS framework for all styling.
+- **Bootstrap Icons** (`bootstrap-icons`) is the standard for iconography. Do not use system icons or SVG strings directly unless absolutely necessary.
+- Follow a sleek, modern, and minimalist design language without excessive colors.
