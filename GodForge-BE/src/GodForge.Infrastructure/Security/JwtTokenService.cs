@@ -5,11 +5,10 @@ using System.Text;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-
-using Microsoft.Extensions.Options;
 using GodForge.Infrastructure.Configuration;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace GodForge.Infrastructure.Security;
 

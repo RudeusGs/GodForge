@@ -1,10 +1,10 @@
 using GodForge.Application.Common.Models;
+using GodForge.Application.Features.Auth.Commands.ForgotPassword;
 using GodForge.Application.Features.Auth.Commands.Login;
+using GodForge.Application.Features.Auth.Commands.Logout;
 using GodForge.Application.Features.Auth.Commands.Register;
 using GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
 using GodForge.Application.Features.Auth.DTOs;
-using GodForge.Application.Features.Auth.Commands.Logout;
-using GodForge.Application.Features.Auth.Commands.ForgotPassword;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

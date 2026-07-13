@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.Commands.Login;
 using GodForge.Application.Features.Auth.DTOs;
-using GodForge.Application.Common.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -29,7 +29,7 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
-    
+
     [Fact]
     public async Task SendOtp_WithValidEmail_ReturnsAcceptedOrNoContent()
     {

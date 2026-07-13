@@ -1,9 +1,9 @@
+using System.Security.Cryptography;
+using System.Text;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using MediatR;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace GodForge.Application.Features.Auth.Commands.ResetPassword;
 

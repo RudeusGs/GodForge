@@ -35,19 +35,24 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
+        var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMQ");
+        if (!string.IsNullOrEmpty(rabbitMqConnectionString))
+        {
+            throw new NotImplementedException("RabbitMQ publisher is not yet implemented. Use StubJobPublisher by leaving RabbitMQ configuration empty.");
+        }
         services.AddScoped<IJobPublisher, StubJobPublisher>();
-        
+
         // Email Configuration and Service
         services.Configure<EmailSettings>(options =>
         {
             options.Smtp.Host = configuration["Email:Smtp:Host"] ?? string.Empty;
-            
+
             var portSection = configuration["Email:Smtp:Port"];
             options.Smtp.Port = string.IsNullOrEmpty(portSection) ? 587 : int.Parse(portSection);
-            
+
             var sslSection = configuration["Email:Smtp:EnableSsl"];
             options.Smtp.EnableSsl = !string.IsNullOrEmpty(sslSection) && bool.Parse(sslSection);
-            
+
             options.Smtp.UserName = configuration["Email:Smtp:UserName"] ?? string.Empty;
             options.Smtp.Password = configuration["Email:Smtp:Password"] ?? string.Empty;
             options.Smtp.FromEmail = configuration["Email:Smtp:FromEmail"] ?? string.Empty;
