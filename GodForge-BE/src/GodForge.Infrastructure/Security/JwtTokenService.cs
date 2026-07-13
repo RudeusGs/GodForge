@@ -8,22 +8,25 @@ using GodForge.Domain.Entities.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
+using Microsoft.Extensions.Options;
+using GodForge.Infrastructure.Configuration;
+
 namespace GodForge.Infrastructure.Security;
 
 public sealed class JwtTokenService : ITokenService
 {
-    private readonly IConfiguration _configuration;
+    private readonly JwtSettings _jwtSettings;
 
-    public JwtTokenService(IConfiguration configuration)
+    public JwtTokenService(IOptions<JwtSettings> jwtOptions)
     {
-        _configuration = configuration;
+        _jwtSettings = jwtOptions.Value;
     }
 
     public string GenerateAccessToken(User user)
     {
-        var secret = _configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
-        var issuer = _configuration["Jwt:Issuer"];
-        var audience = _configuration["Jwt:Audience"];
+        var secret = _jwtSettings.Secret;
+        var issuer = _jwtSettings.Issuer;
+        var audience = _jwtSettings.Audience;
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -36,10 +39,7 @@ public sealed class JwtTokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        if (!int.TryParse(_configuration["Jwt:ExpiryMinutes"], out var expiryMinutes))
-        {
-            expiryMinutes = 15;
-        }
+        var expiryMinutes = _jwtSettings.ExpiryMinutes;
 
         var token = new JwtSecurityToken(
             issuer,

@@ -4,4 +4,4 @@ using MediatR;
 
 namespace GodForge.Application.Features.Auth.Commands.Register;
 
-public record RegisterCommand(string Email, string DisplayName, string Password) : IRequest<Result<AuthResultDto>>;
+public record RegisterCommand(string Email, string DisplayName, string Password, string Otp) : IRequest<Result<AuthResultDto>>;

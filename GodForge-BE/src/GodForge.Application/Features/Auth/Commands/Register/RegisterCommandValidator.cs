@@ -17,5 +17,10 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
         RuleFor(v => v.Password)
             .NotEmpty().WithMessage("Password is required.")
             .MinimumLength(8).WithMessage("Password must be at least 8 characters long.");
+
+        RuleFor(v => v.Otp)
+            .NotEmpty().WithMessage("OTP verification code is required.")
+            .Length(6).WithMessage("OTP must be exactly 6 digits.")
+            .Matches(@"^\d{6}$").WithMessage("OTP must contain only digits.");
     }
 }

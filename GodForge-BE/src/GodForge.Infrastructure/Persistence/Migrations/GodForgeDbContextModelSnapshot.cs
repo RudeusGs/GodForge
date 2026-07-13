@@ -2327,6 +2327,14 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
 
+                    b.Property<DateTimeOffset?>("PasswordResetTokenExpiry")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_reset_token_expiry");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasColumnType("text")
+                        .HasColumnName("password_reset_token_hash");
+
                     b.Property<string>("SecurityStamp")
                         .IsRequired()
                         .HasMaxLength(100)

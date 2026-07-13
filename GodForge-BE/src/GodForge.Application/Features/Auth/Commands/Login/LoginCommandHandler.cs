@@ -42,8 +42,17 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<D
         if (user.Status == UserStatus.Disabled)
             return ApplicationError.Forbidden("AUTH_ACCOUNT_DISABLED", "Account is disabled.");
 
-        if (user.Status == UserStatus.Locked && user.LockedUntil > now)
-            return ApplicationError.Forbidden("AUTH_ACCOUNT_LOCKED", "Account is temporarily locked.");
+        if (user.Status == UserStatus.Locked)
+        {
+            if (user.LockedUntil > now)
+            {
+                return ApplicationError.Forbidden("AUTH_ACCOUNT_LOCKED", "Account is temporarily locked.");
+            }
+            else
+            {
+                user.Unlock(now);
+            }
+        }
 
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {

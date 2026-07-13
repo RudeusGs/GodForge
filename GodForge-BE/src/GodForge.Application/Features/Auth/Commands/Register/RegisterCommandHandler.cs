@@ -16,6 +16,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
     private readonly ITokenService _tokenService;
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICacheService _cacheService;
 
     public RegisterCommandHandler(
         IUserRepository users,
@@ -23,7 +24,8 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
         IClock clock,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICacheService cacheService)
     {
         _users = users;
         _refreshTokens = refreshTokens;
@@ -31,10 +33,24 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         _tokenService = tokenService;
         _clock = clock;
         _unitOfWork = unitOfWork;
+        _cacheService = cacheService;
     }
 
     public async Task<Result<AuthResultDto>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
+        var cacheKey = $"otp:register:{request.Email.Trim().ToLowerInvariant()}";
+        var cachedOtp = await _cacheService.GetAsync<string>(cacheKey, cancellationToken);
+
+        if (string.IsNullOrEmpty(cachedOtp))
+        {
+            return ApplicationError.Validation("AUTH_OTP_EXPIRED", "OTP expired or not found. Please request a new one.");
+        }
+
+        if (cachedOtp != request.Otp)
+        {
+            return ApplicationError.Validation("AUTH_OTP_INVALID", "Invalid OTP verification code.");
+        }
+
         var now = _clock.UtcNow;
         var existingUser = await _users.GetByEmailAsync(request.Email, cancellationToken);
 
@@ -55,7 +71,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         var refreshToken = _tokenService.GenerateRefreshToken();
         var hashedRefreshToken = _tokenService.HashRefreshToken(refreshToken);
 
-        var tokenEntity = RefreshToken.Create(
+        var tokenEntity = GodForge.Domain.Entities.Identity.RefreshToken.Create(
             user.Id,
             hashedRefreshToken,
             null, // deviceName
@@ -65,6 +81,9 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
 
         await _refreshTokens.AddAsync(tokenEntity, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Delete the OTP code from cache as it was successfully consumed
+        await _cacheService.RemoveAsync(cacheKey, cancellationToken);
 
         var userDto = new UserDto(user.Id, user.Email, user.DisplayName, user.SystemRole.ToString());
         return new AuthResultDto(accessToken, refreshToken, userDto);

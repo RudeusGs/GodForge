@@ -23,6 +23,9 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
     public string SecurityStamp { get; private set; } = default!;
     public string ConcurrencyStamp { get; private set; } = default!;
 
+    public string? PasswordResetTokenHash { get; private set; }
+    public DateTimeOffset? PasswordResetTokenExpiry { get; private set; }
+
     public DateTimeOffset? DeletedAt { get; private set; }
 
     private User() { } // EF Core
@@ -75,5 +78,33 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
             Status = UserStatus.Locked;
         }
         UpdatedAt = now;
+    }
+
+    public void Unlock(DateTimeOffset now)
+    {
+        FailedLoginCount = 0;
+        LockedUntil = null;
+        Status = UserStatus.Active;
+        UpdatedAt = now;
+    }
+
+    public void UpdatePassword(string passwordHash, DateTimeOffset now)
+    {
+        PasswordHash = passwordHash;
+        PasswordChangedAt = now;
+        SecurityStamp = Guid.NewGuid().ToString();
+        UpdatedAt = now;
+    }
+
+    public void SetPasswordResetToken(string tokenHash, DateTimeOffset expiry)
+    {
+        PasswordResetTokenHash = tokenHash;
+        PasswordResetTokenExpiry = expiry;
+    }
+
+    public void ClearPasswordResetToken()
+    {
+        PasswordResetTokenHash = null;
+        PasswordResetTokenExpiry = null;
     }
 }
