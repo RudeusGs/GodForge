@@ -69,6 +69,18 @@ public static class DependencyInjection
             };
         });
 
+        // Add CORS Policy for Frontend Development Server
+        services.AddCors(options =>
+        {
+            options.AddPolicy("CorsPolicy", policy =>
+            {
+                policy.WithOrigins("http://localhost:5173")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            });
+        });
+
         return services;
     }
 }

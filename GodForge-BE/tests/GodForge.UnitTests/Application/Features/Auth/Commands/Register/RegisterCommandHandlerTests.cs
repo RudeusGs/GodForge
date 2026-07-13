@@ -1,11 +1,11 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.Commands.Register;
 using GodForge.Domain.Entities.Identity;
 using GodForge.Domain.Enums;
 using Moq;
 using Xunit;
-
 
 namespace GodForge.UnitTests.Application.Features.Auth.Commands.Register;
 
@@ -17,6 +17,7 @@ public class RegisterCommandHandlerTests
     private readonly Mock<ITokenService> _mockTokenService;
     private readonly Mock<IClock> _mockClock;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ICacheService> _mockCacheService;
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
@@ -27,6 +28,7 @@ public class RegisterCommandHandlerTests
         _mockTokenService = new Mock<ITokenService>();
         _mockClock = new Mock<IClock>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _mockCacheService = new Mock<ICacheService>();
 
         _handler = new RegisterCommandHandler(
             _mockUserRepository.Object,
@@ -34,16 +36,20 @@ public class RegisterCommandHandlerTests
             _mockPasswordHasher.Object,
             _mockTokenService.Object,
             _mockClock.Object,
-            _mockUnitOfWork.Object);
+            _mockUnitOfWork.Object,
+            _mockCacheService.Object);
     }
 
     [Fact]
-    public async Task Handle_GivenValidData_CreatesUserAndReturnsTokens()
+    public async Task Handle_GivenValidDataAndValidOtp_CreatesUserAndReturnsTokens()
     {
         // Arrange
-        var command = new RegisterCommand("newuser@example.com", "New User", "password123");
+        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
         var now = DateTimeOffset.UtcNow;
         _mockClock.Setup(c => c.UtcNow).Returns(now);
+
+        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("123456");
 
         _mockUserRepository.Setup(x => x.GetByEmailAsync("newuser@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
@@ -67,15 +73,57 @@ public class RegisterCommandHandlerTests
 
         _mockUserRepository.Verify(x => x.AddAsync(It.Is<User>(u => u.Email == "newuser@example.com" && u.PasswordHash == "hashed_password"), It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockCacheService.Verify(c => c.RemoveAsync("otp:register:newuser@example.com", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_GivenExpiredOtp_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
+        
+        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.Error);
+        Assert.Equal("AUTH_OTP_EXPIRED", result.Error.Code);
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_GivenInvalidOtp_ReturnsValidationError()
+    {
+        // Arrange
+        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
+        
+        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("654321"); // Mismatch
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.Error);
+        Assert.Equal("AUTH_OTP_INVALID", result.Error.Code);
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task Handle_GivenExistingEmail_ReturnsConflictError()
     {
         // Arrange
-        var command = new RegisterCommand("existing@example.com", "Existing User", "password123");
+        var command = new RegisterCommand("existing@example.com", "Existing User", "password123", "123456");
         var now = DateTimeOffset.UtcNow;
         _mockClock.Setup(c => c.UtcNow).Returns(now);
+
+        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:existing@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("123456");
 
         var existingUser = User.Create("existing@example.com", "Existing User", "hash", now);
 

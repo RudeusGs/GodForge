@@ -76,4 +76,12 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
         }
         UpdatedAt = now;
     }
+
+    public void UpdatePassword(string passwordHash, DateTimeOffset now)
+    {
+        PasswordHash = passwordHash;
+        PasswordChangedAt = now;
+        SecurityStamp = Guid.NewGuid().ToString();
+        UpdatedAt = now;
+    }
 }
