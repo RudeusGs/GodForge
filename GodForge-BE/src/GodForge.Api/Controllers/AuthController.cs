@@ -1,10 +1,10 @@
 using GodForge.Application.Common.Models;
+using GodForge.Application.Features.Auth.Commands.ForgotPassword;
 using GodForge.Application.Features.Auth.Commands.Login;
+using GodForge.Application.Features.Auth.Commands.Logout;
 using GodForge.Application.Features.Auth.Commands.Register;
 using GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
 using GodForge.Application.Features.Auth.DTOs;
-using GodForge.Application.Features.Auth.Commands.Logout;
-using GodForge.Application.Features.Auth.Commands.ForgotPassword;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -59,6 +59,22 @@ public class AuthController : BaseApiController
         Result result = await _mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var command = new GodForge.Application.Features.Auth.Commands.ResetPassword.ResetPasswordCommand(request.Email, request.Token, request.NewPassword);
+        Result result = await _mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
+    {
+        var command = new GodForge.Application.Features.Auth.Commands.RefreshToken.RefreshTokenCommand(request.RefreshToken);
+        Result<AuthResultDto> result = await _mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
 }
 
 public record LoginRequest(string Email, string Password);
@@ -66,3 +82,6 @@ public record RegisterRequest(string Email, string DisplayName, string Password,
 public record SendRegisterOtpRequest(string Email);
 public record LogoutRequest(string? RefreshToken);
 public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Email, string Token, string NewPassword);
+public record RefreshTokenRequest(string RefreshToken);
+

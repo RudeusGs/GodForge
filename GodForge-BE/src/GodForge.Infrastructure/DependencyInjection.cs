@@ -35,6 +35,11 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
+        var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMQ");
+        if (!string.IsNullOrEmpty(rabbitMqConnectionString))
+        {
+            throw new NotImplementedException("RabbitMQ publisher is not yet implemented. Use StubJobPublisher by leaving RabbitMQ configuration empty.");
+        }
         services.AddScoped<IJobPublisher, StubJobPublisher>();
         
         // Email Configuration and Service
@@ -55,6 +60,7 @@ public static class DependencyInjection
         });
         services.AddScoped<IEmailService, EmailService>();
 
+
         var redisConfiguration = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrEmpty(redisConfiguration))
         {
@@ -68,6 +74,11 @@ public static class DependencyInjection
         {
             services.AddDistributedMemoryCache();
         }
+
+        services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
+        services.AddOptions<JwtSettings>()
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         services.AddMemoryCache();
         services.AddSingleton<ICacheService, GodForge.Infrastructure.Caching.RedisCacheService>();

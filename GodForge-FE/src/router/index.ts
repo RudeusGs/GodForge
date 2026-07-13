@@ -6,7 +6,13 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            redirect: '/login' // Default redirect for now
+            redirect: '/dashboard' // Default redirect
+        },
+        {
+            path: '/dashboard',
+            name: 'dashboard',
+            component: () => import('../views/DashboardView.vue'),
+            meta: { requiresAuth: true }
         },
         {
             path: '/login',
@@ -30,8 +36,7 @@ const router = createRouter({
 });
 
 // Navigation Guards
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-router.beforeEach((to, from) => {
+router.beforeEach((to) => {
     const authStore = useAuthStore();
     const isAuthenticated = authStore.isAuthenticated;
 
@@ -39,7 +44,7 @@ router.beforeEach((to, from) => {
         return { name: 'login' };
     } else if (to.meta.requiresGuest && isAuthenticated) {
         // Redirect away from login/register if already logged in
-        return { path: '/' }; 
+        return { name: 'dashboard' }; 
     }
 });
 

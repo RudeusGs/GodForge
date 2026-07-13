@@ -14,7 +14,10 @@ public abstract class BaseApiController : ControllerBase
         if (result.IsSuccess)
         {
             if (result.Value is null)
-                return NoContent();
+                return Ok(new
+                {
+                    meta = new { correlationId = CorrelationId }
+                });
 
             if (result.Value is IPagedResult pagedResult)
             {
@@ -53,7 +56,10 @@ public abstract class BaseApiController : ControllerBase
     {
         if (result.IsSuccess)
         {
-            return NoContent();
+            return Ok(new
+            {
+                meta = new { correlationId = CorrelationId }
+            });
         }
 
         return result.Error!.Type switch

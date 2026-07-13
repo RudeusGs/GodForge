@@ -81,7 +81,7 @@ public class RegisterCommandHandlerTests
     {
         // Arrange
         var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
-        
+
         _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 
@@ -100,7 +100,7 @@ public class RegisterCommandHandlerTests
     {
         // Arrange
         var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
-        
+
         _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync("654321"); // Mismatch
 

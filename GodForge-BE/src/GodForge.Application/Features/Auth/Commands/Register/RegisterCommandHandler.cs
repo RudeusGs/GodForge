@@ -71,7 +71,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         var refreshToken = _tokenService.GenerateRefreshToken();
         var hashedRefreshToken = _tokenService.HashRefreshToken(refreshToken);
 
-        var tokenEntity = RefreshToken.Create(
+        var tokenEntity = GodForge.Domain.Entities.Identity.RefreshToken.Create(
             user.Id,
             hashedRefreshToken,
             null, // deviceName

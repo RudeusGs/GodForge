@@ -22,17 +22,8 @@ public static class DependencyInjection
 
 
         // Configure JWT Authentication
-        var jwtSecret = configuration["Jwt:Secret"];
-
-        if (!environment.IsDevelopment())
-        {
-            if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32 || jwtSecret == "SuperSecretKeyForDevelopmentOnlyPleaseChangeInProduction123!")
-            {
-                throw new InvalidOperationException("A secure Jwt:Secret of at least 32 characters is required in non-development environments.");
-            }
-        }
-
-        jwtSecret ??= "SuperSecretKeyForDevelopmentOnlyPleaseChangeInProduction123!";
+        var jwtSettings = configuration.GetSection("Jwt").Get<GodForge.Infrastructure.Configuration.JwtSettings>() ?? new GodForge.Infrastructure.Configuration.JwtSettings();
+        var jwtSecret = string.IsNullOrEmpty(jwtSettings.Secret) ? "A_TEMPORARY_KEY_FOR_REGISTRATION_THAT_WILL_FAIL_STARTUP_VALIDATION123!" : jwtSettings.Secret;
         var key = Encoding.UTF8.GetBytes(jwtSecret);
 
         services.AddAuthentication(x =>
@@ -49,9 +40,9 @@ public static class DependencyInjection
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
                 ValidateIssuer = true,
-                ValidIssuer = configuration["Jwt:Issuer"] ?? "GodForge",
+                ValidIssuer = jwtSettings.Issuer,
                 ValidateAudience = true,
-                ValidAudience = configuration["Jwt:Audience"] ?? "GodForgeUsers",
+                ValidAudience = jwtSettings.Audience,
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
@@ -68,6 +59,8 @@ public static class DependencyInjection
                 }
             };
         });
+
+        services.AddAuthorization();
 
         // Add CORS Policy for Frontend Development Server
         services.AddCors(options =>

@@ -19,21 +19,21 @@ const errorMsg = ref('');
 const otpSent = ref(false);
 const sendingOtp = ref(false);
 const otpCooldown = ref(0);
-let cooldownTimer: ReturnType<typeof setInterval> | undefined = undefined;
+let cooldownTimer: number | undefined = undefined;
 
 const startCooldown = () => {
     otpCooldown.value = 60;
-    cooldownTimer = setInterval(() => {
+    cooldownTimer = window.setInterval(() => {
         if (otpCooldown.value > 0) {
             otpCooldown.value--;
         } else {
-            clearInterval(cooldownTimer);
+            window.clearInterval(cooldownTimer);
         }
     }, 1000);
 };
 
 onUnmounted(() => {
-    if (cooldownTimer) clearInterval(cooldownTimer);
+    if (cooldownTimer) window.clearInterval(cooldownTimer);
 });
 
 const handleSendOtp = async () => {

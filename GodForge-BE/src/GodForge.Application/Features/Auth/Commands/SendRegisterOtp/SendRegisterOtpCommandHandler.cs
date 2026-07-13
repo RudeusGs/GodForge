@@ -29,8 +29,8 @@ public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegister
             return Result.Failure(ApplicationError.Conflict("AUTH_EMAIL_EXISTS", "Email is already in use."));
         }
 
-        // Generate a 6-digit random code
-        var otp = Random.Shared.Next(100000, 999999).ToString();
+        // Generate a 6-digit random code securely
+        var otp = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
 
         // Store the OTP in cache with 5 minutes expiration
         var cacheKey = $"otp:register:{request.Email.Trim().ToLowerInvariant()}";

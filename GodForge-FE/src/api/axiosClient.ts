@@ -13,8 +13,7 @@ const axiosClient = axios.create({
 // Request Interceptor: Attach JWT Token
 axiosClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        // TODO: Use useAuthStore() when Pinia is set up
-        const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -24,6 +23,18 @@ axiosClient.interceptors.request.use(
         return Promise.reject(error);
     }
 );
+
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function onRefreshed(token: string) {
+    refreshSubscribers.forEach(cb => cb(token));
+    refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+    refreshSubscribers.push(cb);
+}
 
 // Response Interceptor: Handle 401/403 and unwrap data
 axiosClient.interceptors.response.use(
@@ -36,18 +47,47 @@ axiosClient.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
             
-            try {
-                const refreshToken = localStorage.getItem('refresh_token');
-                if (refreshToken) {
-                    // TODO: Implement refresh token logic
-                } else {
-                    throw new Error("No refresh token available");
-                }
-            } catch (refreshError) {
+            const isLocal = !!localStorage.getItem('refresh_token');
+            const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+            if (!refreshToken) {
                 localStorage.removeItem('access_token');
-                localStorage.removeItem('refresh_token');
+                sessionStorage.removeItem('access_token');
                 window.location.href = '/login';
-                return Promise.reject(refreshError);
+                return Promise.reject(error);
+            }
+
+            if (!isRefreshing) {
+                isRefreshing = true;
+                try {
+                    const response = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
+                    const newAccessToken = response.data.data.accessToken;
+                    const newRefreshToken = response.data.data.refreshToken;
+                    const storage = isLocal ? localStorage : sessionStorage;
+                    storage.setItem('access_token', newAccessToken);
+                    storage.setItem('refresh_token', newRefreshToken);
+                    isRefreshing = false;
+                    onRefreshed(newAccessToken);
+                    originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                    return axiosClient(originalRequest);
+                } catch (refreshError) {
+                    isRefreshing = false;
+                    refreshSubscribers = [];
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    sessionStorage.removeItem('access_token');
+                    sessionStorage.removeItem('refresh_token');
+                    window.location.href = '/login';
+                    return Promise.reject(refreshError);
+                }
+            } else {
+                return new Promise(resolve => {
+                    addRefreshSubscriber(token => {
+                        if (originalRequest.headers) {
+                            originalRequest.headers.Authorization = `Bearer ${token}`;
+                        }
+                        resolve(axiosClient(originalRequest));
+                    });
+                });
             }
         }
 

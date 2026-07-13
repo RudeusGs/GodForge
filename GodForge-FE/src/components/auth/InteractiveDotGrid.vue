@@ -11,14 +11,18 @@ let height = 0;
 const DOT_RADIUS = 1;
 const DOT_SPACING = 24;
 
+let needsRedraw = true;
+
 const handleMouseMove = (e: MouseEvent) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
+    needsRedraw = true;
 };
 
 const handleMouseLeave = () => {
     mouse.x = -1000;
     mouse.y = -1000;
+    needsRedraw = true;
 };
 
 const resize = () => {
@@ -27,10 +31,14 @@ const resize = () => {
     height = window.innerHeight;
     canvasRef.value.width = width;
     canvasRef.value.height = height;
+    needsRedraw = true;
 };
 
 const draw = () => {
-    if (!canvasRef.value) return;
+    animationFrameId = requestAnimationFrame(draw);
+    if (!needsRedraw || !canvasRef.value) return;
+    needsRedraw = false;
+    
     const ctx = canvasRef.value.getContext('2d');
     if (!ctx) return;
 
@@ -70,8 +78,6 @@ const draw = () => {
             ctx.fill();
         }
     }
-
-    animationFrameId = requestAnimationFrame(draw);
 };
 
 onMounted(() => {

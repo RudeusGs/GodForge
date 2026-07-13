@@ -26,7 +26,7 @@ const handleLogin = async () => {
     try {
         loading.value = true;
         errorMsg.value = '';
-        await authStore.login({ email: email.value, password: password.value });
+        await authStore.login({ email: email.value, password: password.value }, rememberMe.value);
         router.push('/');
     } catch (error: unknown) {
         // Handle mock or actual error

@@ -44,7 +44,7 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
             return ApplicationError.Conflict("PROJECT_NAME_EXISTS", "A project with this name already exists.");
 
         var now = _clock.UtcNow;
-        var slug = request.Name.ToLowerInvariant().Replace(" ", "-");
+        var slug = GenerateSlug(request.Name);
 
         if (!Enum.TryParse<ProjectVisibility>(request.Visibility, true, out var visibility))
         {
@@ -85,5 +85,19 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ProjectDto.From(project);
+    }
+
+    private string GenerateSlug(string phrase)
+    {
+        var str = phrase.ToLowerInvariant();
+        // Remove invalid chars
+        str = System.Text.RegularExpressions.Regex.Replace(str, @"[^a-z0-9\s-]", "");
+        // Convert multiple spaces/hyphens into one space
+        str = System.Text.RegularExpressions.Regex.Replace(str, @"[\s-]+", " ").Trim();
+        // Cut and trim
+        str = str.Substring(0, str.Length <= 50 ? str.Length : 50).Trim();
+        // Replace spaces with hyphens
+        str = System.Text.RegularExpressions.Regex.Replace(str, @"\s", "-");
+        return str;
     }
 }
