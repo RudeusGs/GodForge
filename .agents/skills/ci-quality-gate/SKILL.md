@@ -35,12 +35,7 @@ Use this skill after implementing a feature, just before declaring the task comp
 - Do not claim the gate passed if a command could not be run.
 
 ## Completion Checklist
-- [ ] Backend `dotnet build` passed cleanly.
-- [ ] Backend `dotnet test` passed.
-- [ ] Backend formatting and vulnerabilities checked.
-- [ ] Frontend lint & typecheck passed.
-- [ ] Frontend tests and build passed.
-- [ ] Frontend audit passed.
+
 
 ## Output Expectations
 The agent must list the exact commands executed and their pass/fail/not-runnable-yet status.

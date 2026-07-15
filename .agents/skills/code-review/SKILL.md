@@ -35,13 +35,7 @@ Use this skill when auditing existing code, or when the user asks you to review 
 - Do not rubber-stamp code without checking documentation alignment.
 
 ## Completion Checklist
-- [ ] Clean Architecture violations checked.
-- [ ] Controller logic checked.
-- [ ] RBAC audited.
-- [ ] Tests and docs sync checked.
-- [ ] Secrets and logging audited.
-- [ ] Async job and migration risks checked.
-- [ ] Frontend security checked.
+
 
 ## Output Expectations
 Provide a detailed review listing issues categorized by the mandatory checks above.

@@ -4,20 +4,8 @@ description: Skill for implementing new GodForge backend features using Clean Ar
 ---
 
 
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
 Use this skill to implement a new backend feature for GodForge. Always implement from the SRS outward: requirements first, domain/application rules second, infrastructure/API last.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 - Treat `docs/SRS/` as the source of truth before writing code.
 - Keep business rules out of controllers and infrastructure adapters.
@@ -29,12 +17,6 @@ Use this skill when performing tasks related to its name.
 - Do not log secrets, tokens, credentials, raw Git credentials, or sensitive repository content.
 - Do not automatically resolve Git conflicts or rewrite project files unless the SRS and user action explicitly allow it.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Before making code changes, identify and write down:
 
@@ -48,19 +30,6 @@ Before making code changes, identify and write down:
 
 Do not start implementation if the expected behavior, permission, data model, and error cases are unclear.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use this path only for lightweight work that can complete inside the API latency target.
 
@@ -73,12 +42,6 @@ Flow:
 5. Infrastructure persists data or calls external adapters through interfaces.
 6. Controller returns `ApiResponse<T>` or standardized error response.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use this path for clone, parse, analyze, diff, preview, large Git operations, large metadata processing, or anything likely to exceed API latency targets.
 
@@ -91,33 +54,11 @@ Flow:
 5. Worker consumes the message, acquires required Redis/repository lock, updates heartbeat/progress, executes the engine, persists output, releases lock, updates job status, invalidates cache, and emits notification/activity events.
 6. Failed worker work transitions to `Retrying`, `Failed`, or `DeadLettered` according to retry policy.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Domain/`
 
 Create only domain concepts here:
 
-```text
-GodForge.Domain/
-├── Entities/
-├── ValueObjects/
-├── Enums/
-├── Events/
-├── Exceptions/
-└── Services/
-```
 
 Rules:
 
@@ -130,90 +71,9 @@ Rules:
 
 Example:
 
-```csharp
-namespace GodForge.Domain.Entities;
-
-public sealed class Project
-{
-    public Guid Id { get; private set; }
-    public string Name { get; private set; } = default!;
-    public string Slug { get; private set; } = default!;
-    public string? Description { get; private set; }
-    public string Visibility { get; private set; } = default!;
-    public Guid CreatedBy { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
-    public DateTimeOffset? DeletedAt { get; private set; }
-
-    private Project() { }
-
-    public static Project Create(
-        string name,
-        string slug,
-        string? description,
-        string visibility,
-        Guid createdBy,
-        DateTimeOffset now)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Project name is required.");
-
-        return new Project
-        {
-            Id = Guid.NewGuid(),
-            Name = name.Trim(),
-            Slug = slug,
-            Description = description,
-            Visibility = visibility,
-            CreatedBy = createdBy,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-    }
-
-    public void UpdateDetails(string name, string? description, DateTimeOffset now)
-    {
-        if (DeletedAt is not null)
-            throw new DomainException("Deleted projects cannot be updated.");
-
-        Name = name.Trim();
-        Description = description;
-        UpdatedAt = now;
-    }
-
-    public void SoftDelete(DateTimeOffset now)
-    {
-        if (DeletedAt is not null) return;
-        DeletedAt = now;
-        UpdatedAt = now;
-    }
-}
-```
-
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Application/`
 
-```text
-GodForge.Application/
-├── Common/
-│   ├── Interfaces/
-│   ├── Models/
-│   ├── Security/
-│   ├── Behaviors/
-│   └── Errors/
-└── Features/
-    └── {Module}/
-        ├── Commands/
-        ├── Queries/
-        ├── DTOs/
-        └── Mapping/
-```
 
 Rules:
 
@@ -230,78 +90,6 @@ Rules:
 
 Command template:
 
-```csharp
-namespace GodForge.Application.Features.Projects.Commands.CreateProject;
-
-public sealed record CreateProjectCommand(
-    string Name,
-    string? Description,
-    string Visibility,
-    Guid ActorId,
-    string CorrelationId) : IRequest<Result<ProjectDto>>;
-
-public sealed class CreateProjectCommandHandler
-    : IRequestHandler<CreateProjectCommand, Result<ProjectDto>>
-{
-    private readonly IProjectRepository _projects;
-    private readonly IAuthorizationService _authorization;
-    private readonly IActivityLogWriter _activityLog;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IClock _clock;
-
-    public CreateProjectCommandHandler(
-        IProjectRepository projects,
-        IAuthorizationService authorization,
-        IActivityLogWriter activityLog,
-        IUnitOfWork unitOfWork,
-        IClock clock)
-    {
-        _projects = projects;
-        _authorization = authorization;
-        _activityLog = activityLog;
-        _unitOfWork = unitOfWork;
-        _clock = clock;
-    }
-
-    public async Task<Result<ProjectDto>> Handle(
-        CreateProjectCommand request,
-        CancellationToken cancellationToken)
-    {
-        var allowed = await _authorization.CanCreateProjectAsync(
-            request.ActorId,
-            cancellationToken);
-
-        if (!allowed)
-            return Errors.Forbidden("PROJECT_CREATE_FORBIDDEN");
-
-        if (await _projects.NameExistsAsync(request.ActorId, request.Name, cancellationToken))
-            return Errors.Conflict("PROJECT_NAME_EXISTS");
-
-        var now = _clock.UtcNow;
-        var slug = SlugGenerator.From(request.Name);
-        var project = Project.Create(
-            request.Name,
-            slug,
-            request.Description,
-            request.Visibility,
-            request.ActorId,
-            now);
-
-        await _projects.AddAsync(project, cancellationToken);
-        await _activityLog.WriteAsync(
-            ActivityActions.ProjectCreated,
-            request.ActorId,
-            project.Id,
-            status: "Succeeded",
-            correlationId: request.CorrelationId,
-            cancellationToken);
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return ProjectDto.From(project);
-    }
-}
-```
 
 Async job command rules:
 
@@ -312,32 +100,9 @@ Async job command rules:
 - Include `correlationId`, `actorId`, and input hash in the message.
 - Return job DTO, not the eventual result.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Infrastructure/`
 
-```text
-GodForge.Infrastructure/
-├── Persistence/
-│   ├── GodForgeDbContext.cs
-│   ├── Configurations/
-│   ├── Repositories/
-│   └── Migrations/
-├── Messaging/
-│   └── RabbitMq/
-├── Caching/
-│   └── Redis/
-├── Storage/
-│   └── MinIO/
-├── Git/
-├── Observability/
-└── DependencyInjection.cs
-```
 
 Rules:
 
@@ -353,63 +118,6 @@ Rules:
 
 EF configuration template:
 
-```csharp
-namespace GodForge.Infrastructure.Persistence.Configurations;
-
-public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
-{
-    public void Configure(EntityTypeBuilder<Project> builder)
-    {
-        builder.ToTable("projects", "core");
-
-        builder.HasKey(p => p.Id);
-
-        builder.Property(p => p.Id)
-            .HasColumnName("id")
-            .HasColumnType("uuid");
-
-        builder.Property(p => p.Name)
-            .HasColumnName("name")
-            .HasMaxLength(100)
-            .IsRequired();
-
-        builder.Property(p => p.Slug)
-            .HasColumnName("slug")
-            .HasMaxLength(120)
-            .IsRequired();
-
-        builder.Property(p => p.CreatedAt)
-            .HasColumnName("created_at")
-            .HasColumnType("timestamptz")
-            .IsRequired();
-
-        builder.Property(p => p.UpdatedAt)
-            .HasColumnName("updated_at")
-            .HasColumnType("timestamptz")
-            .IsRequired();
-
-        builder.Property(p => p.DeletedAt)
-            .HasColumnName("deleted_at")
-            .HasColumnType("timestamptz");
-
-        builder.HasIndex(p => new { p.CreatedBy, p.Slug })
-            .IsUnique()
-            .HasDatabaseName("ux_projects_created_by_slug");
-
-        builder.HasIndex(p => p.DeletedAt)
-            .HasDatabaseName("ix_projects_deleted_at");
-
-        builder.HasQueryFilter(p => p.DeletedAt == null);
-    }
-}
-```
-
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use a worker implementation when the feature consumes RabbitMQ jobs or performs heavy processing.
 
@@ -424,23 +132,9 @@ Rules:
 - Emit notifications and dashboard invalidation events only after successful persistence.
 - Never swallow exceptions silently; convert them to structured job errors and safe logs.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Location: `src/GodForge.Api/`
 
-```text
-GodForge.Api/
-├── Controllers/
-├── Contracts/
-├── Middleware/
-├── Filters/
-└── Extensions/
-```
 
 Rules:
 
@@ -456,90 +150,12 @@ Rules:
 
 Controller template:
 
-```csharp
-namespace GodForge.Api.Controllers;
-
-[ApiController]
-[Route("api/v1/projects")]
-[Authorize]
-public sealed class ProjectsController : ControllerBase
-{
-    private readonly ISender _sender;
-    private readonly ICorrelationContext _correlation;
-
-    public ProjectsController(ISender sender, ICorrelationContext correlation)
-    {
-        _sender = sender;
-        _correlation = correlation;
-    }
-
-    [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateProjectRequest request,
-        CancellationToken cancellationToken)
-    {
-        var command = new CreateProjectCommand(
-            request.Name,
-            request.Description,
-            request.Visibility,
-            User.GetUserId(),
-            _correlation.CorrelationId);
-
-        var result = await _sender.Send(command, cancellationToken);
-
-        return result.Match(
-            value => CreatedAtAction(
-                nameof(GetById),
-                new { id = value.Id },
-                new ApiResponse<ProjectDto>(value)),
-            error => error.ToActionResult(_correlation.CorrelationId));
-    }
-}
-```
 
 Async endpoint template:
 
-```csharp
-[HttpPost("{id:guid}/analyze")]
-[ProducesResponseType(typeof(ApiResponse<JobDto>), StatusCodes.Status202Accepted)]
-public async Task<IActionResult> Analyze(
-    Guid id,
-    CancellationToken cancellationToken)
-{
-    var command = new RequestAnalyzeCommand(
-        id,
-        User.GetUserId(),
-        _correlation.CorrelationId);
-
-    var result = await _sender.Send(command, cancellationToken);
-
-    return result.Match(
-        job => Accepted(new ApiResponse<JobDto>(job)),
-        error => error.ToActionResult(_correlation.CorrelationId));
-}
-```
-
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Create tests in the appropriate test project:
 
-```text
-tests/
-├── GodForge.Domain.Tests/
-├── GodForge.Application.Tests/
-├── GodForge.Infrastructure.Tests/
-├── GodForge.Api.Tests/
-└── GodForge.Worker.Tests/
-```
 
 Minimum coverage:
 
@@ -557,12 +173,6 @@ Minimum coverage:
 
 Do not change tests just to match broken behavior. If an existing test is wrong because the SRS changed, document the SRS reference in the test update.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 - Use stable SRS/project error codes such as `PROJECT_NAME_EXISTS`, `FORBIDDEN`, `REPOSITORY_LOCKED`, `JOB_ALREADY_RUNNING`, or module-specific equivalents.
 - Map validation errors to 400.
@@ -572,97 +182,10 @@ Use this skill when performing tasks related to its name.
 - For worker errors, update job state and notification instead of trying to return worker exceptions through the original request.
 - Include safe `details` only when useful and non-sensitive.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-- [ ] Backend enforces permission for every read/write endpoint.
-- [ ] Queries include project scope or owner scope where required.
-- [ ] Permission denied is audited when SRS/security requires it.
-- [ ] Sensitive data is neither returned nor logged.
-- [ ] Git paths, search filters, and shell/Git arguments are validated and not passed as unsafe raw input.
-- [ ] Credentials are stored as encrypted references or secret-manager references only.
-- [ ] Frontend checks are treated as UX only, never as security.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-- [ ] Correlation id exists at request entry.
-- [ ] Correlation id is included in commands, worker messages, logs, job records, activity log, and error responses.
-- [ ] Structured logs include service, environment, action, status, errorCode, projectId when available, userId when available, and duration.
-- [ ] Metrics are emitted for API latency/errors, queue depth/retry/DLQ, worker duration/failures, Git command duration/failures, and lock wait time where applicable.
-- [ ] Logs do not include secrets, tokens, raw credentials, or unsafe repository content.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-- [ ] SRS FR, AC, API, database, security, and workflow requirements were checked.
-- [ ] Correct path chosen: synchronous API or asynchronous job.
-- [ ] Domain changes contain invariants and state transitions.
-- [ ] Application handler owns orchestration and uses interfaces.
-- [ ] Infrastructure implements adapters without business rule leakage.
-- [ ] API controller contains no business logic.
-- [ ] EF configuration uses `snake_case`, correct schema, correct indexes, and correct delete behavior.
-- [ ] RBAC is enforced server-side.
-- [ ] Activity log is recorded for important write operations.
-- [ ] Correlation id is propagated and returned in errors.
-- [ ] Long-running work returns `202 Accepted` and job id.
-- [ ] Worker jobs are idempotent, observable, cancellable, retryable, and DLQ-aware.
-- [ ] Unit tests and relevant integration/API/worker tests are added or updated.
-- [ ] `dotnet build` passes without warnings introduced by the feature.
-- [ ] `dotnet test` passes.
-- [ ] Manual API verification is done when the feature changes externally visible behavior.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use concise conventional commits:
 
-```text
-feat(projects): add project creation workflow
-feat(git): add repository clone job orchestration
-feat(health): publish health report after analysis
-```
 
 For fixes discovered during implementation, use a separate `fix(scope): ...` commit when practical.
-#
 
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Ensure all steps in the workflow are followed.
-- Follow all rules defined in AGENTS.md.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Do not violate architecture boundaries.
-- Do not skip the required tests.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Provide a summary of the changes made.
-- List any quality gates run and their results.

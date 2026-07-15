@@ -43,13 +43,7 @@ Use this skill when building UI components, pages, forms, or routing logic in `G
 - Do not alert raw errors to the user.
 
 ## Completion Checklist
-- [ ] Components use Composition API.
-- [ ] TypeScript strict mode applied.
-- [ ] Loading/Error/Empty states implemented.
-- [ ] Route guards and RBAC visibility correct.
-- [ ] Tests written for composables with Vitest.
-- [ ] No secrets exposed in code.
-- [ ] Backend security boundary respected.
+
 
 ## Output Expectations
 The agent must explain the Vue components and Pinia stores created, the error/loading states implemented, and confirm no secrets are exposed.

@@ -28,11 +28,7 @@ Use this skill when developing unit, integration, or regression tests for backen
 - Do not change tests solely to make broken code pass.
 
 ## Completion Checklist
-- [ ] Test names follow conventions.
-- [ ] Boundary layers are respected.
-- [ ] Tests pass locally.
-- [ ] Code coverage is acceptable.
+
 
 ## Output Expectations
-- Provide a summary of the changes made.
-- List any quality gates run and their results.
+

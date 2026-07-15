@@ -20,6 +20,11 @@ public sealed class Project : BaseAuditableEntity, ISoftDeletable
 
     public static Project Create(string name, string slug, string? description, string godotVersion, ProjectVisibility visibility, Guid createdBy, DateTimeOffset now)
     {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(slug, @"^[a-z0-9-]+$"))
+        {
+            throw new ArgumentException("Slug must contain only lowercase alphanumeric characters and hyphens.", nameof(slug));
+        }
+
         return new Project
         {
             Id = Guid.NewGuid(),

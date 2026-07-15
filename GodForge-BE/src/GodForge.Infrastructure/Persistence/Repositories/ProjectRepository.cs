@@ -43,7 +43,7 @@ public sealed class ProjectRepository : IProjectRepository
             .Where(p => p.Status != ProjectStatus.Deleted)
             .Where(p =>
                 p.Visibility == ProjectVisibility.Internal ||
-                _context.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId));
+                _context.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId && m.RemovedAt == null));
 
         if (!string.IsNullOrWhiteSpace(search))
         {

@@ -33,12 +33,7 @@ Use this skill when initializing the repository, validating the environment setu
 - Do not bypass linter errors.
 
 ## Completion Checklist
-- [ ] Root configuration files are present.
-- [ ] Docker Compose starts all backing services.
-- [ ] Backend test projects linked.
-- [ ] Frontend Vite setup configured.
-- [ ] CI gates defined and validated.
-- [ ] No real secrets in `.env.example`.
+
 
 ## Output Expectations
 The agent must report the result of the initialization, including which root files were verified and whether the CI workflow and quality gates passed successfully.
