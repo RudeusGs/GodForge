@@ -50,7 +50,45 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
-        services.Configure<RabbitMqSettings>(configuration.GetSection("RabbitMQ"));
+        services
+        .AddOptions<RabbitMqSettings>()
+        .Bind(configuration.GetSection(RabbitMqSettings.SectionName))
+        .ValidateDataAnnotations()
+        .Validate(
+            settings =>
+                !settings.Enabled ||
+                !string.IsNullOrWhiteSpace(settings.HostName),
+            "RabbitMQ HostName is required when RabbitMQ is enabled.")
+        .Validate(
+            settings =>
+                !settings.Enabled ||
+                !string.IsNullOrWhiteSpace(settings.UserName),
+            "RabbitMQ UserName is required when RabbitMQ is enabled.")
+        .Validate(
+            settings =>
+                !settings.Enabled ||
+                !string.IsNullOrWhiteSpace(settings.Password),
+            "RabbitMQ Password is required when RabbitMQ is enabled.")
+        .Validate(
+            settings =>
+                !settings.Enabled ||
+                !string.IsNullOrWhiteSpace(settings.VirtualHost),
+            "RabbitMQ VirtualHost is required when RabbitMQ is enabled.")
+        .Validate(
+            settings =>
+                !settings.Enabled ||
+                !(
+                    string.Equals(
+                        settings.UserName,
+                        "guest",
+                        StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(
+                        settings.Password,
+                        "guest",
+                        StringComparison.Ordinal)
+                ),
+            "RabbitMQ guest/guest credentials are not allowed.")
+        .ValidateOnStart();
         services.AddOptions<RepositoryProcessingSettings>()
             .Bind(configuration.GetSection("RepositoryProcessing"))
             .ValidateDataAnnotations()

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
@@ -9,7 +10,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
-using System.Threading.RateLimiting;
 
 namespace GodForge.Api;
 

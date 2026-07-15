@@ -32,16 +32,16 @@ public sealed class AiAnalysisRunConfiguration : IEntityTypeConfiguration<AiAnal
         // Failed/degraded runs are retained for audit and may be retried. Only completed
         // runs are reused by the repository query, so this index must not be unique.
         builder.HasIndex(x => new
-            {
-                x.RepositoryId,
-                x.CommitSha,
-                x.AnalysisProfile,
-                x.Provider,
-                x.Model,
-                x.PromptVersion,
-                x.InputHash,
-                x.Status
-            })
+        {
+            x.RepositoryId,
+            x.CommitSha,
+            x.AnalysisProfile,
+            x.Provider,
+            x.Model,
+            x.PromptVersion,
+            x.InputHash,
+            x.Status
+        })
             .HasDatabaseName("ix_ai_analysis_runs_cache");
 
         builder.HasIndex(x => new { x.ProjectId, x.StartedAt })
