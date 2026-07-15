@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\src\GodForge.Domain\GodForge.Domain.csproj" />
     <ProjectReference Include="..\..\src\GodForge.Api\GodForge.Api.csproj" />
     <ProjectReference Include="..\..\src\GodForge.Infrastructure\GodForge.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\GodForge.Worker\GodForge.Worker.csproj" />
   </ItemGroup>
 
 </Project>

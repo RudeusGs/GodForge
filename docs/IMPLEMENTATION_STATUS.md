@@ -23,16 +23,16 @@
 - **Implemented** (Swashbuckle / NSwag integration, XML Documentation extraction, strongly typed [ProducesResponseType] on all endpoints, and clean architecture envelopes mapped).
 
 ## Phase 6: Linked Repository Vertical Slice
-- **Planned**
+- **Implemented** (Added comprehensive unit testing for LinkRepositoryCommandHandler, GitWorkspaceService, and RepositoryAnalysisPipelineHandler to satisfy the Quality Gate).
 
 ## Phase 7: Deterministic Godot Parser
-- **Planned**
+- **Implemented** (Added comprehensive unit testing for DeterministicProjectAnalyzer to ensure secure paths and file limits).
 
 ## Phase 8: Health Report & Dependency Graph
-- **Planned**
+- **Implemented** (Added `DependencyGraphBuilder`, `AnalysisController`, fixed Regex for Godot scene extraction, and verified unit tests).
 
 ## Phase 9: Gemini Advisory
-- **Planned**
+- **Implemented** (DTOs created, queries integrated, exposed `/ai-advisory/latest`).
 
 ## Phase 10: Frontend Repository and Analysis UI
 - **Planned**

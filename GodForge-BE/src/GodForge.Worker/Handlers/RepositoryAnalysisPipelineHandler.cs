@@ -17,8 +17,12 @@ public sealed class RepositoryAnalysisPipelineHandler
     private readonly IGitRepositoryRepository _repositories;
     private readonly IRepositorySnapshotRepository _snapshots;
     private readonly IAiAnalysisRepository _aiRepository;
+    private readonly IHealthReportRepository _healthReports;
+    private readonly IDependencyGraphSnapshotRepository _graphs;
+    private readonly IAnalysisRunRepository _runs;
     private readonly IRepositoryWorkspaceService _workspaceService;
     private readonly IDeterministicProjectAnalyzer _deterministicAnalyzer;
+    private readonly IDependencyGraphBuilder _graphBuilder;
     private readonly IRepositoryContextBuilder _contextBuilder;
     private readonly IAiAnalysisProvider _aiProvider;
     private readonly IUnitOfWork _unitOfWork;
@@ -30,8 +34,12 @@ public sealed class RepositoryAnalysisPipelineHandler
         IGitRepositoryRepository repositories,
         IRepositorySnapshotRepository snapshots,
         IAiAnalysisRepository aiRepository,
+        IHealthReportRepository healthReports,
+        IDependencyGraphSnapshotRepository graphs,
+        IAnalysisRunRepository runs,
         IRepositoryWorkspaceService workspaceService,
         IDeterministicProjectAnalyzer deterministicAnalyzer,
+        IDependencyGraphBuilder graphBuilder,
         IRepositoryContextBuilder contextBuilder,
         IAiAnalysisProvider aiProvider,
         IUnitOfWork unitOfWork,
@@ -42,8 +50,12 @@ public sealed class RepositoryAnalysisPipelineHandler
         _repositories = repositories;
         _snapshots = snapshots;
         _aiRepository = aiRepository;
+        _healthReports = healthReports;
+        _graphs = graphs;
+        _runs = runs;
         _workspaceService = workspaceService;
         _deterministicAnalyzer = deterministicAnalyzer;
+        _graphBuilder = graphBuilder;
         _contextBuilder = contextBuilder;
         _aiProvider = aiProvider;
         _unitOfWork = unitOfWork;
@@ -144,6 +156,61 @@ public sealed class RepositoryAnalysisPipelineHandler
                 snapshot = RepositorySnapshot.Create(repository.Id, sync.CommitSha, sync.Branch, _clock.UtcNow);
                 await _snapshots.AddAsync(snapshot, cancellationToken);
             }
+
+            var analysisRun = AnalysisRun.Create(
+                message.ProjectId,
+                repository.Id,
+                snapshot.Id,
+                null,
+                job.Id,
+                _clock.UtcNow);
+            await _runs.AddAsync(analysisRun, cancellationToken);
+
+            var graphResult = await _graphBuilder.BuildAsync(
+                message.ProjectId,
+                repository.Id,
+                snapshot.Id,
+                analysisRun.Id,
+                sync.WorkspacePath,
+                cancellationToken);
+            
+            await _graphs.AddSnapshotAsync(graphResult.Snapshot, cancellationToken);
+            await _graphs.AddNodesAsync(graphResult.Nodes, cancellationToken);
+            await _graphs.AddEdgesAsync(graphResult.Edges, cancellationToken);
+
+            int criticals = deterministic.Findings.Count(f => f.Severity == "critical");
+            int warnings = deterministic.Findings.Count(f => f.Severity == "warning");
+            int infos = deterministic.Findings.Count(f => f.Severity == "info");
+            int score = 100 - (criticals * 10) - (warnings * 2);
+            if (score < 0) score = 0;
+
+            var healthReport = HealthReport.Create(
+                message.ProjectId,
+                repository.Id,
+                snapshot.Id,
+                analysisRun.Id,
+                job.Id,
+                score,
+                deterministic.Findings.Count,
+                criticals,
+                warnings,
+                infos,
+                JsonSerializer.Serialize(deterministic),
+                _clock.UtcNow);
+            await _healthReports.AddReportAsync(healthReport, cancellationToken);
+
+            var issues = deterministic.Findings.Select(f => HealthIssue.Create(
+                healthReport.Id,
+                null,
+                f.Code,
+                f.Severity,
+                f.FilePath,
+                null,
+                f.Message,
+                null,
+                false,
+                _clock.UtcNow)).ToList();
+            await _healthReports.AddIssuesAsync(issues, cancellationToken);
 
             snapshot.MarkAsReady(JsonSerializer.Serialize(new
             {
@@ -281,6 +348,7 @@ public sealed class RepositoryAnalysisPipelineHandler
                 }
             });
 
+            analysisRun.MarkAsCompleted(_clock.UtcNow);
             job.MarkCompleted(result, _clock.UtcNow);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return JobExecutionResult.Completed();

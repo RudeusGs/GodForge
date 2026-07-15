@@ -36,6 +36,25 @@ public sealed class AiAnalysisRepository : IAiAnalysisRepository
                        run.InputHash == inputHash,
                 cancellationToken);
 
+    public Task<AiAnalysisRun?> GetLatestByProjectAsync(Guid projectId, CancellationToken cancellationToken = default)
+        => _context.AiAnalysisRuns
+            .AsNoTracking()
+            .Where(r => r.ProjectId == projectId && r.Status == "completed")
+            .OrderByDescending(r => r.CompletedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<AiFinding>> GetFindingsByRunAsync(Guid runId, CancellationToken cancellationToken = default)
+    {
+        return await _context.AiFindings
+            .AsNoTracking()
+            .Where(f => f.RunId == runId)
+            .OrderByDescending(f => f.Severity == "critical")
+            .ThenByDescending(f => f.Severity == "warning")
+            .ThenByDescending(f => f.Severity == "info")
+            .ThenBy(f => f.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddRunAsync(AiAnalysisRun run, CancellationToken cancellationToken = default)
         => await _context.AiAnalysisRuns.AddAsync(run, cancellationToken);
 

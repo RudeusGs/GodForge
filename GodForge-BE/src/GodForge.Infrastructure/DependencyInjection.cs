@@ -33,6 +33,9 @@ public static class DependencyInjection
         services.AddScoped<IGitRepositoryRepository, GitRepositoryRepository>();
         services.AddScoped<IRepositorySnapshotRepository, RepositorySnapshotRepository>();
         services.AddScoped<IAiAnalysisRepository, AiAnalysisRepository>();
+        services.AddScoped<IHealthReportRepository, HealthReportRepository>();
+        services.AddScoped<IDependencyGraphSnapshotRepository, DependencyGraphSnapshotRepository>();
+        services.AddScoped<IAnalysisRunRepository, AnalysisRunRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IActivityRepository, ActivityRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -121,6 +124,7 @@ public static class DependencyInjection
         services.AddSingleton<ISecretRedactor, SecretRedactor>();
         services.AddScoped<IRepositoryContextBuilder, RepositoryContextBuilder>();
         services.AddScoped<IDeterministicProjectAnalyzer, DeterministicProjectAnalyzer>();
+        services.AddScoped<IDependencyGraphBuilder, DependencyGraphBuilder>();
         services.AddScoped<IRepositoryWorkspaceService, GitWorkspaceService>();
 
         services.AddHttpClient<IAiAnalysisProvider, GeminiAnalysisProvider>((serviceProvider, client) =>

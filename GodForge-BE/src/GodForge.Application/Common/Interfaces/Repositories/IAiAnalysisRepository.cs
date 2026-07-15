@@ -14,6 +14,9 @@ public interface IAiAnalysisRepository
         string inputHash,
         CancellationToken cancellationToken = default);
 
+    Task<AiAnalysisRun?> GetLatestByProjectAsync(Guid projectId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AiFinding>> GetFindingsByRunAsync(Guid runId, CancellationToken cancellationToken = default);
+
     Task AddRunAsync(AiAnalysisRun run, CancellationToken cancellationToken = default);
     Task AddFindingAsync(AiFinding finding, CancellationToken cancellationToken = default);
 }
