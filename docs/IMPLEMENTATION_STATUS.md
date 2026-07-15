@@ -20,7 +20,7 @@
 - **Implemented** (Trimmed heavily bloated agent skills from 600+ lines down to ~150-250 lines, making them concise and rule-focused).
 
 ## Phase 5: OpenAPI and Contract
-- **Planned**
+- **Implemented** (Swashbuckle / NSwag integration, XML Documentation extraction, strongly typed [ProducesResponseType] on all endpoints, and clean architecture envelopes mapped).
 
 ## Phase 6: Linked Repository Vertical Slice
 - **Planned**

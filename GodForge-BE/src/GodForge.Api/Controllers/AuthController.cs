@@ -20,8 +20,14 @@ public class AuthController : BaseApiController
         _mediator = mediator;
     }
 
+    /// <summary>
+    /// Authenticates a user and returns a JWT token.
+    /// </summary>
     [HttpPost("login")]
     [EnableRateLimiting("auth-sensitive")]
+    [ProducesResponseType(typeof(ApiResponse<AuthResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var command = new LoginCommand(request.Email, request.Password);
@@ -29,8 +35,14 @@ public class AuthController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Sends a registration OTP to the provided email address.
+    /// </summary>
     [HttpPost("register/send-otp")]
     [EnableRateLimiting("auth-otp")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> SendRegisterOtp([FromBody] SendRegisterOtpRequest request, CancellationToken cancellationToken)
     {
         var command = new SendRegisterOtpCommand(request.Email);
@@ -38,8 +50,14 @@ public class AuthController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Registers a new user account using an OTP.
+    /// </summary>
     [HttpPost("register")]
     [EnableRateLimiting("auth-sensitive")]
+    [ProducesResponseType(typeof(ApiResponse<AuthResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
         var command = new RegisterCommand(request.Email, request.DisplayName, request.Password, request.Otp);
@@ -47,8 +65,13 @@ public class AuthController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Initiates the password reset process by sending an OTP to the user's email.
+    /// </summary>
     [HttpPost("forgot-password")]
     [EnableRateLimiting("auth-otp")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
         var command = new ForgotPasswordCommand(request.Email);
@@ -56,8 +79,13 @@ public class AuthController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Logs out the current user and invalidates the refresh token.
+    /// </summary>
     [HttpPost("logout")]
     [Microsoft.AspNetCore.Authorization.Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken cancellationToken)
     {
         var command = new LogoutCommand(request.RefreshToken);
@@ -65,8 +93,13 @@ public class AuthController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Resets the user's password using the provided token.
+    /// </summary>
     [HttpPost("reset-password")]
     [EnableRateLimiting("auth-sensitive")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
         var command = new GodForge.Application.Features.Auth.Commands.ResetPassword.ResetPasswordCommand(request.Email, request.Token, request.NewPassword);
@@ -74,8 +107,14 @@ public class AuthController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Refreshes the JWT token using a valid refresh token.
+    /// </summary>
     [HttpPost("refresh")]
     [EnableRateLimiting("auth-sensitive")]
+    [ProducesResponseType(typeof(ApiResponse<AuthResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
     {
         var command = new GodForge.Application.Features.Auth.Commands.RefreshToken.RefreshTokenCommand(request.RefreshToken);

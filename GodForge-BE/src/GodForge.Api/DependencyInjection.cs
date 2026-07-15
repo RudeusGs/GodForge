@@ -23,7 +23,49 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
+        services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+            {
+                Title = "GodForge API",
+                Version = "v1",
+                Description = "GodForge Platform API Documentation"
+            });
 
+            c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                Name = "Authorization",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+                Scheme = "Bearer"
+            });
+
+            c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+            {
+                {
+                    new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                    {
+                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                        {
+                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        },
+                        Scheme = "oauth2",
+                        Name = "Bearer",
+                        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                    },
+                    new List<string>()
+                }
+            });
+
+            var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
+            if (System.IO.File.Exists(xmlPath))
+            {
+                c.IncludeXmlComments(xmlPath);
+            }
+        });
 
         // Configure JWT Authentication
         var jwtSettings = configuration.GetSection("Jwt").Get<GodForge.Infrastructure.Configuration.JwtSettings>() ?? new GodForge.Infrastructure.Configuration.JwtSettings();

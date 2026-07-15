@@ -22,7 +22,13 @@ public class ProjectsController : BaseApiController
         _currentUser = currentUser;
     }
 
+    /// <summary>
+    /// Creates a new GodForge project.
+    /// </summary>
     [HttpPost]
+    [ProducesResponseType(typeof(ApiResponse<GodForge.Application.Features.Projects.DTOs.ProjectDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateProject([FromBody] CreateProjectRequest request, CancellationToken cancellationToken)
     {
         if (_currentUser.Id == null) return Unauthorized();
@@ -37,16 +43,21 @@ public class ProjectsController : BaseApiController
         Result<GodForge.Application.Features.Projects.DTOs.ProjectDto> result = await _mediator.Send(command, cancellationToken);
         if (result.IsSuccess)
         {
-            return StatusCode(201, new
+            return StatusCode(201, new ApiResponse<GodForge.Application.Features.Projects.DTOs.ProjectDto>
             {
-                data = result.Value,
-                meta = new { correlationId = CorrelationId }
+                Data = result.Value,
+                Meta = new ApiMeta { CorrelationId = CorrelationId }
             });
         }
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Retrieves a paginated list of projects accessible to the current user.
+    /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiPagedResponse<GodForge.Application.Features.Projects.DTOs.ProjectDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetProjects([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, CancellationToken cancellationToken = default)
     {
         if (_currentUser.Id == null) return Unauthorized();
@@ -56,7 +67,14 @@ public class ProjectsController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Retrieves a paginated list of jobs for a specific project.
+    /// </summary>
     [HttpGet("{projectId}/jobs")]
+    [ProducesResponseType(typeof(ApiPagedResponse<GodForge.Application.Features.Jobs.DTOs.JobDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetJobs(Guid projectId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         if (_currentUser.Id == null) return Unauthorized();
@@ -66,7 +84,14 @@ public class ProjectsController : BaseApiController
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Retrieves a paginated list of activities for a specific project.
+    /// </summary>
     [HttpGet("{projectId}/activities")]
+    [ProducesResponseType(typeof(ApiPagedResponse<GodForge.Application.Features.Activities.DTOs.ActivityDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetActivities(Guid projectId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         if (_currentUser.Id == null) return Unauthorized();
