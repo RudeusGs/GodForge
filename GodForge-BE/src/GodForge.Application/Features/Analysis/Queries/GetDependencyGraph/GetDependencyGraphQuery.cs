@@ -4,4 +4,4 @@ using MediatR;
 
 namespace GodForge.Application.Features.Analysis.Queries.GetDependencyGraph;
 
-public sealed record GetDependencyGraphQuery(Guid ProjectId) : IRequest<Result<DependencyGraphDto>>;
+public sealed record GetDependencyGraphQuery(Guid ProjectId, Guid ActorId) : IRequest<Result<DependencyGraphDto>>;

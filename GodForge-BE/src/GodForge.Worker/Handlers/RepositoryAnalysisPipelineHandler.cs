@@ -365,11 +365,23 @@ public sealed class RepositoryAnalysisPipelineHandler
                 job.Id,
                 job.AttemptCount);
 
-            repository.MarkError("REPOSITORY_ANALYSIS_FAILED", _clock.UtcNow);
-            if (job.AttemptCount < job.MaxAttempts && IsRetryable(exception))
+            // A failed SaveChanges leaves Added/Modified entities in the EF change tracker.
+            // Clear them before persisting the terminal/retry state, otherwise the same bad
+            // inserts can be replayed while handling the original exception.
+            _unitOfWork.ClearTrackedChanges();
+
+            var failedJob = await _jobs.GetByIdAsync(message.JobId, cancellationToken);
+            var failedRepository = await _repositories.GetByIdAsync(repository.Id, cancellationToken);
+            if (failedJob is null || failedRepository is null)
             {
-                var delay = TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, job.AttemptCount) * 5));
-                job.MarkRetrying(
+                return JobExecutionResult.DeadLetter();
+            }
+
+            failedRepository.MarkError("REPOSITORY_ANALYSIS_FAILED", _clock.UtcNow);
+            if (failedJob.AttemptCount < failedJob.MaxAttempts && IsRetryable(exception))
+            {
+                var delay = TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, failedJob.AttemptCount) * 5));
+                failedJob.MarkRetrying(
                     "JOB_TRANSIENT_FAILURE",
                     "A transient dependency failed. The job will be retried.",
                     _clock.UtcNow.Add(delay),
@@ -378,7 +390,7 @@ public sealed class RepositoryAnalysisPipelineHandler
                 return JobExecutionResult.Retry(delay);
             }
 
-            job.MarkDeadLettered(
+            failedJob.MarkDeadLettered(
                 "REPOSITORY_ANALYSIS_FAILED",
                 "Repository analysis failed after the allowed attempts.",
                 _clock.UtcNow);
@@ -397,4 +409,3 @@ public sealed class RepositoryAnalysisPipelineHandler
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }
-

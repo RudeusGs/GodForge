@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Analysis.DTOs;
 using MediatR;
 
@@ -9,15 +10,30 @@ public sealed class GetDependencyGraphQueryHandler : IRequestHandler<GetDependen
 {
     private readonly IProjectRepository _projects;
     private readonly IDependencyGraphSnapshotRepository _graphs;
+    private readonly IAuthorizationService _authorization;
 
-    public GetDependencyGraphQueryHandler(IProjectRepository projects, IDependencyGraphSnapshotRepository graphs)
+    public GetDependencyGraphQueryHandler(
+        IProjectRepository projects,
+        IDependencyGraphSnapshotRepository graphs,
+        IAuthorizationService authorization)
     {
         _projects = projects;
         _graphs = graphs;
+        _authorization = authorization;
     }
 
     public async Task<Result<DependencyGraphDto>> Handle(GetDependencyGraphQuery request, CancellationToken cancellationToken)
     {
+        if (!await _authorization.HasPermissionAsync(
+                request.ActorId,
+                request.ProjectId,
+                Permissions.AnalysisRead,
+                cancellationToken))
+        {
+            return Result<DependencyGraphDto>.Failure(
+                ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission to view this dependency graph."));
+        }
+
         var project = await _projects.GetByIdAsync(request.ProjectId, cancellationToken);
         if (project is null)
         {

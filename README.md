@@ -33,7 +33,6 @@ docker compose up -d
 cd GodForge-BE
 dotnet restore
 dotnet tool restore
-dotnet ef database update --project src/GodForge.Infrastructure --startup-project src/GodForge.Api
 dotnet run --project src/GodForge.Api
 ```
 
@@ -43,6 +42,8 @@ Mở terminal khác:
 cd GodForge-BE
 dotnet run --project src/GodForge.Worker
 ```
+
+Database trống sẽ được API khởi tạo tự động theo EF model hiện tại; database đã có migration history sẽ được migrate khi ứng dụng khởi động.
 
 Frontend:
 
@@ -60,8 +61,9 @@ docker compose --profile hosted-git up -d
 
 ## Tài liệu chính
 
-- `docs/GODFORGE_FEASIBLE_SYSTEM_BLUEPRINT.md`: kiến trúc và roadmap đầy đủ.
-- `docs/BLUEPRINT_MIGRATION_GUIDE.md`: trình tự áp dụng thay đổi.
+- `docs/SRS/02-architecture.md`: kiến trúc hệ thống.
+- `docs/MILESTONES.md`: roadmap và mốc triển khai.
+- `docs/STABILIZATION_REPORT.md`: trạng thái ổn định và các giới hạn còn lại.
 - `docs/SRS/`: yêu cầu chức năng và phi chức năng.
 - `docs/ADR/0005-external-git-engine.md`: quyết định dùng Forgejo.
 - `docs/ADR/0006-ai-advisory-boundary.md`: ranh giới parser/rule engine/Gemini.

@@ -1,4 +1,5 @@
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Analysis.Queries.GetAiAdvisory;
 using GodForge.Domain.Entities.Analysis;
 using GodForge.Domain.Entities.Core;
@@ -13,11 +14,22 @@ public sealed class GetAiAdvisoryQueryHandlerTests
 {
     private readonly Mock<IProjectRepository> _projectsMock = new();
     private readonly Mock<IAiAnalysisRepository> _aiRepositoryMock = new();
+    private readonly Mock<IAuthorizationService> _authorizationMock = new();
     private readonly GetAiAdvisoryQueryHandler _handler;
 
     public GetAiAdvisoryQueryHandlerTests()
     {
-        _handler = new GetAiAdvisoryQueryHandler(_projectsMock.Object, _aiRepositoryMock.Object);
+        _authorizationMock
+            .Setup(a => a.HasPermissionAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                Permissions.AnalysisRead,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _handler = new GetAiAdvisoryQueryHandler(
+            _projectsMock.Object,
+            _aiRepositoryMock.Object,
+            _authorizationMock.Object);
     }
 
     [Fact]
@@ -28,7 +40,7 @@ public sealed class GetAiAdvisoryQueryHandlerTests
         _projectsMock.Setup(p => p.GetByIdAsync(projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Project?)null);
 
-        var query = new GetAiAdvisoryQuery(projectId);
+        var query = new GetAiAdvisoryQuery(projectId, Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -50,7 +62,7 @@ public sealed class GetAiAdvisoryQueryHandlerTests
         _aiRepositoryMock.Setup(a => a.GetLatestByProjectAsync(projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiAnalysisRun?)null);
 
-        var query = new GetAiAdvisoryQuery(projectId);
+        var query = new GetAiAdvisoryQuery(projectId, Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -101,7 +113,7 @@ public sealed class GetAiAdvisoryQueryHandlerTests
         _aiRepositoryMock.Setup(a => a.GetFindingsByRunAsync(run.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AiFinding> { finding });
 
-        var query = new GetAiAdvisoryQuery(projectId);
+        var query = new GetAiAdvisoryQuery(projectId, Guid.NewGuid());
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -117,4 +129,27 @@ public sealed class GetAiAdvisoryQueryHandlerTests
         Assert.Equal("warning", result.Value.Findings[0].Severity);
         Assert.Equal("Missing script", result.Value.Findings[0].Title);
     }
+    [Fact]
+    public async Task Handle_WithoutReadPermission_ReturnsForbidden()
+    {
+        var projectId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _authorizationMock.Setup(a => a.HasPermissionAsync(
+                actorId,
+                projectId,
+                Permissions.AnalysisRead,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _handler.Handle(
+            new GetAiAdvisoryQuery(projectId, actorId),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("SECURITY_FORBIDDEN", result.Error?.Code);
+        _projectsMock.Verify(
+            project => project.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
 }

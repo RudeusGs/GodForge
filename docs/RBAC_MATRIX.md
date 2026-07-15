@@ -10,7 +10,7 @@ Permission keys use dot notation consistently.
 | `members.manage` | ✓ | ✓ |  |  |  |
 | `repositories.read` | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `repositories.manage` | ✓ | ✓ |  |  |  |
-| `repositories.push` | ✓ | ✓ | ✓ |  |  |
+| `repositories.push` |  |  |  |  |  |
 | `repositories.sync` | ✓ | ✓ | ✓ |  |  |
 | `revisions.read` | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `analysis.trigger` | ✓ | ✓ | ✓ |  |  |

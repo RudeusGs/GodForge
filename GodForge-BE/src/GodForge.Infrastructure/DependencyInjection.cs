@@ -46,7 +46,9 @@ public static class DependencyInjection
         services.AddScoped<IActivityWriter, ActivityWriter>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddSingleton<IFrontendUrlBuilder, FrontendUrlBuilder>();
-        services.AddScoped<IJobPublisher, RabbitMqJobPublisher>();
+        services.AddSingleton<IJobPublisher, RabbitMqJobPublisher>();
+        services.AddScoped<IOutboxWriter, OutboxWriter>();
+        services.AddHostedService<OutboxDispatcherService>();
 
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.AddOptions<JwtSettings>()
@@ -54,44 +56,44 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services
-        .AddOptions<RabbitMqSettings>()
-        .Bind(configuration.GetSection(RabbitMqSettings.SectionName))
-        .ValidateDataAnnotations()
-        .Validate(
-            settings =>
-                !settings.Enabled ||
-                !string.IsNullOrWhiteSpace(settings.HostName),
-            "RabbitMQ HostName is required when RabbitMQ is enabled.")
-        .Validate(
-            settings =>
-                !settings.Enabled ||
-                !string.IsNullOrWhiteSpace(settings.UserName),
-            "RabbitMQ UserName is required when RabbitMQ is enabled.")
-        .Validate(
-            settings =>
-                !settings.Enabled ||
-                !string.IsNullOrWhiteSpace(settings.Password),
-            "RabbitMQ Password is required when RabbitMQ is enabled.")
-        .Validate(
-            settings =>
-                !settings.Enabled ||
-                !string.IsNullOrWhiteSpace(settings.VirtualHost),
-            "RabbitMQ VirtualHost is required when RabbitMQ is enabled.")
-        .Validate(
-            settings =>
-                !settings.Enabled ||
-                !(
-                    string.Equals(
-                        settings.UserName,
-                        "guest",
-                        StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(
-                        settings.Password,
-                        "guest",
-                        StringComparison.Ordinal)
-                ),
-            "RabbitMQ guest/guest credentials are not allowed.")
-        .ValidateOnStart();
+            .AddOptions<RabbitMqSettings>()
+            .Bind(configuration.GetSection(RabbitMqSettings.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings =>
+                    !settings.Enabled ||
+                    !string.IsNullOrWhiteSpace(settings.HostName),
+                "RabbitMQ HostName is required when RabbitMQ is enabled.")
+            .Validate(
+                settings =>
+                    !settings.Enabled ||
+                    !string.IsNullOrWhiteSpace(settings.UserName),
+                "RabbitMQ UserName is required when RabbitMQ is enabled.")
+            .Validate(
+                settings =>
+                    !settings.Enabled ||
+                    !string.IsNullOrWhiteSpace(settings.Password),
+                "RabbitMQ Password is required when RabbitMQ is enabled.")
+            .Validate(
+                settings =>
+                    !settings.Enabled ||
+                    !string.IsNullOrWhiteSpace(settings.VirtualHost),
+                "RabbitMQ VirtualHost is required when RabbitMQ is enabled.")
+            .Validate(
+                settings =>
+                    !settings.Enabled ||
+                    !(
+                        string.Equals(
+                            settings.UserName,
+                            "guest",
+                            StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(
+                            settings.Password,
+                            "guest",
+                            StringComparison.Ordinal)
+                    ),
+                "RabbitMQ guest/guest credentials are not allowed.")
+            .ValidateOnStart();
         services.AddOptions<RepositoryProcessingSettings>()
             .Bind(configuration.GetSection("RepositoryProcessing"))
             .ValidateDataAnnotations()
@@ -125,6 +127,7 @@ public static class DependencyInjection
         services.AddScoped<IRepositoryContextBuilder, RepositoryContextBuilder>();
         services.AddScoped<IDeterministicProjectAnalyzer, DeterministicProjectAnalyzer>();
         services.AddScoped<IDependencyGraphBuilder, DependencyGraphBuilder>();
+        services.AddSingleton<IRepositoryLockProvider, PostgresRepositoryLockProvider>();
         services.AddScoped<IRepositoryWorkspaceService, GitWorkspaceService>();
 
         services.AddHttpClient<IAiAnalysisProvider, GeminiAnalysisProvider>((serviceProvider, client) =>
@@ -144,4 +147,3 @@ public static class DependencyInjection
         return services;
     }
 }
-

@@ -1,5 +1,4 @@
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Identity;
 using Microsoft.EntityFrameworkCore;
 

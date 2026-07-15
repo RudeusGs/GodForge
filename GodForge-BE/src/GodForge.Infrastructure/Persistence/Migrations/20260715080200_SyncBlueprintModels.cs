@@ -1,4 +1,6 @@
-﻿using System;
+using System;
+using GodForge.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace GodForge.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(GodForgeDbContext))]
+    [Migration("20260715080200_SyncBlueprintModels")]
     public partial class SyncBlueprintModels : Migration
     {
         /// <inheritdoc />

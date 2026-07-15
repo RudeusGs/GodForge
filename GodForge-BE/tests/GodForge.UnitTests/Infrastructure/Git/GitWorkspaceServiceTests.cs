@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using GodForge.Application.Common.Interfaces;
 using GodForge.Infrastructure.Configuration;
 using GodForge.Infrastructure.Git;
 using Microsoft.Extensions.Logging;
@@ -30,7 +31,14 @@ public class GitWorkspaceServiceTests
         var optionsMock = new Mock<IOptions<RepositoryProcessingSettings>>();
         optionsMock.Setup(o => o.Value).Returns(_settings);
 
-        _service = new GitWorkspaceService(optionsMock.Object, _loggerMock.Object);
+        var lockProvider = new Mock<IRepositoryLockProvider>();
+        lockProvider.Setup(provider => provider.AcquireAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NoopAsyncDisposable());
+
+        _service = new GitWorkspaceService(optionsMock.Object, lockProvider.Object, _loggerMock.Object);
     }
 
     [Fact]
@@ -66,5 +74,10 @@ public class GitWorkspaceServiceTests
     {
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.SyncAsync(Guid.NewGuid(), "https://github.com/a/b.git", "-invalid-branch"));
         Assert.Contains("Branch name is not a safe Git branch reference", ex.Message);
+    }
+
+    private sealed class NoopAsyncDisposable : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

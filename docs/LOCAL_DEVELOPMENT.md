@@ -21,14 +21,7 @@ cd GodForge-FE
 npm install
 ```
 
-Create/review the EF migration, then:
-
-```bash
-cd ../GodForge-BE
-dotnet restore
-dotnet tool restore
-dotnet ef database update --project src/GodForge.Infrastructure --startup-project src/GodForge.Api
-```
+Create/review the EF migration. The API applies pending migrations at startup; on a completely empty database it creates the current schema and records the migration baseline.
 
 ## Run
 

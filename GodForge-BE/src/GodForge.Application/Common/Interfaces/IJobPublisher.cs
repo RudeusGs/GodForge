@@ -8,4 +8,10 @@ public interface IJobPublisher
         string queueName,
         WorkerMessage message,
         CancellationToken cancellationToken = default);
+
+    Task PublishDelayedAsync(
+        string queueName,
+        WorkerMessage message,
+        TimeSpan delay,
+        CancellationToken cancellationToken = default);
 }

@@ -42,9 +42,7 @@ cp .env.example .env
 docker compose config
 docker compose up -d
 docker compose ps
-dotnet ef database update \
-  --project GodForge-BE/src/GodForge.Infrastructure \
-  --startup-project GodForge-BE/src/GodForge.Api
+dotnet run --project GodForge-BE/src/GodForge.Api --no-build
 ```
 
 The API and worker must start with RabbitMQ enabled, and one fixture repository analysis must reach a terminal job state.

@@ -1,3 +1,5 @@
+using GodForge.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace GodForge.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(GodForgeDbContext))]
+    [Migration("20260715094927_AddPasswordResetToUsers")]
     public partial class AddPasswordResetToUsers : Migration
     {
         /// <inheritdoc />

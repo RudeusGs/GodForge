@@ -37,6 +37,7 @@ public sealed class HealthReportConfiguration : IEntityTypeConfiguration<HealthR
         builder.HasOne<Job>().WithMany().HasForeignKey(r => r.JobId).OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(r => new { r.ProjectId, r.CreatedAt }).HasDatabaseName("ix_health_reports_project_created").IsDescending(false, true);
-        builder.HasIndex(r => r.SnapshotId).HasDatabaseName("ux_health_reports_snapshot").IsUnique();
+        builder.HasIndex(r => r.SnapshotId).HasDatabaseName("ix_health_reports_snapshot");
+        builder.HasIndex(r => r.AnalysisRunId).HasDatabaseName("ux_health_reports_analysis_run").IsUnique();
     }
 }

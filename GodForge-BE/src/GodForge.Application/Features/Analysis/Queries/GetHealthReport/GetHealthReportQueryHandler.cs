@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Analysis.DTOs;
 using MediatR;
 
@@ -9,15 +10,30 @@ public sealed class GetHealthReportQueryHandler : IRequestHandler<GetHealthRepor
 {
     private readonly IProjectRepository _projects;
     private readonly IHealthReportRepository _healthReports;
+    private readonly IAuthorizationService _authorization;
 
-    public GetHealthReportQueryHandler(IProjectRepository projects, IHealthReportRepository healthReports)
+    public GetHealthReportQueryHandler(
+        IProjectRepository projects,
+        IHealthReportRepository healthReports,
+        IAuthorizationService authorization)
     {
         _projects = projects;
         _healthReports = healthReports;
+        _authorization = authorization;
     }
 
     public async Task<Result<HealthReportResponseDto>> Handle(GetHealthReportQuery request, CancellationToken cancellationToken)
     {
+        if (!await _authorization.HasPermissionAsync(
+                request.ActorId,
+                request.ProjectId,
+                Permissions.AnalysisRead,
+                cancellationToken))
+        {
+            return Result<HealthReportResponseDto>.Failure(
+                ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission to view this health report."));
+        }
+
         var project = await _projects.GetByIdAsync(request.ProjectId, cancellationToken);
         if (project is null)
         {

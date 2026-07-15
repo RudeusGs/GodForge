@@ -14,13 +14,16 @@ public sealed class GitWorkspaceService : IRepositoryWorkspaceService
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> RepositoryLocks = new();
     private readonly RepositoryProcessingSettings _settings;
+    private readonly IRepositoryLockProvider _repositoryLockProvider;
     private readonly ILogger<GitWorkspaceService> _logger;
 
     public GitWorkspaceService(
         IOptions<RepositoryProcessingSettings> settings,
+        IRepositoryLockProvider repositoryLockProvider,
         ILogger<GitWorkspaceService> logger)
     {
         _settings = settings.Value;
+        _repositoryLockProvider = repositoryLockProvider;
         _logger = logger;
     }
 
@@ -37,6 +40,10 @@ public sealed class GitWorkspaceService : IRepositoryWorkspaceService
         await gate.WaitAsync(cancellationToken);
         try
         {
+            await using var distributedLock = await _repositoryLockProvider.AcquireAsync(
+                repositoryId,
+                TimeSpan.FromSeconds(_settings.GitCommandTimeoutSeconds),
+                cancellationToken);
             return await SyncCoreAsync(repositoryId, remoteUrl, branch, cancellationToken);
         }
         finally
@@ -67,7 +74,7 @@ public sealed class GitWorkspaceService : IRepositoryWorkspaceService
             await RunGitAsync(
                 new[]
                 {
-                    "-c", "credential.helper=", "clone", "--no-tags", "--single-branch",
+                    "-c", "credential.helper=", "clone", "--no-tags", "--single-branch", "--depth", "1",
                     "--branch", branch, "--", remoteUrl, workspacePath
                 },
                 cancellationToken);
@@ -75,7 +82,7 @@ public sealed class GitWorkspaceService : IRepositoryWorkspaceService
         else
         {
             await RunGitAsync(new[] { "-C", workspacePath, "remote", "set-url", "origin", remoteUrl }, cancellationToken);
-            await RunGitAsync(new[] { "-c", "credential.helper=", "-C", workspacePath, "fetch", "--prune", "origin", branch }, cancellationToken);
+            await RunGitAsync(new[] { "-c", "credential.helper=", "-C", workspacePath, "fetch", "--prune", "--depth", "1", "origin", branch }, cancellationToken);
             await RunGitAsync(new[] { "-C", workspacePath, "checkout", "-B", branch, $"origin/{branch}" }, cancellationToken);
             await RunGitAsync(new[] { "-C", workspacePath, "reset", "--hard", $"origin/{branch}" }, cancellationToken);
             await RunGitAsync(new[] { "-C", workspacePath, "clean", "-ffd" }, cancellationToken);

@@ -27,9 +27,10 @@ Backend:
 cd GodForge-BE
 dotnet restore
 dotnet tool restore
-dotnet ef database update --project src/GodForge.Infrastructure --startup-project src/GodForge.Api
 dotnet run --project src/GodForge.Api
 ```
+
+The API initializes an empty database from the current EF model and applies pending migrations for an existing database.
 
 Worker in a second terminal:
 
@@ -47,4 +48,4 @@ dotnet format --verify-no-changes
 dotnet list package --vulnerable --include-transitive
 ```
 
-See `../docs/GODFORGE_FEASIBLE_SYSTEM_BLUEPRINT.md` and `../docs/BLUEPRINT_MIGRATION_GUIDE.md` before adding repository, parser, worker or AI features.
+See `../docs/SRS/02-architecture.md`, `../docs/MILESTONES.md`, and `../docs/STABILIZATION_REPORT.md` before adding repository, parser, worker or AI features.

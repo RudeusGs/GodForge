@@ -112,9 +112,8 @@ public sealed class RabbitMqWorkerService : BackgroundService
 
             if (result.Disposition == JobExecutionDisposition.Retry)
             {
-                await Task.Delay(result.RetryDelay, _stoppingToken);
                 var publisher = scope.ServiceProvider.GetRequiredService<IJobPublisher>();
-                await publisher.PublishAsync(
+                await publisher.PublishDelayedAsync(
                     WorkerQueueNames.RepositoryPipeline,
                     message with
                     {
@@ -122,6 +121,7 @@ public sealed class RabbitMqWorkerService : BackgroundService
                         AttemptCount = message.AttemptCount + 1,
                         CreatedAt = DateTimeOffset.UtcNow
                     },
+                    result.RetryDelay,
                     _stoppingToken);
                 _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
                 return;
@@ -141,7 +141,14 @@ public sealed class RabbitMqWorkerService : BackgroundService
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unhandled worker consumer failure; the original message will be requeued");
+            if (eventArgs.Redelivered)
+            {
+                _logger.LogError(exception, "Unhandled worker consumer failure after redelivery; message will be dead-lettered");
+                _channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
+                return;
+            }
+
+            _logger.LogError(exception, "Unhandled worker consumer failure; message will be requeued once");
             _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
         }
     }
@@ -153,4 +160,3 @@ public sealed class RabbitMqWorkerService : BackgroundService
         base.Dispose();
     }
 }
-

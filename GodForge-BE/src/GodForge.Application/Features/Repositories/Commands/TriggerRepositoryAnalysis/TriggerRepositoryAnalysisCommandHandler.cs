@@ -16,7 +16,7 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
     private readonly IGitRepositoryRepository _repositories;
     private readonly IJobRepository _jobs;
     private readonly IAuthorizationService _authorization;
-    private readonly IJobPublisher _publisher;
+    private readonly IOutboxWriter _outbox;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
@@ -24,14 +24,14 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
         IGitRepositoryRepository repositories,
         IJobRepository jobs,
         IAuthorizationService authorization,
-        IJobPublisher publisher,
+        IOutboxWriter outbox,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
         _repositories = repositories;
         _jobs = jobs;
         _authorization = authorization;
-        _publisher = publisher;
+        _outbox = outbox;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -87,7 +87,6 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
             now);
 
         await _jobs.AddAsync(job, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var message = new RepositoryAnalysisJobMessage
         {
@@ -102,17 +101,8 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
             CreatedAt = now
         };
 
-        try
-        {
-            await _publisher.PublishAsync(WorkerQueueNames.RepositoryPipeline, message, cancellationToken);
-        }
-        catch (Exception)
-        {
-            job.MarkFailed("JOB_PUBLISH_FAILED", "The background job could not be published.", _clock.UtcNow);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ApplicationError.Internal("JOB_PUBLISH_FAILED", "The analysis job could not be queued.");
-        }
-
+        await _outbox.EnqueueAsync(WorkerQueueNames.RepositoryPipeline, message, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return job.Id;
     }
 }

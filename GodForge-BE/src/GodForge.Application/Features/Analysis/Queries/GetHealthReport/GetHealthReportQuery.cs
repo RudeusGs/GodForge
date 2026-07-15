@@ -4,7 +4,7 @@ using MediatR;
 
 namespace GodForge.Application.Features.Analysis.Queries.GetHealthReport;
 
-public sealed record GetHealthReportQuery(Guid ProjectId) : IRequest<Result<HealthReportResponseDto>>;
+public sealed record GetHealthReportQuery(Guid ProjectId, Guid ActorId) : IRequest<Result<HealthReportResponseDto>>;
 
 public sealed record HealthReportResponseDto(
     HealthReportDto Report,

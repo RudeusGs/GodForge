@@ -10,84 +10,102 @@ const axiosClient = axios.create({
     timeout: 30000,
 });
 
-// Request Interceptor: Attach JWT Token
+function getStoredToken(key: string): string | null {
+    return localStorage.getItem(key) || sessionStorage.getItem(key);
+}
+
+function clearStoredAuth(): void {
+    for (const storage of [localStorage, sessionStorage]) {
+        storage.removeItem('access_token');
+        storage.removeItem('refresh_token');
+        storage.removeItem('auth_user');
+    }
+}
+
+function redirectToLogin(): void {
+    if (window.location.pathname !== '/login') {
+        window.location.assign('/login');
+    }
+}
+
 axiosClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        const token = getStoredToken('access_token');
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
-    (error: AxiosError) => {
-        return Promise.reject(error);
-    }
+    (error: AxiosError) => Promise.reject(error)
 );
 
+type RefreshSubscriber = {
+    resolve: (token: string) => void;
+    reject: (error: unknown) => void;
+};
+
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshSubscribers: RefreshSubscriber[] = [];
 
-function onRefreshed(token: string) {
-    refreshSubscribers.forEach(cb => cb(token));
+function resolveRefreshSubscribers(token: string): void {
+    const subscribers = refreshSubscribers;
     refreshSubscribers = [];
+    subscribers.forEach(subscriber => subscriber.resolve(token));
 }
 
-function addRefreshSubscriber(cb: (token: string) => void) {
-    refreshSubscribers.push(cb);
+function rejectRefreshSubscribers(error: unknown): void {
+    const subscribers = refreshSubscribers;
+    refreshSubscribers = [];
+    subscribers.forEach(subscriber => subscriber.reject(error));
 }
 
-// Response Interceptor: Handle 401/403 and unwrap data
 axiosClient.interceptors.response.use(
-    (response: AxiosResponse) => {
-        return response.data;
-    },
+    (response: AxiosResponse) => response.data,
     async (error: AxiosError) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
             originalRequest._retry = true;
 
-            const isLocal = !!localStorage.getItem('refresh_token');
-            const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+            const localRefreshToken = localStorage.getItem('refresh_token');
+            const refreshToken = localRefreshToken || sessionStorage.getItem('refresh_token');
             if (!refreshToken) {
-                localStorage.removeItem('access_token');
-                sessionStorage.removeItem('access_token');
-                window.location.href = '/login';
+                clearStoredAuth();
+                redirectToLogin();
                 return Promise.reject(error);
             }
 
-            if (!isRefreshing) {
-                isRefreshing = true;
-                try {
-                    const response = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
-                    const newAccessToken = response.data.data.accessToken;
-                    const newRefreshToken = response.data.data.refreshToken;
-                    const storage = isLocal ? localStorage : sessionStorage;
-                    storage.setItem('access_token', newAccessToken);
-                    storage.setItem('refresh_token', newRefreshToken);
-                    isRefreshing = false;
-                    onRefreshed(newAccessToken);
-                    originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-                    return axiosClient(originalRequest);
-                } catch (refreshError) {
-                    isRefreshing = false;
-                    refreshSubscribers = [];
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('refresh_token');
-                    sessionStorage.removeItem('access_token');
-                    sessionStorage.removeItem('refresh_token');
-                    window.location.href = '/login';
-                    return Promise.reject(refreshError);
-                }
-            } else {
-                return new Promise(resolve => {
-                    addRefreshSubscriber(token => {
-                        if (originalRequest.headers) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    refreshSubscribers.push({
+                        resolve: token => {
                             originalRequest.headers.Authorization = `Bearer ${token}`;
-                        }
-                        resolve(axiosClient(originalRequest));
+                            resolve(axiosClient(originalRequest));
+                        },
+                        reject,
                     });
                 });
+            }
+
+            isRefreshing = true;
+            try {
+                const response = await axios.post(`${baseURL}/auth/refresh`, { refreshToken }, { timeout: 30000 });
+                const newAccessToken = response.data.data.accessToken as string;
+                const newRefreshToken = response.data.data.refreshToken as string;
+                const storage = localRefreshToken ? localStorage : sessionStorage;
+
+                storage.setItem('access_token', newAccessToken);
+                storage.setItem('refresh_token', newRefreshToken);
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                resolveRefreshSubscribers(newAccessToken);
+                return axiosClient(originalRequest);
+            } catch (refreshError) {
+                rejectRefreshSubscribers(refreshError);
+                clearStoredAuth();
+                redirectToLogin();
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
             }
         }
 
@@ -104,4 +122,3 @@ axiosClient.interceptors.response.use(
 );
 
 export default axiosClient;
-

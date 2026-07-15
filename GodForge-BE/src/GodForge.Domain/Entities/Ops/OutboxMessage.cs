@@ -37,6 +37,13 @@ public sealed class OutboxMessage : BaseEntity
         };
     }
 
+    public void MarkProcessing(DateTimeOffset leaseUntil)
+    {
+        Status = "processing";
+        AvailableAt = leaseUntil;
+        ErrorMessage = null;
+    }
+
     public void RecordAttempt(string? errorMessage, DateTimeOffset nextAvailableAt)
     {
         Attempts++;
@@ -49,5 +56,6 @@ public sealed class OutboxMessage : BaseEntity
     {
         Status = "processed";
         ProcessedAt = now;
+        ErrorMessage = null;
     }
 }

@@ -3,26 +3,75 @@ import { ref } from 'vue';
 import { authApi } from '../api/auth/auth.api';
 import type { LoginPayload, RegisterPayload, UserDto } from '../api/auth/auth.models';
 
-export const useAuthStore = defineStore('auth', () => {
-    const user = ref<UserDto | null>(null);
-    const getToken = (key: string) => localStorage.getItem(key) || sessionStorage.getItem(key);
-    const accessToken = ref<string | null>(getToken('access_token'));
-    const isAuthenticated = ref<boolean>(!!accessToken.value);
+const ACCESS_TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+const USER_KEY = 'auth_user';
 
-    const setAuthData = (token: string, refreshToken: string, userData: UserDto, rememberMe: boolean = true) => {
+function getStoredValue(key: string): string | null {
+    return localStorage.getItem(key) || sessionStorage.getItem(key);
+}
+
+function getActiveStorage(): Storage | null {
+    if (localStorage.getItem(REFRESH_TOKEN_KEY)) {
+        return localStorage;
+    }
+    if (sessionStorage.getItem(REFRESH_TOKEN_KEY)) {
+        return sessionStorage;
+    }
+    return null;
+}
+
+function readStoredUser(storage: Storage | null): UserDto | null {
+    const raw = storage?.getItem(USER_KEY) ?? null;
+    if (!raw) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(raw) as UserDto;
+    } catch {
+        return null;
+    }
+}
+
+function clearStoredAuth(): void {
+    for (const storage of [localStorage, sessionStorage]) {
+        storage.removeItem(ACCESS_TOKEN_KEY);
+        storage.removeItem(REFRESH_TOKEN_KEY);
+        storage.removeItem(USER_KEY);
+    }
+}
+
+export const useAuthStore = defineStore('auth', () => {
+    const activeStorage = getActiveStorage();
+    const initialAccessToken = activeStorage?.getItem(ACCESS_TOKEN_KEY) ?? null;
+    const initialRefreshToken = activeStorage?.getItem(REFRESH_TOKEN_KEY) ?? null;
+
+    const user = ref<UserDto | null>(readStoredUser(activeStorage));
+    const accessToken = ref<string | null>(initialAccessToken);
+    const isAuthenticated = ref<boolean>(Boolean(initialAccessToken && initialRefreshToken && user.value));
+
+    if (!isAuthenticated.value) {
+        clearStoredAuth();
+        user.value = null;
+        accessToken.value = null;
+    }
+
+    const setAuthData = (
+        token: string,
+        refreshToken: string,
+        userData: UserDto,
+        rememberMe: boolean = true
+    ) => {
+        clearStoredAuth();
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem(ACCESS_TOKEN_KEY, token);
+        storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+        storage.setItem(USER_KEY, JSON.stringify(userData));
+
         accessToken.value = token;
         user.value = userData;
         isAuthenticated.value = true;
-
-        const storage = rememberMe ? localStorage : sessionStorage;
-        // Clear both just to be safe
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        sessionStorage.removeItem('access_token');
-        sessionStorage.removeItem('refresh_token');
-
-        storage.setItem('access_token', token);
-        storage.setItem('refresh_token', refreshToken);
     };
 
     const login = async (payload: LoginPayload, rememberMe: boolean = true) => {
@@ -38,17 +87,14 @@ export const useAuthStore = defineStore('auth', () => {
     };
 
     const clearAuthData = () => {
+        clearStoredAuth();
         user.value = null;
         accessToken.value = null;
         isAuthenticated.value = false;
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        sessionStorage.removeItem('access_token');
-        sessionStorage.removeItem('refresh_token');
     };
 
     const logout = async () => {
-        const refreshToken = getToken('refresh_token');
+        const refreshToken = getStoredValue(REFRESH_TOKEN_KEY);
         try {
             await authApi.logout({ refreshToken });
         } finally {
@@ -67,7 +113,7 @@ export const useAuthStore = defineStore('auth', () => {
         login,
         register,
         logout,
-        forgotPassword
+        forgotPassword,
+        clearAuthData,
     };
 });
-

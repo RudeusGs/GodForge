@@ -1,5 +1,6 @@
 using GodForge.Application;
 using GodForge.Infrastructure;
+using GodForge.Infrastructure.Persistence;
 using GodForge.Worker.Handlers;
 using GodForge.Worker.Queues;
 
@@ -12,4 +13,5 @@ builder.Services.AddScoped<RepositoryAnalysisPipelineHandler>();
 builder.Services.AddHostedService<RabbitMqWorkerService>();
 
 var host = builder.Build();
+await host.Services.InitializeGodForgeDatabaseAsync();
 host.Run();

@@ -1,5 +1,4 @@
 using System.Reflection;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Admin;
 using GodForge.Domain.Entities.Analysis;
 using GodForge.Domain.Entities.Audit;
@@ -120,4 +119,3 @@ public class GodForgeDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }
-

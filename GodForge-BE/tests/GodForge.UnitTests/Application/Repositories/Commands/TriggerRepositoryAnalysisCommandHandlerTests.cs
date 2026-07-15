@@ -45,8 +45,8 @@ public sealed class TriggerRepositoryAnalysisCommandHandlerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var publisher = new Mock<IJobPublisher>();
-        publisher.Setup(x => x.PublishAsync(
+        var outbox = new Mock<IOutboxWriter>();
+        outbox.Setup(x => x.EnqueueAsync(
                 It.IsAny<string>(),
                 It.IsAny<WorkerMessage>(),
                 It.IsAny<CancellationToken>()))
@@ -63,7 +63,7 @@ public sealed class TriggerRepositoryAnalysisCommandHandlerTests
             repositories.Object,
             jobs.Object,
             authorization.Object,
-            publisher.Object,
+            outbox.Object,
             unitOfWork.Object,
             clock.Object);
         var command = new TriggerRepositoryAnalysisCommand(
@@ -82,7 +82,7 @@ public sealed class TriggerRepositoryAnalysisCommandHandlerTests
         Assert.NotEqual(first.Value, second.Value);
         Assert.Equal(2, createdJobs.Count);
         Assert.NotEqual(createdJobs[0].IdempotencyKey, createdJobs[1].IdempotencyKey);
-        publisher.Verify(x => x.PublishAsync(
+        outbox.Verify(x => x.EnqueueAsync(
             It.IsAny<string>(),
             It.IsAny<RepositoryAnalysisJobMessage>(),
             It.IsAny<CancellationToken>()), Times.Exactly(2));

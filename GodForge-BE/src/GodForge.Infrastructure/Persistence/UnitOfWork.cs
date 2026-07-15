@@ -1,5 +1,4 @@
 using GodForge.Application.Common.Interfaces;
-using GodForge.Infrastructure.Persistence;
 
 namespace GodForge.Infrastructure.Persistence;
 
@@ -12,8 +11,9 @@ public sealed class UnitOfWork : IUnitOfWork
         _context = context;
     }
 
-    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        return await _context.SaveChangesAsync(cancellationToken);
-    }
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        => _context.SaveChangesAsync(cancellationToken);
+
+    public void ClearTrackedChanges()
+        => _context.ChangeTracker.Clear();
 }

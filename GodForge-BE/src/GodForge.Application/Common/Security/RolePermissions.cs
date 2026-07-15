@@ -22,7 +22,6 @@ public static class RolePermissions
             ProjectRole.Reviewer => new HashSet<string>(commonRead),
             ProjectRole.Developer => new HashSet<string>(commonRead)
             {
-                Permissions.RepositoryPush,
                 Permissions.RepositorySync,
                 Permissions.AnalysisTrigger,
                 Permissions.JobsCancel
@@ -32,7 +31,6 @@ public static class RolePermissions
                 Permissions.ProjectsUpdate,
                 Permissions.ProjectsMembersManage,
                 Permissions.RepositoryManage,
-                Permissions.RepositoryPush,
                 Permissions.RepositorySync,
                 Permissions.AnalysisTrigger,
                 Permissions.AnalysisManage,
@@ -45,7 +43,6 @@ public static class RolePermissions
                 Permissions.ProjectsDelete,
                 Permissions.ProjectsMembersManage,
                 Permissions.RepositoryManage,
-                Permissions.RepositoryPush,
                 Permissions.RepositorySync,
                 Permissions.AnalysisTrigger,
                 Permissions.AnalysisManage,

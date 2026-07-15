@@ -1,6 +1,5 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Ops;
 using Microsoft.EntityFrameworkCore;
 

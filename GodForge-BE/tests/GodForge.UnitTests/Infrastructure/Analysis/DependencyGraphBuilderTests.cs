@@ -91,6 +91,8 @@ var preload_scene = preload(""res://main.tscn"")
 
             // Assert
             Assert.Equal(4, nodes.Count);
+            Assert.All(nodes, node => Assert.Equal(snapshot.Id, node.GraphSnapshotId));
+            Assert.All(edges, edge => Assert.Equal(snapshot.Id, edge.GraphSnapshotId));
             Assert.Contains(nodes, n => n.NodeKey == "res://main.tscn" && n.NodeType == "scene");
             Assert.Contains(nodes, n => n.NodeKey == "res://player.tscn" && n.NodeType == "scene");
             Assert.Contains(nodes, n => n.NodeKey == "res://player.gd" && n.NodeType == "script");

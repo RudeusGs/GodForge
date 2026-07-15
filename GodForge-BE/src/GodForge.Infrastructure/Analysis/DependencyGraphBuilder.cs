@@ -60,6 +60,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
             .Take(_settings.MaxFiles + 1) // Just to prevent unbounded iteration, but analyzer already checks limits
             .ToList();
 
+        var graphSnapshotId = Guid.NewGuid();
         var nodes = new Dictionary<string, DependencyGraphNode>(StringComparer.OrdinalIgnoreCase);
         var edges = new List<DependencyGraphEdge>();
         var cycleCount = 0;
@@ -74,7 +75,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
             if (!nodes.ContainsKey(nodeKey))
             {
                 nodes[nodeKey] = DependencyGraphNode.Create(
-                    snapshotId,
+                    graphSnapshotId,
                     nodeKey,
                     nodeType,
                     relativePath,
@@ -100,7 +101,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
                         {
                             var targetRelative = targetPath["res://".Length..];
                             nodes[targetPath] = DependencyGraphNode.Create(
-                                snapshotId,
+                                graphSnapshotId,
                                 targetPath,
                                 GetNodeType(targetRelative),
                                 targetRelative,
@@ -110,7 +111,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
 
                         var relation = GetRelation(nodeType, nodes[targetPath].NodeType);
                         edges.Add(DependencyGraphEdge.Create(
-                            snapshotId,
+                            graphSnapshotId,
                             nodeKey,
                             targetPath,
                             relation,
@@ -126,7 +127,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
                         {
                             var targetRelative = targetPath["res://".Length..];
                             nodes[targetPath] = DependencyGraphNode.Create(
-                                snapshotId,
+                                graphSnapshotId,
                                 targetPath,
                                 GetNodeType(targetRelative),
                                 targetRelative,
@@ -136,7 +137,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
 
                         var relation = GetRelation(nodeType, nodes[targetPath].NodeType);
                         edges.Add(DependencyGraphEdge.Create(
-                            snapshotId,
+                            graphSnapshotId,
                             nodeKey,
                             targetPath,
                             relation,
@@ -177,7 +178,8 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
             nodes.Count,
             uniqueEdges.Count,
             cycleCount,
-            _clock.UtcNow);
+            _clock.UtcNow,
+            graphSnapshotId);
 
         return (snapshot, nodes.Values.ToList(), uniqueEdges);
     }

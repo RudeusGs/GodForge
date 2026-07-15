@@ -4,4 +4,4 @@ using MediatR;
 
 namespace GodForge.Application.Features.Analysis.Queries.GetAiAdvisory;
 
-public sealed record GetAiAdvisoryQuery(Guid ProjectId) : IRequest<Result<AiAdvisoryResponseDto>>;
+public sealed record GetAiAdvisoryQuery(Guid ProjectId, Guid ActorId) : IRequest<Result<AiAdvisoryResponseDto>>;
