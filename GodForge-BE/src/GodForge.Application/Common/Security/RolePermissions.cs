@@ -6,66 +6,50 @@ public static class RolePermissions
 {
     public static IReadOnlySet<string> GetPermissionsForRole(ProjectRole role)
     {
+        var commonRead = new[]
+        {
+            Permissions.ProjectsRead,
+            Permissions.RepositoryRead,
+            Permissions.RevisionsRead,
+            Permissions.AnalysisRead,
+            Permissions.JobsRead,
+            Permissions.ActivityRead
+        };
+
         return role switch
         {
-            ProjectRole.Viewer => new HashSet<string>
+            ProjectRole.Viewer => new HashSet<string>(commonRead),
+            ProjectRole.Reviewer => new HashSet<string>(commonRead),
+            ProjectRole.Developer => new HashSet<string>(commonRead)
             {
-                Permissions.ProjectsRead,
-                Permissions.RepositoryRead,
-                Permissions.GitRead,
-                Permissions.MetadataRead,
-                Permissions.JobsRead,
-                Permissions.ActivityRead
+                Permissions.RepositoryPush,
+                Permissions.RepositorySync,
+                Permissions.AnalysisTrigger,
+                Permissions.JobsCancel
             },
-            ProjectRole.Reviewer => new HashSet<string>
+            ProjectRole.ProjectAdmin => new HashSet<string>(commonRead)
             {
-                Permissions.ProjectsRead,
-                Permissions.RepositoryRead,
-                Permissions.GitRead,
-                Permissions.MetadataRead,
-                Permissions.JobsRead,
-                Permissions.ActivityRead
-            },
-            ProjectRole.Developer => new HashSet<string>
-            {
-                Permissions.ProjectsRead,
-                Permissions.RepositoryRead,
-                Permissions.GitRead,
-                Permissions.GitWrite,
-                Permissions.MetadataRead,
-                Permissions.JobsRead,
-                Permissions.JobsCreate,
-                Permissions.ActivityRead
-            },
-            ProjectRole.ProjectAdmin => new HashSet<string>
-            {
-                Permissions.ProjectsRead,
                 Permissions.ProjectsUpdate,
                 Permissions.ProjectsMembersManage,
-                Permissions.RepositoryConfigure,
-                Permissions.RepositoryRead,
-                Permissions.GitRead,
-                Permissions.GitWrite,
-                Permissions.MetadataRead,
-                Permissions.JobsRead,
-                Permissions.JobsCreate,
-                Permissions.ActivityRead,
+                Permissions.RepositoryManage,
+                Permissions.RepositoryPush,
+                Permissions.RepositorySync,
+                Permissions.AnalysisTrigger,
+                Permissions.AnalysisManage,
+                Permissions.JobsCancel,
                 Permissions.SettingsUpdate
             },
-            ProjectRole.ProjectOwner => new HashSet<string>
+            ProjectRole.ProjectOwner => new HashSet<string>(commonRead)
             {
-                Permissions.ProjectsRead,
                 Permissions.ProjectsUpdate,
                 Permissions.ProjectsDelete,
                 Permissions.ProjectsMembersManage,
-                Permissions.RepositoryConfigure,
-                Permissions.RepositoryRead,
-                Permissions.GitRead,
-                Permissions.GitWrite,
-                Permissions.MetadataRead,
-                Permissions.JobsRead,
-                Permissions.JobsCreate,
-                Permissions.ActivityRead,
+                Permissions.RepositoryManage,
+                Permissions.RepositoryPush,
+                Permissions.RepositorySync,
+                Permissions.AnalysisTrigger,
+                Permissions.AnalysisManage,
+                Permissions.JobsCancel,
                 Permissions.SettingsUpdate
             },
             _ => new HashSet<string>()

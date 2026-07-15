@@ -1,10 +1,15 @@
-using GodForge.Worker;
+using GodForge.Application;
+using GodForge.Infrastructure;
+using GodForge.Worker.Handlers;
+using GodForge.Worker.Queues;
 
-// Milestone 1 Placeholder: This worker host currently serves as a structural baseline.
-// Actual logical workers (Clone, Parser, Analyzer) will be implemented in future milestones.
+DotNetEnv.Env.TraversePath().Load();
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<RepositoryAnalysisPipelineHandler>();
+builder.Services.AddHostedService<RabbitMqWorkerService>();
 
 var host = builder.Build();
 host.Run();

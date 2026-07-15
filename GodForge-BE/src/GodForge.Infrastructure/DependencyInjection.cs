@@ -1,6 +1,10 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Infrastructure.AI;
+using GodForge.Infrastructure.Analysis;
 using GodForge.Infrastructure.Configuration;
+using GodForge.Infrastructure.Git;
+using GodForge.Infrastructure.HostedGit;
 using GodForge.Infrastructure.Messaging;
 using GodForge.Infrastructure.Persistence;
 using GodForge.Infrastructure.Persistence.Repositories;
@@ -9,6 +13,7 @@ using GodForge.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace GodForge.Infrastructure;
 
@@ -18,15 +23,16 @@ public static class DependencyInjection
     {
         services.AddDbContext<GodForgeDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
-                   .UseSnakeCaseNamingConvention());
+                .UseSnakeCaseNamingConvention());
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IGitRepositoryRepository, GitRepositoryRepository>();
+        services.AddScoped<IRepositorySnapshotRepository, RepositorySnapshotRepository>();
+        services.AddScoped<IAiAnalysisRepository, AiAnalysisRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IActivityRepository, ActivityRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -35,16 +41,21 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
-        var rabbitMqConnectionString = configuration.GetConnectionString("RabbitMQ");
-        if (!string.IsNullOrEmpty(rabbitMqConnectionString))
-        {
-            throw new NotImplementedException("RabbitMQ publisher is not yet implemented. Use StubJobPublisher by leaving RabbitMQ configuration empty.");
-        }
-        services.AddScoped<IJobPublisher, StubJobPublisher>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IJobPublisher, RabbitMqJobPublisher>();
 
+        services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
+        services.AddOptions<JwtSettings>()
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.Configure<EmailSettings>(configuration.GetSection("Email"));
+        services.Configure<RabbitMqSettings>(configuration.GetSection("RabbitMQ"));
+        services.Configure<RepositoryProcessingSettings>(configuration.GetSection("RepositoryProcessing"));
+        services.Configure<GeminiSettings>(configuration.GetSection("Gemini"));
+        services.Configure<ForgejoSettings>(configuration.GetSection("Forgejo"));
 
         var redisConfiguration = configuration.GetConnectionString("Redis");
-        if (!string.IsNullOrEmpty(redisConfiguration))
+        if (!string.IsNullOrWhiteSpace(redisConfiguration))
         {
             services.AddStackExchangeRedisCache(options =>
             {
@@ -57,14 +68,29 @@ public static class DependencyInjection
             services.AddDistributedMemoryCache();
         }
 
-        services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
-        services.AddOptions<JwtSettings>()
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
         services.AddMemoryCache();
         services.AddSingleton<ICacheService, GodForge.Infrastructure.Caching.RedisCacheService>();
         services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
+
+        services.AddSingleton<ISecretRedactor, SecretRedactor>();
+        services.AddScoped<IRepositoryContextBuilder, RepositoryContextBuilder>();
+        services.AddScoped<IDeterministicProjectAnalyzer, DeterministicProjectAnalyzer>();
+        services.AddScoped<IRepositoryWorkspaceService, GitWorkspaceService>();
+
+        services.AddHttpClient<IAiAnalysisProvider, GeminiAnalysisProvider>((serviceProvider, client) =>
+        {
+            var settings = serviceProvider.GetRequiredService<IOptions<GeminiSettings>>().Value;
+            client.BaseAddress = new Uri(settings.Endpoint.TrimEnd('/') + "/", UriKind.Absolute);
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+
+        services.AddHttpClient<IHostedGitService, ForgejoHostedGitService>((serviceProvider, client) =>
+        {
+            var settings = serviceProvider.GetRequiredService<IOptions<ForgejoSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
         return services;
     }
 }

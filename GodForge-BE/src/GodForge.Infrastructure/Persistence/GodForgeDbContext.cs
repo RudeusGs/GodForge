@@ -21,6 +21,8 @@ public class GodForgeDbContext : DbContext
     public GodForgeDbContext(DbContextOptions<GodForgeDbContext> options) : base(options) { }
 
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<AiAnalysisRun> AiAnalysisRuns => Set<AiAnalysisRun>();
+    public DbSet<AiFinding> AiFindings => Set<AiFinding>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<AnalysisRun> AnalysisRuns => Set<AnalysisRun>();
     public DbSet<AppVersion> AppVersions => Set<AppVersion>();

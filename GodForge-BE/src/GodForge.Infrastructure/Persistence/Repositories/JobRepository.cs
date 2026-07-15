@@ -25,6 +25,13 @@ public sealed class JobRepository : IJobRepository
         await _context.Jobs.AddAsync(job, cancellationToken);
     }
 
+    public Task<Job?> GetByIdempotencyKeyAsync(Guid projectId, GodForge.Domain.Enums.JobType type, string idempotencyKey, CancellationToken cancellationToken = default)
+    {
+        return _context.Jobs.FirstOrDefaultAsync(
+            job => job.ProjectId == projectId && job.Type == type && job.IdempotencyKey == idempotencyKey,
+            cancellationToken);
+    }
+
     public async Task<PagedResult<Job>> GetProjectJobsAsync(Guid projectId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var query = _context.Jobs.Where(j => j.ProjectId == projectId);

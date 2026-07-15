@@ -2,47 +2,66 @@ name: CI Quality Gates
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   backend-quality-gate:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 9.0.x
-    - name: Restore dependencies
-      run: cd GodForge-BE && dotnet restore
-    - name: Build
-      run: cd GodForge-BE && dotnet build --no-restore
-    - name: Test
-      run: cd GodForge-BE && dotnet test --no-build
-    - name: Format Check
-      run: cd GodForge-BE && dotnet format --verify-no-changes
-    - name: Vulnerability Check
-      run: cd GodForge-BE && dotnet list package --vulnerable
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Restore dependencies
+        working-directory: GodForge-BE
+        run: dotnet restore
+      - name: Build
+        working-directory: GodForge-BE
+        run: dotnet build --no-restore
+      - name: Test
+        working-directory: GodForge-BE
+        run: dotnet test --no-build --collect:"XPlat Code Coverage"
+      - name: Format check
+        working-directory: GodForge-BE
+        run: dotnet format --verify-no-changes
+      - name: Vulnerability check
+        working-directory: GodForge-BE
+        run: dotnet list package --vulnerable --include-transitive
 
   frontend-quality-gate:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup Node
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20
-    - name: Install dependencies
-      run: cd GodForge-FE && npm ci
-    - name: Lint
-      run: cd GodForge-FE && npm run lint
-    - name: Typecheck
-      run: cd GodForge-FE && npm run typecheck
-    - name: Test
-      run: cd GodForge-FE && npm run test:unit
-    - name: Build
-      run: cd GodForge-FE && npm run build
-    - name: Audit
-      run: cd GodForge-FE && npm audit --audit-level=critical
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: GodForge-FE
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+      - name: Lint
+        working-directory: GodForge-FE
+        run: npm run lint
+      - name: Typecheck
+        working-directory: GodForge-FE
+        run: npm run typecheck
+      - name: Test
+        working-directory: GodForge-FE
+        run: npm run test:unit
+      - name: Build
+        working-directory: GodForge-FE
+        run: npm run build
+      - name: Audit critical vulnerabilities
+        working-directory: GodForge-FE
+        run: npm audit --audit-level=critical

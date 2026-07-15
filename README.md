@@ -1,99 +1,67 @@
 # GodForge
 
-GodForge là một nền tảng Web phục vụ công tác quản lý, phân tích và trực quan hóa các dự án Godot Engine. Hệ thống cung cấp các bộ công cụ chuyên sâu bao gồm Snapshot History, Scene Diff Viewer, Dependency Graph, Project Health Dashboard và hệ thống trích xuất Metadata tự động.
+GodForge là nền tảng quản lý, phân tích và trực quan hóa dự án Godot dựa trên Git. Người dùng có thể liên kết repository hiện có hoặc, ở giai đoạn sau, tạo repository được host thông qua Forgejo. Mỗi revision được định danh bằng commit SHA và được xử lý bởi worker để API luôn phản hồi nhanh.
 
-Dự án này được phát triển dưới hình thức **Đồ án tốt nghiệp**, áp dụng kiến trúc phần mềm hiện đại (Clean Architecture) và cơ chế xử lý luồng công việc bất đồng bộ (Asynchronous Processing) nhằm đáp ứng hiệu năng cao.
+## Giá trị cốt lõi
 
-## Tính năng cốt lõi (Core Features)
+- Quản lý project, member và quyền truy cập theo project.
+- Liên kết repository Git ngoài; hỗ trợ hosted repository qua Forgejo khi bật profile `hosted-git`.
+- Đồng bộ branch, commit và file tree theo revision.
+- Parse dữ liệu Godot theo cách xác định: `project.godot`, `.tscn`, `.tres`, `.gd` và dependency.
+- Tạo health report bằng rule engine trước khi dùng AI.
+- Tạo context giới hạn, loại binary và che secrets trước khi gọi Gemini.
+- Dùng RabbitMQ worker cho clone/fetch, parse, health, context ingest và AI analysis.
 
-- **Quản lý dự án tập trung (Centralized Project Management):** Quản trị danh mục dự án Godot, tích hợp trực tiếp với Git repositories, phân quyền truy cập và vai trò thành viên dựa trên Role-Based Access Control (RBAC).
-- **Trực quan hóa cấu trúc dự án (Project Structure Visibility):** Tự động phân tích (parse) các tệp tin đặc thù của Godot (`.tscn`, `.tres`, `.gd`) cùng dữ liệu tài nguyên (assets) nhằm tái tạo Cây cấu trúc cảnh (Scene Explorer), Asset Explorer và Biểu đồ phụ thuộc (Dependency Graph).
-- **Kiểm duyệt thay đổi thông minh (Advanced Change Review):** Tích hợp với Repository (lấy snapshot/commit từ remote) kết hợp **Scene Diff Viewer** - công cụ đối chiếu thay đổi ở cấp độ node và thuộc tính (property) giữa các bản phân tích, khắc phục hạn chế của text diff truyền thống.
-- **Giám sát sức khỏe dự án (Project Health Monitoring):** Hệ thống tự động rà soát, phát hiện các tài nguyên thất lạc (missing resources), mã nguồn lỗi, liên kết gãy (broken references), phụ thuộc vòng (cyclic dependencies), tài nguyên rác (unused assets) và cảnh (scene) vượt ngưỡng kích thước cho phép.
-- **Kiểm toán và Vận hành (Audit & Operations):** Lưu trữ toàn vẹn nhật ký hoạt động (Activity Log), hệ thống thông báo (Notifications) và quản lý trạng thái các tiến trình nền (Background Jobs), đảm bảo tính minh bạch và khả năng truy vết (Traceability).
+## Nguyên tắc bắt buộc
 
-## Kiến trúc hệ thống (System Architecture)
+1. Git là nguồn source code; PostgreSQL là nguồn metadata và trạng thái job.
+2. Parser/rule engine là nguồn sự thật; Gemini chỉ đưa ra tư vấn có nhãn AI.
+3. API không clone repository, parse file hoặc gọi Gemini trong HTTP request.
+4. Không tự viết Git protocol server. Hosted Git sử dụng Forgejo qua adapter.
+5. Một commit SHA chỉ tạo một pipeline phân tích tương ứng với cùng cấu hình/input hash.
 
-Hệ thống tuân thủ mô hình Client-Server kết hợp Background Workers, phân tách rõ ràng tác vụ xử lý nhanh (HTTP requests) và tác vụ tính toán nặng.
+## Phạm vi MVP
 
-### Công nghệ sử dụng (Tech Stack)
-- **Frontend:** Vue 3, Vite, TailwindCSS, SignalR Client.
-- **Backend API:** ASP.NET Core (.NET 9), Clean Architecture, CQRS Pattern (MediatR), FluentValidation.
-- **Background Workers:** .NET 9 Worker Services kết hợp RabbitMQ để xử lý hàng đợi (Clone, Parse, Analyze, Diff, Preview).
-- **Cơ sở dữ liệu chính:** PostgreSQL (Lưu trữ Core data & Metadata).
-- **Bộ nhớ đệm & Khóa phân tán (Cache & Distributed Lock):** Redis.
-- **Message Broker:** RabbitMQ.
-- **Lưu trữ đối tượng (Object Storage):** MinIO (Lưu trữ Diff artifacts, thumbnails, snapshots).
-- **Giám sát hệ thống (Observability):** Prometheus, Grafana, Loki.
+MVP tập trung vào project/member, linked repository, branch/commit/file browser, worker pipeline, Godot parser, health report, dependency graph và Gemini advisory thủ công. Không xây GitHub clone đầy đủ, web IDE, CI platform, merge-conflict editor hoặc pull-request engine hoàn chỉnh.
 
-## Hướng dẫn triển khai (Getting Started)
+## Khởi chạy local
 
-### Yêu cầu môi trường (Prerequisites)
-- [Node.js](https://nodejs.org/) (phiên bản LTS).
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) kiến trúc x64.
-- [Docker & Docker Compose](https://www.docker.com/) dành cho hạ tầng mạng.
-
-### 1. Khởi chạy hạ tầng (Infrastructure)
-Khởi động cơ sở dữ liệu, Redis, RabbitMQ và MinIO thông qua Docker Compose:
 ```bash
-cd GodForge-BE
-docker-compose up -d
-```
+cp .env.example .env
+docker compose up -d
 
-### 2. Thiết lập Backend (.NET 9)
-Tiến hành khôi phục các gói thư viện và chạy Entity Framework Migrations để khởi tạo cấu trúc dữ liệu trên PostgreSQL (Tham chiếu mật khẩu tại `docker-compose.yml`):
-```bash
 cd GodForge-BE
 dotnet restore
 dotnet tool restore
 dotnet ef database update --project src/GodForge.Infrastructure --startup-project src/GodForge.Api
+dotnet run --project src/GodForge.Api
 ```
 
-Khởi chạy API Server:
+Mở terminal khác:
+
 ```bash
-cd src/GodForge.Api
-dotnet run
+cd GodForge-BE
+dotnet run --project src/GodForge.Worker
 ```
 
-### 3. Thiết lập Frontend (Vue 3)
-Cài đặt các gói phụ thuộc và khởi động Development Server:
+Frontend:
+
 ```bash
 cd GodForge-FE
 npm install
 npm run dev
 ```
 
-## Cấu trúc mã nguồn (Repository Structure)
+Bật Forgejo khi cần hosted repository:
 
-```text
-GodForge/
-├── GodForge-BE/                         # Backend — ASP.NET Core .NET 9
-│   ├── src/
-│   │   ├── GodForge.Api/                # API controllers, middlewares, DI setup
-│   │   ├── GodForge.Application/        # CQRS use cases, DTOs, business logic
-│   │   ├── GodForge.Domain/             # Entities, value objects, domain events
-│   │   ├── GodForge.Infrastructure/     # EF Core, Database, Redis, RabbitMQ, Git adapters
-│   │   └── GodForge.Worker/             # Background job processors
-│   └── tests/                           # UnitTests & IntegrationTests
-├── GodForge-FE/                         # Frontend — Vue 3
-└── docs/                                # Tài liệu đặc tả hệ thống (SRS, ADR, RBAC, v.v.)
+```bash
+docker compose --profile hosted-git up -d
 ```
 
-## Tài liệu kỹ thuật (Documentation)
+## Tài liệu chính
 
-Chi tiết về đặc tả yêu cầu hệ thống và quy trình nghiệp vụ được lưu trữ tại thư mục `docs/`. Khuyến nghị xem xét các tệp tài liệu sau trước khi tham gia phát triển:
-- [00-overview.md](docs/SRS/00-overview.md): Tổng quan dự án.
-- [02-architecture.md](docs/SRS/02-architecture.md): Tiêu chuẩn Clean Architecture và cấu trúc Worker processing.
-- [04-database.md](docs/SRS/04-database.md) & [05-api.md](docs/SRS/05-api.md): Quy chuẩn Database và thiết kế API.
-- [12-worker-processing.md](docs/SRS/12-worker-processing.md): Chu trình sống của Background Job và nguyên tắc Idempotency.
-
-## Phạm vi dự án (Disclaimer)
-
-Dự án này được xây dựng và đóng gói hoàn toàn cho mục đích bảo vệ **Đồ án tốt nghiệp**. Phạm vi của GodForge không bao gồm việc thay thế môi trường phát triển Godot Editor hay các Git Desktop Client nâng cao. Hệ thống được định vị là một nền tảng phụ trợ trên Web, tập trung vào công tác quản trị, phân tích chuyên sâu (observability) cho các dự án phát triển bằng Godot Engine. 
-
-**GodForge tuân thủ các nguyên tắc (Non-goals) sau:**
-- Không thay thế Godot Editor.
-- Không chạy hay render game Godot trên trình duyệt.
-- Không đóng vai trò như một Web IDE.
-- Không cung cấp công cụ theo dõi thời gian thực (real-time file watcher) đối với các file cục bộ của người dùng trên máy tính cá nhân.
-- Không xử lý các tác vụ Git phức tạp (như xử lý merge conflict, rebase, cherry-pick) trên Web UI.
+- `docs/GODFORGE_FEASIBLE_SYSTEM_BLUEPRINT.md`: kiến trúc và roadmap đầy đủ.
+- `docs/BLUEPRINT_MIGRATION_GUIDE.md`: trình tự áp dụng thay đổi.
+- `docs/SRS/`: yêu cầu chức năng và phi chức năng.
+- `docs/ADR/0005-external-git-engine.md`: quyết định dùng Forgejo.
+- `docs/ADR/0006-ai-advisory-boundary.md`: ranh giới parser/rule engine/Gemini.

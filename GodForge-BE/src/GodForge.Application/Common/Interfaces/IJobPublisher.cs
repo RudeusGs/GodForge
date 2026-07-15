@@ -1,14 +1,11 @@
-using GodForge.Domain.Enums;
+using GodForge.Application.Common.Models.Messages;
 
 namespace GodForge.Application.Common.Interfaces;
 
 public interface IJobPublisher
 {
     Task PublishAsync(
-        Guid jobId,
-        Guid projectId,
-        JobType type,
-        string correlationId,
-        string? inputHash,
+        string queueName,
+        WorkerMessage message,
         CancellationToken cancellationToken = default);
 }

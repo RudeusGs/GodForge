@@ -1,25 +1,22 @@
-# Implementation Milestones
+# Implementation Milestones — Blueprint Order
 
-This document defines the strict, safe implementation order for GodForge. To ensure foundational stability, no later milestone should be started until its dependencies are met.
+Không bắt đầu phase sau trước khi exit gate của phase trước pass.
 
-## Milestone Order
+1. **Stabilization**: clean checkout build/test/migrate; lockfile; environment; CI; baseline migration.
+2. **Linked repository**: link HTTPS Git repository, manual sync job, commit/revision record.
+3. **Worker foundation**: RabbitMQ, durable job state, retry/DLQ, repository lock, workspace cleanup.
+4. **Deterministic Godot parser**: `project.godot`, `.tscn`, `.tres`, `.gd`, diagnostics.
+5. **Health and dependency graph**: measured findings and versioned health score.
+6. **Bounded GitIngest context**: ignore, binary exclusion, redaction, quota, input hash.
+7. **Gemini advisory**: manual trigger, structured output, evidence, usage tracking, degraded mode.
+8. **Internal hosted repository**: Forgejo provisioning, permission sync, signed webhook, auto pipeline.
+9. **Review and scene-aware diff**: compare revisions and dependency impact.
+10. **Observability and deployment hardening**: metrics, alerts, backups, retention and production secrets.
 
-1. repository skeleton and quality gates;
-2. backend solution structure;
-3. database baseline;
-4. auth/RBAC;
-5. project/member management;
-6. repository integration for analysis snapshots;
-7. job infrastructure;
-8. parser metadata baseline;
-9. analyzer/health baseline;
-10. scene/asset/dependency read views;
-11. scene diff between snapshots;
-12. dashboard and activity/notifications;
-13. observability/deployment hardening.
+## Non-goals for MVP
 
-## Future Milestones
-14. optional post-MVP local companion/desktop agent for local uncommitted change tracking.
-
-## Agent Instructions
-AI Agents are required to follow this roadmap. Do not jump ahead to implement advanced features before the baseline layers exist to support them.
+- Git protocol implementation.
+- Full pull-request/issue/wiki/actions replacement.
+- Web IDE or merge-conflict editor.
+- Automatic AI code modification/push.
+- Running or exporting untrusted games on the API/worker host.

@@ -1,28 +1,58 @@
 # CI/CD Quality Gates
 
-All pull requests and commits to the `main` branch must pass the following quality gates before merging. AI Agents MUST verify these gates pass locally before declaring a feature complete.
+A feature is complete only after the commands below pass from a clean checkout.
 
-## 1. Backend Build & Linting
-- `cd GodForge-BE && dotnet restore`
-- `cd GodForge-BE && dotnet build --no-restore` must compile with ZERO warnings. Treat warnings as errors.
-- Code must comply with standard .NET analyzer rules (e.g. IDE0005, CS8600).
-- `cd GodForge-BE && dotnet format --verify-no-changes`
+## Backend
 
-## 2. Backend Tests
-- `cd GodForge-BE && dotnet test --no-build` must execute all unit and integration tests successfully.
-- Code coverage must not drop below the baseline (minimum 80% for Application layer).
+```bash
+cd GodForge-BE
+dotnet restore
+dotnet build --no-restore
+dotnet test --no-build --collect:"XPlat Code Coverage"
+dotnet format --verify-no-changes
+dotnet list package --vulnerable --include-transitive
+```
 
-## 3. Frontend Build & Linting
-- `cd GodForge-FE && npm ci`
-- `cd GodForge-FE && npm run lint` (ESLint) must pass with zero errors.
-- `cd GodForge-FE && npm run typecheck` (Vue TSC) must pass with zero type errors.
-- `cd GodForge-FE && npm run build` must successfully produce a production build.
+Requirements: zero build warnings, all tests pass, no known vulnerable direct/transitive package accepted without documented exception.
 
-## 4. Frontend Tests
-- `cd GodForge-FE && npm run test:unit` (Vitest) must pass.
+## Frontend
 
-## 5. Security & Dependencies
-- `cd GodForge-BE && dotnet list package --vulnerable` must return clean.
-- `cd GodForge-FE && npm audit --audit-level=critical` must return 0 critical vulnerabilities.
+For the first migration run, create and commit a lockfile:
 
-If a command cannot run because the skeleton is not created yet, the agent must report it as "not runnable yet" and explain which milestone will make it runnable. It must not claim the gate passed.
+```bash
+cd GodForge-FE
+npm install
+```
+
+After `package-lock.json` exists, the canonical gate is:
+
+```bash
+npm ci
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run build
+npm audit --audit-level=critical
+```
+
+## Infrastructure
+
+```bash
+cp .env.example .env
+docker compose config
+docker compose up -d
+docker compose ps
+dotnet ef database update \
+  --project GodForge-BE/src/GodForge.Infrastructure \
+  --startup-project GodForge-BE/src/GodForge.Api
+```
+
+The API and worker must start with RabbitMQ enabled, and one fixture repository analysis must reach a terminal job state.
+
+## Blueprint-specific security gate
+
+- Context fixture containing `.env`, bearer token and private key produces no secret in output.
+- Gemini disabled mode still completes deterministic analysis.
+- Invalid AI JSON produces degraded status, not worker crash.
+- Duplicate repository/commit/input hash does not duplicate snapshot or AI run.
+- Removed project member cannot read repository or jobs.

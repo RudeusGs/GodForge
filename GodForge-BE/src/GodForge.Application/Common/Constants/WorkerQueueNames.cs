@@ -2,11 +2,13 @@ namespace GodForge.Application.Common.Constants;
 
 public static class WorkerQueueNames
 {
-    public const string CloneJobs = "clone_jobs";
-    public const string FetchJobs = "fetch_jobs";
-    public const string ParseJobs = "parse_jobs";
-    public const string AnalyzeJobs = "analyze_jobs";
-    public const string DiffJobs = "diff_jobs";
-    public const string PreviewJobs = "preview_jobs";
-    public const string NotificationJobs = "notification_jobs";
+    public const string RepositoryPipeline = "repository.pipeline";
+    public const string HostedRepositoryProvision = "repository.hosted.provision";
+    public const string RepositorySync = "repository.sync";
+    public const string RepositoryParse = "repository.parse";
+    public const string RepositoryHealth = "repository.health";
+    public const string RepositoryContext = "repository.context";
+    public const string RepositoryAiAnalysis = "repository.ai-analysis";
+    public const string RepositoryFinalize = "repository.finalize";
+    public const string DeadLetter = "godforge.dead-letter";
 }

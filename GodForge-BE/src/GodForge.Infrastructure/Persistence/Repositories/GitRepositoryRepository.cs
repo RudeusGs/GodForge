@@ -1,5 +1,4 @@
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Repo;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,13 +13,12 @@ public sealed class GitRepositoryRepository : IGitRepositoryRepository
         _context = context;
     }
 
-    public async Task<GitRepository?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await _context.GitRepositories.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-    }
+    public Task<GitRepository?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => _context.GitRepositories.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+    public Task<GitRepository?> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+        => _context.GitRepositories.FirstOrDefaultAsync(r => r.ProjectId == projectId, cancellationToken);
 
     public async Task AddAsync(GitRepository repository, CancellationToken cancellationToken = default)
-    {
-        await _context.GitRepositories.AddAsync(repository, cancellationToken);
-    }
+        => await _context.GitRepositories.AddAsync(repository, cancellationToken);
 }
