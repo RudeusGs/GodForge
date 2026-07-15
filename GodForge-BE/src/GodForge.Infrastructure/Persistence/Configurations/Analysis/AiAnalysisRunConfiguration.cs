@@ -29,9 +29,21 @@ public sealed class AiAnalysisRunConfiguration : IEntityTypeConfiguration<AiAnal
         builder.Property(x => x.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
         builder.Property(x => x.ErrorCode).HasColumnName("error_code").HasMaxLength(100);
 
-        builder.HasIndex(x => new { x.RepositoryId, x.CommitSha, x.AnalysisProfile, x.InputHash })
-            .HasDatabaseName("ux_ai_analysis_runs_input")
-            .IsUnique();
+        // Failed/degraded runs are retained for audit and may be retried. Only completed
+        // runs are reused by the repository query, so this index must not be unique.
+        builder.HasIndex(x => new
+            {
+                x.RepositoryId,
+                x.CommitSha,
+                x.AnalysisProfile,
+                x.Provider,
+                x.Model,
+                x.PromptVersion,
+                x.InputHash,
+                x.Status
+            })
+            .HasDatabaseName("ix_ai_analysis_runs_cache");
+
         builder.HasIndex(x => new { x.ProjectId, x.StartedAt })
             .HasDatabaseName("ix_ai_analysis_runs_project_started");
     }

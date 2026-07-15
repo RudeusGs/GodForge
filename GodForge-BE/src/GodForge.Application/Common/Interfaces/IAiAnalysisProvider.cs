@@ -4,5 +4,10 @@ namespace GodForge.Application.Common.Interfaces;
 
 public interface IAiAnalysisProvider
 {
-    Task<AiAnalysisResult> AnalyzeAsync(AiAnalysisRequest request, CancellationToken cancellationToken = default);
+    string ProviderName { get; }
+    string ModelName { get; }
+
+    Task<AiAnalysisResult> AnalyzeAsync(
+        AiAnalysisRequest request,
+        CancellationToken cancellationToken = default);
 }

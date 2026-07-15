@@ -141,8 +141,8 @@ public sealed class RabbitMqWorkerService : BackgroundService
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unhandled worker consumer failure");
-            _channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
+            _logger.LogError(exception, "Unhandled worker consumer failure; the original message will be requeued");
+            _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
         }
     }
 
@@ -153,3 +153,4 @@ public sealed class RabbitMqWorkerService : BackgroundService
         base.Dispose();
     }
 }
+

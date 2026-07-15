@@ -30,7 +30,7 @@ describe('Auth Store', () => {
 
   it('updates state upon successful login with rememberMe=true', async () => {
     const store = useAuthStore();
-    
+
     // Mock the API response
     const mockResponse = {
       data: {
@@ -40,7 +40,7 @@ describe('Auth Store', () => {
       },
       meta: { correlationId: '123' }
     };
-    
+
     // @ts-expect-error - mocking axios response
     vi.mocked(authApi.login).mockResolvedValueOnce(mockResponse);
 
@@ -55,7 +55,7 @@ describe('Auth Store', () => {
 
   it('updates state upon successful login with rememberMe=false', async () => {
     const store = useAuthStore();
-    
+
     // Mock the API response
     const mockResponse = {
       data: {
@@ -65,7 +65,7 @@ describe('Auth Store', () => {
       },
       meta: { correlationId: '123' }
     };
-    
+
     // @ts-expect-error - mocking axios response
     vi.mocked(authApi.login).mockResolvedValueOnce(mockResponse);
 
@@ -79,7 +79,7 @@ describe('Auth Store', () => {
 
   it('clears state on logout', () => {
     const store = useAuthStore();
-    
+
     // Setup initial state
     localStorage.setItem('access_token', 'token');
     sessionStorage.setItem('access_token', 'session_token');
@@ -92,3 +92,4 @@ describe('Auth Store', () => {
     expect(sessionStorage.getItem('access_token')).toBeNull();
   });
 });
+

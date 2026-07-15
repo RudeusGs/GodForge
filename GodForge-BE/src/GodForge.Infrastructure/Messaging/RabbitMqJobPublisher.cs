@@ -45,6 +45,8 @@ public sealed class RabbitMqJobPublisher : IJobPublisher
         using var channel = connection.CreateModel();
         DeclareQueue(channel, queueName);
 
+        channel.ConfirmSelect();
+
         var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message, message.GetType(), JsonOptions));
         var properties = channel.CreateBasicProperties();
         properties.Persistent = true;
@@ -59,6 +61,7 @@ public sealed class RabbitMqJobPublisher : IJobPublisher
             mandatory: true,
             basicProperties: properties,
             body: body);
+        channel.WaitForConfirmsOrDie(TimeSpan.FromSeconds(5));
 
         return Task.CompletedTask;
     }
@@ -87,3 +90,4 @@ public sealed class RabbitMqJobPublisher : IJobPublisher
             arguments: arguments);
     }
 }
+

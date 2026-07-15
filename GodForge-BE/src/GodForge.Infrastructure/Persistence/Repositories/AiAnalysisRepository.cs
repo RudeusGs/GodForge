@@ -13,18 +13,28 @@ public sealed class AiAnalysisRepository : IAiAnalysisRepository
         _context = context;
     }
 
-    public Task<AiAnalysisRun?> GetByInputHashAsync(
+    public Task<AiAnalysisRun?> GetCompletedAsync(
         Guid repositoryId,
         string commitSha,
         string analysisProfile,
+        string provider,
+        string model,
+        string promptVersion,
         string inputHash,
         CancellationToken cancellationToken = default)
-        => _context.AiAnalysisRuns.FirstOrDefaultAsync(
-            run => run.RepositoryId == repositoryId &&
-                   run.CommitSha == commitSha &&
-                   run.AnalysisProfile == analysisProfile &&
-                   run.InputHash == inputHash,
-            cancellationToken);
+        => _context.AiAnalysisRuns
+            .AsNoTracking()
+            .Where(run => run.Status == "completed")
+            .OrderByDescending(run => run.CompletedAt)
+            .FirstOrDefaultAsync(
+                run => run.RepositoryId == repositoryId &&
+                       run.CommitSha == commitSha &&
+                       run.AnalysisProfile == analysisProfile &&
+                       run.Provider == provider &&
+                       run.Model == model &&
+                       run.PromptVersion == promptVersion &&
+                       run.InputHash == inputHash,
+                cancellationToken);
 
     public async Task AddRunAsync(AiAnalysisRun run, CancellationToken cancellationToken = default)
         => await _context.AiAnalysisRuns.AddAsync(run, cancellationToken);

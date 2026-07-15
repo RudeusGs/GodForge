@@ -29,6 +29,7 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseHttpsRedirection();
 
 app.UseCors("CorsPolicy");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -39,3 +40,4 @@ app.MapControllers();
 app.Run();
 
 public partial class Program { }
+

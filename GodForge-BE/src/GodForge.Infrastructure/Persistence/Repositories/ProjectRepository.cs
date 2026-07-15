@@ -1,6 +1,5 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -21,11 +20,16 @@ public sealed class ProjectRepository : IProjectRepository
         return await _context.Projects.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
-    public async Task<bool> NameExistsAsync(Guid ownerId, string name, CancellationToken cancellationToken = default)
+    public Task<bool> NameExistsAsync(Guid ownerId, string name, CancellationToken cancellationToken = default)
     {
-        var slug = name.ToLowerInvariant().Replace(" ", "-");
-        return await _context.Projects.AnyAsync(p => p.CreatedBy == ownerId && p.Slug == slug, cancellationToken);
+        var normalizedName = name.Trim().ToUpperInvariant();
+        return _context.Projects.AnyAsync(
+            project => project.CreatedBy == ownerId && project.Name.ToUpper() == normalizedName,
+            cancellationToken);
     }
+
+    public Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken = default)
+        => _context.Projects.AnyAsync(project => project.Slug == slug, cancellationToken);
 
     public async Task AddAsync(Project project, CancellationToken cancellationToken = default)
     {
@@ -64,3 +68,4 @@ public sealed class ProjectRepository : IProjectRepository
         return new PagedResult<Project>(items, page, pageSize, totalItems);
     }
 }
+

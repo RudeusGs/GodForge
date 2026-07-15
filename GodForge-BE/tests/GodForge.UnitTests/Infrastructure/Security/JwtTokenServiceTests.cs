@@ -55,6 +55,11 @@ public class JwtTokenServiceTests
         var emailClaim = token.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email);
         Assert.NotNull(emailClaim);
         Assert.Equal(user.Email, emailClaim.Value);
+
+        var securityStampClaim = token.Claims.FirstOrDefault(c => c.Type == "security_stamp");
+        Assert.NotNull(securityStampClaim);
+        Assert.Equal(user.SecurityStamp, securityStampClaim.Value);
     }
 }
+
 

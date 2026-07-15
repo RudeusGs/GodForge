@@ -42,14 +42,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Require committed lockfile
+        working-directory: GodForge-FE
+        run: test -f package-lock.json || (echo "Generate and commit GodForge-FE/package-lock.json with npm install" && exit 1)
       - name: Install dependencies
         working-directory: GodForge-FE
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install --no-audit --no-fund
-          fi
+        run: npm ci
       - name: Lint
         working-directory: GodForge-FE
         run: npm run lint
@@ -65,3 +63,4 @@ jobs:
       - name: Audit critical vulnerabilities
         working-directory: GodForge-FE
         run: npm audit --audit-level=critical
+

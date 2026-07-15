@@ -7,6 +7,7 @@ using GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
 using GodForge.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GodForge.Api.Controllers;
 
@@ -20,6 +21,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth-sensitive")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var command = new LoginCommand(request.Email, request.Password);
@@ -28,6 +30,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("register/send-otp")]
+    [EnableRateLimiting("auth-otp")]
     public async Task<IActionResult> SendRegisterOtp([FromBody] SendRegisterOtpRequest request, CancellationToken cancellationToken)
     {
         var command = new SendRegisterOtpCommand(request.Email);
@@ -36,6 +39,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting("auth-sensitive")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
         var command = new RegisterCommand(request.Email, request.DisplayName, request.Password, request.Otp);
@@ -44,6 +48,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth-otp")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
         var command = new ForgotPasswordCommand(request.Email);
@@ -61,6 +66,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("reset-password")]
+    [EnableRateLimiting("auth-sensitive")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
         var command = new GodForge.Application.Features.Auth.Commands.ResetPassword.ResetPasswordCommand(request.Email, request.Token, request.NewPassword);
@@ -69,6 +75,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("auth-sensitive")]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
     {
         var command = new GodForge.Application.Features.Auth.Commands.RefreshToken.RefreshTokenCommand(request.RefreshToken);
@@ -84,4 +91,5 @@ public record LogoutRequest(string? RefreshToken);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Email, string Token, string NewPassword);
 public record RefreshTokenRequest(string RefreshToken);
+
 

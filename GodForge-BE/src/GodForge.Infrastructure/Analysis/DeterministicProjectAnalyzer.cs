@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Models.Analysis;
@@ -30,7 +31,10 @@ public sealed class DeterministicProjectAnalyzer : IDeterministicProjectAnalyzer
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetFullPath(workspacePath);
-        var rootPrefix = root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!Directory.Exists(root))
+        {
+            throw new DirectoryNotFoundException("Repository workspace does not exist.");
+        }
         var options = new EnumerationOptions
         {
             RecurseSubdirectories = true,
@@ -123,7 +127,7 @@ public sealed class DeterministicProjectAnalyzer : IDeterministicProjectAnalyzer
             {
                 content = await File.ReadAllTextAsync(file, cancellationToken);
             }
-            catch (IOException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or DecoderFallbackException)
             {
                 AddFinding(findings, findingKeys, new(
                     "PARSER_FILE_READ_FAILED",
@@ -138,7 +142,7 @@ public sealed class DeterministicProjectAnalyzer : IDeterministicProjectAnalyzer
                 var resourcePath = match.Groups["path"].Value;
                 var repositoryRelative = resourcePath["res://".Length..].Replace('/', Path.DirectorySeparatorChar);
                 var target = Path.GetFullPath(Path.Combine(root, repositoryRelative));
-                if (!target.StartsWith(rootPrefix, StringComparison.Ordinal))
+                if (!IsSafeChildPath(root, target))
                 {
                     AddFinding(findings, findingKeys, new(
                         "GODOT_RESOURCE_PATH_INVALID",
@@ -168,6 +172,14 @@ public sealed class DeterministicProjectAnalyzer : IDeterministicProjectAnalyzer
             textCount,
             totalBytes,
             findings);
+    }
+
+    private static bool IsSafeChildPath(string root, string path)
+    {
+        var normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var fullPath = Path.GetFullPath(path);
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return fullPath.StartsWith(normalizedRoot, comparison);
     }
 
     private static bool IsIgnored(string root, string path)
@@ -200,3 +212,4 @@ public sealed class DeterministicProjectAnalyzer : IDeterministicProjectAnalyzer
         }
     }
 }
+

@@ -52,8 +52,15 @@ public sealed class RepositoryContextBuilder : IRepositoryContextBuilder
         var skipped = 0;
         var truncated = false;
 
-        var files = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Where(path => !IsIgnored(root, path))
+        var enumerationOptions = new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.ReparsePoint
+        };
+
+        var files = Directory.EnumerateFiles(root, "*", enumerationOptions)
+            .Where(path => IsSafeChildPath(root, path) && !IsIgnored(root, path))
             .OrderBy(path => Path.GetRelativePath(root, path), StringComparer.Ordinal)
             .Take(_settings.MaxFiles + 1)
             .ToList();
@@ -99,6 +106,11 @@ public sealed class RepositoryContextBuilder : IRepositoryContextBuilder
                 skipped++;
                 continue;
             }
+            catch (UnauthorizedAccessException)
+            {
+                skipped++;
+                continue;
+            }
 
             content = _redactor.Redact(content);
             var section = $"\n\n===== FILE: {relativePath} =====\n{content}";
@@ -125,6 +137,14 @@ public sealed class RepositoryContextBuilder : IRepositoryContextBuilder
             truncated,
             includedPaths,
             warnings);
+    }
+
+    private static bool IsSafeChildPath(string root, string path)
+    {
+        var normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var fullPath = Path.GetFullPath(path);
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return fullPath.StartsWith(normalizedRoot, comparison);
     }
 
     private static bool IsIgnored(string root, string path)
@@ -154,3 +174,4 @@ public sealed class RepositoryContextBuilder : IRepositoryContextBuilder
         return TextExtensions.Contains(Path.GetExtension(path));
     }
 }
+

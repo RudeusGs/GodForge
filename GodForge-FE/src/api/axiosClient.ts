@@ -46,7 +46,7 @@ axiosClient.interceptors.response.use(
 
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
-            
+
             const isLocal = !!localStorage.getItem('refresh_token');
             const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
             if (!refreshToken) {
@@ -94,7 +94,7 @@ axiosClient.interceptors.response.use(
         if (error.response?.status === 403) {
             console.error('RBAC Error: You do not have permission for this action.');
         }
-        
+
         if (error.response?.status === 404) {
             console.error('Not Found: The requested resource does not exist.');
         }
@@ -104,3 +104,4 @@ axiosClient.interceptors.response.use(
 );
 
 export default axiosClient;
+

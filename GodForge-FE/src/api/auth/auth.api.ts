@@ -1,13 +1,13 @@
 import baseApi from '../baseApi';
 import type { ApiResponse } from '../api.models';
-import type { 
-    LoginPayload, 
+import type {
+    LoginPayload,
     RegisterPayload,
-    RefreshPayload, 
-    LogoutPayload, 
-    SetupPasswordPayload, 
-    AuthResponseDto, 
-    RefreshResponseDto 
+    RefreshPayload,
+    LogoutPayload,
+    ResetPasswordPayload,
+    AuthResponseDto,
+    RefreshResponseDto
 } from './auth.models';
 
 const API_PREFIX = '/auth';
@@ -49,10 +49,10 @@ export const authApi = {
     },
 
     /**
-     * Setup password via invite token
+     * Reset password using the token delivered by email.
      */
-    setupPassword(payload: SetupPasswordPayload): Promise<ApiResponse<void>> {
-        return baseApi.post<ApiResponse<void>>(`${API_PREFIX}/setup-password`, payload);
+    resetPassword(payload: ResetPasswordPayload): Promise<ApiResponse<void>> {
+        return baseApi.post<ApiResponse<void>>(`${API_PREFIX}/reset-password`, payload);
     },
 
     /**
@@ -64,3 +64,4 @@ export const authApi = {
 };
 
 export default authApi;
+

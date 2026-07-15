@@ -27,7 +27,7 @@ public class AuthorizationService : IAuthorizationService
         if (membership == null)
         {
             // If the user isn't a member, check if the project is public/internal?
-            // For MVP simplicity, requiring membership for all permissions except maybe read on public, 
+            // For MVP simplicity, requiring membership for all permissions except maybe read on public,
             // but for simplicity let's stick to membership based here.
             return false;
         }
@@ -42,3 +42,4 @@ public class AuthorizationService : IAuthorizationService
         return user?.SystemRole == GodForge.Domain.Enums.SystemRole.SystemAdmin;
     }
 }
+

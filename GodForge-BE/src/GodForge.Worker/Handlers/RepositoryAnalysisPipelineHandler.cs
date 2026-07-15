@@ -62,9 +62,21 @@ public sealed class RepositoryAnalysisPipelineHandler
             return JobExecutionResult.DeadLetter();
         }
 
-        if (job.Status == JobStatus.Completed)
+        if (job.Status is JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed or JobStatus.Timeout or JobStatus.DeadLettered)
         {
             return JobExecutionResult.Completed();
+        }
+
+        if (job.CancellationRequestedAt is not null)
+        {
+            job.Cancel(_clock.UtcNow);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return JobExecutionResult.Completed();
+        }
+
+        if (job.Status == JobStatus.Retrying && job.AvailableAt > _clock.UtcNow)
+        {
+            return JobExecutionResult.Retry(job.AvailableAt - _clock.UtcNow);
         }
 
         if (message.RepositoryId is null)
@@ -106,9 +118,25 @@ public sealed class RepositoryAnalysisPipelineHandler
 
             var deterministic = await _deterministicAnalyzer.AnalyzeAsync(sync.WorkspacePath, cancellationToken);
             job.UpdateProgress(55, _clock.UtcNow);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            if (job.CancellationRequestedAt is not null)
+            {
+                job.Cancel(_clock.UtcNow);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return JobExecutionResult.Completed();
+            }
 
             var context = await _contextBuilder.BuildAsync(sync.WorkspacePath, cancellationToken);
             job.UpdateProgress(75, _clock.UtcNow);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            if (job.CancellationRequestedAt is not null)
+            {
+                job.Cancel(_clock.UtcNow);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return JobExecutionResult.Completed();
+            }
 
             var snapshot = await _snapshots.GetByCommitAsync(repository.Id, sync.CommitSha, cancellationToken);
             if (snapshot is null)
@@ -139,10 +167,13 @@ public sealed class RepositoryAnalysisPipelineHandler
 
             if (message.IncludeAi)
             {
-                var cachedRun = await _aiRepository.GetByInputHashAsync(
+                var cachedRun = await _aiRepository.GetCompletedAsync(
                     repository.Id,
                     sync.CommitSha,
                     message.AnalysisProfile,
+                    _aiProvider.ProviderName,
+                    _aiProvider.ModelName,
+                    PromptVersion,
                     context.InputHash,
                     cancellationToken);
 
@@ -173,8 +204,8 @@ public sealed class RepositoryAnalysisPipelineHandler
                             repository.Id,
                             sync.CommitSha,
                             message.AnalysisProfile,
-                            "gemini",
-                            "configured-model",
+                            _aiProvider.ProviderName,
+                            _aiProvider.ModelName,
                             PromptVersion,
                             context.InputHash,
                             _clock.UtcNow);
@@ -190,10 +221,16 @@ public sealed class RepositoryAnalysisPipelineHandler
                                 null,
                                 _clock.UtcNow);
 
+                            var fingerprints = new HashSet<string>(StringComparer.Ordinal);
                             foreach (var finding in aiResult.Findings)
                             {
                                 var evidenceJson = JsonSerializer.Serialize(finding.EvidenceRefs);
                                 var fingerprint = CreateFingerprint(finding.Title, evidenceJson);
+                                if (!fingerprints.Add(fingerprint))
+                                {
+                                    continue;
+                                }
+
                                 await _aiRepository.AddFindingAsync(AiFinding.Create(
                                     run.Id,
                                     finding.Category,
@@ -209,7 +246,7 @@ public sealed class RepositoryAnalysisPipelineHandler
 
                             aiStatus = "completed";
                             aiSummary = aiResult.Summary;
-                            aiFindingCount = aiResult.Findings.Count;
+                            aiFindingCount = fingerprints.Count;
                         }
                         else
                         {
@@ -283,7 +320,7 @@ public sealed class RepositoryAnalysisPipelineHandler
     }
 
     private static bool IsRetryable(Exception exception)
-        => exception is IOException or HttpRequestException or TimeoutException or TaskCanceledException ||
+        => exception is IOException or HttpRequestException or TimeoutException or TaskCanceledException or OperationCanceledException ||
            exception.InnerException is IOException or HttpRequestException;
 
     private static string CreateFingerprint(string title, string evidenceJson)
@@ -292,3 +329,4 @@ public sealed class RepositoryAnalysisPipelineHandler
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }
+

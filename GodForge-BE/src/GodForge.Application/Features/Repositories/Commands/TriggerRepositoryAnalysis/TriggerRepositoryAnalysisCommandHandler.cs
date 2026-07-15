@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using GodForge.Application.Common.Constants;
 using GodForge.Application.Common.Interfaces;
@@ -59,16 +57,12 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
 
         var branch = string.IsNullOrWhiteSpace(request.Branch) ? repository.DefaultBranch : request.Branch.Trim();
         var now = _clock.UtcNow;
-        var inputHash = CreateInputHash(repository.Id, branch, request.AnalysisProfile, request.IncludeAi, repository.CurrentCommitHash);
-        var existingJob = await _jobs.GetByIdempotencyKeyAsync(
-            request.ProjectId,
-            JobType.AnalyzeProject,
-            inputHash,
-            cancellationToken);
-        if (existingJob is not null)
-        {
-            return existingJob.Id;
-        }
+
+        // The remote HEAD is unknown until the worker fetches it. Reusing repository.CurrentCommitHash
+        // here would incorrectly suppress a new job after the remote branch advances. The unique
+        // trigger key deduplicates RabbitMQ redelivery through JobId while allowing each manual
+        // analysis request to discover the latest remote revision.
+        var triggerKey = $"manual:{repository.Id:N}:{Guid.NewGuid():N}";
 
         var payload = JsonSerializer.Serialize(new
         {
@@ -85,7 +79,7 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
             WorkerQueueNames.RepositoryPipeline,
             priority: 0,
             payload,
-            inputHash,
+            triggerKey,
             maxAttempts: 3,
             request.ActorId,
             request.CorrelationId,
@@ -101,7 +95,7 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
             ProjectId = request.ProjectId,
             RepositoryId = repository.Id,
             CorrelationId = request.CorrelationId,
-            InputHash = inputHash,
+            InputHash = triggerKey,
             Branch = branch,
             AnalysisProfile = request.AnalysisProfile,
             IncludeAi = request.IncludeAi,
@@ -121,15 +115,4 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
 
         return job.Id;
     }
-    private static string CreateInputHash(
-        Guid repositoryId,
-        string branch,
-        string profile,
-        bool includeAi,
-        string? currentCommitHash)
-    {
-        var input = string.Join(':', repositoryId, branch, profile, includeAi, currentCommitHash ?? "latest");
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(input))).ToLowerInvariant();
-    }
-
 }

@@ -1,9 +1,8 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
-using GodForge.Application.Common.Security;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Projects.DTOs;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
 using MediatR;
@@ -14,7 +13,6 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
 {
     private readonly IProjectRepository _projects;
     private readonly IProjectMemberRepository _members;
-    private readonly IAuthorizationService _authorization;
     private readonly IActivityWriter _activityWriter;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
@@ -22,14 +20,12 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
     public CreateProjectCommandHandler(
         IProjectRepository projects,
         IProjectMemberRepository members,
-        IAuthorizationService authorization,
         IActivityWriter activityWriter,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
         _projects = projects;
         _members = members;
-        _authorization = authorization;
         _activityWriter = activityWriter;
         _unitOfWork = unitOfWork;
         _clock = clock;
@@ -37,14 +33,20 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
 
     public async Task<Result<ProjectDto>> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
     {
-        // System user check: only active users or system admins can create. Assuming standard user has the right.
-        // Actually, the API controller requires authentication.
-
         if (await _projects.NameExistsAsync(request.ActorId, request.Name, cancellationToken))
+        {
             return ApplicationError.Conflict("PROJECT_NAME_EXISTS", "A project with this name already exists.");
+        }
 
         var now = _clock.UtcNow;
-        var slug = GenerateSlug(request.Name);
+        var baseSlug = SlugGenerator.Generate(request.Name);
+        var slug = baseSlug;
+        if (await _projects.SlugExistsAsync(slug, cancellationToken))
+        {
+            var suffix = Guid.NewGuid().ToString("N")[..8];
+            var prefixLength = Math.Min(baseSlug.Length, 80 - suffix.Length - 1);
+            slug = $"{baseSlug[..prefixLength]}-{suffix}";
+        }
 
         if (!Enum.TryParse<ProjectVisibility>(request.Visibility, true, out var visibility))
         {
@@ -85,19 +87,5 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ProjectDto.From(project);
-    }
-
-    private string GenerateSlug(string phrase)
-    {
-        var str = phrase.ToLowerInvariant();
-        // Remove invalid chars
-        str = System.Text.RegularExpressions.Regex.Replace(str, @"[^a-z0-9\s-]", "");
-        // Convert multiple spaces/hyphens into one space
-        str = System.Text.RegularExpressions.Regex.Replace(str, @"[\s-]+", " ").Trim();
-        // Cut and trim
-        str = str.Substring(0, str.Length <= 50 ? str.Length : 50).Trim();
-        // Replace spaces with hyphens
-        str = System.Text.RegularExpressions.Regex.Replace(str, @"\s", "-");
-        return str;
     }
 }

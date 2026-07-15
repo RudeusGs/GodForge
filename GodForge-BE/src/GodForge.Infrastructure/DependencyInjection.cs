@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddSingleton<IFrontendUrlBuilder, FrontendUrlBuilder>();
         services.AddScoped<IJobPublisher, RabbitMqJobPublisher>();
 
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
@@ -50,9 +51,16 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.Configure<RabbitMqSettings>(configuration.GetSection("RabbitMQ"));
-        services.Configure<RepositoryProcessingSettings>(configuration.GetSection("RepositoryProcessing"));
+        services.AddOptions<RepositoryProcessingSettings>()
+            .Bind(configuration.GetSection("RepositoryProcessing"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
         services.Configure<GeminiSettings>(configuration.GetSection("Gemini"));
         services.Configure<ForgejoSettings>(configuration.GetSection("Forgejo"));
+        services.AddOptions<FrontendSettings>()
+            .Bind(configuration.GetSection("Frontend"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         var redisConfiguration = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrWhiteSpace(redisConfiguration))
@@ -94,3 +102,4 @@ public static class DependencyInjection
         return services;
     }
 }
+

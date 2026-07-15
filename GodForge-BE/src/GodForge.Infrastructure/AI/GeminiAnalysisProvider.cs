@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -11,6 +12,7 @@ namespace GodForge.Infrastructure.AI;
 
 public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
 {
+    private const int MaxFindings = 50;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -30,6 +32,9 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
         _logger = logger;
     }
 
+    public string ProviderName => "gemini";
+    public string ModelName => _settings.Model;
+
     public async Task<AiAnalysisResult> AnalyzeAsync(
         AiAnalysisRequest request,
         CancellationToken cancellationToken = default)
@@ -47,7 +52,6 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(_settings.TimeoutSeconds));
 
-        var prompt = BuildPrompt(request);
         var payload = new
         {
             contents = new[]
@@ -55,7 +59,7 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
                 new
                 {
                     role = "user",
-                    parts = new[] { new { text = prompt } }
+                    parts = new[] { new { text = BuildPrompt(request) } }
                 }
             },
             generationConfig = new
@@ -76,14 +80,18 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
                 Content = JsonContent.Create(payload, options: JsonOptions)
             };
             requestMessage.Headers.TryAddWithoutValidation("x-goog-api-key", _settings.ApiKey);
+
             using var response = await _httpClient.SendAsync(requestMessage, timeout.Token);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Gemini request failed with HTTP {StatusCode}", (int)response.StatusCode);
-                return Failure("AI_PROVIDER_REQUEST_FAILED");
+                return Failure(IsTransient(response.StatusCode)
+                    ? "AI_PROVIDER_UNAVAILABLE"
+                    : "AI_PROVIDER_REQUEST_FAILED");
             }
 
-            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+            await using var responseStream = await response.Content.ReadAsStreamAsync(timeout.Token);
+            using var document = await JsonDocument.ParseAsync(responseStream, cancellationToken: timeout.Token);
             var text = ExtractCandidateText(document.RootElement);
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -93,7 +101,7 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
             GeminiStructuredResponse? structured;
             try
             {
-                structured = JsonSerializer.Deserialize<GeminiStructuredResponse>(text, JsonOptions);
+                structured = JsonSerializer.Deserialize<GeminiStructuredResponse>(NormalizeJsonPayload(text), JsonOptions);
             }
             catch (JsonException)
             {
@@ -106,23 +114,29 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
                 return Failure("AI_RESPONSE_INVALID");
             }
 
+            var allowedPaths = request.Context.IncludedPaths.ToHashSet(StringComparer.Ordinal);
             var findings = (structured.Findings ?? Array.Empty<GeminiFinding>())
+                .Take(MaxFindings)
                 .Where(x => !string.IsNullOrWhiteSpace(x.Title) && !string.IsNullOrWhiteSpace(x.Description))
                 .Select(x => new AiFindingResult(
-                    x.Category ?? "general",
+                    Limit(x.Category, 80) ?? "general",
                     NormalizeSeverity(x.Severity),
-                    x.Title!,
-                    x.Description!,
-                    x.Recommendation,
-                    x.Confidence,
-                    x.EvidenceRefs ?? Array.Empty<string>()))
+                    Limit(x.Title, 300)!,
+                    Limit(x.Description, 12_000)!,
+                    Limit(x.Recommendation, 12_000),
+                    NormalizeConfidence(x.Confidence),
+                    (x.EvidenceRefs ?? Array.Empty<string>())
+                        .Where(allowedPaths.Contains)
+                        .Distinct(StringComparer.Ordinal)
+                        .Take(20)
+                        .ToArray()))
                 .ToList();
 
             var usage = ExtractUsage(document.RootElement);
             return new AiAnalysisResult(
                 true,
                 true,
-                structured.Summary,
+                Limit(structured.Summary, 20_000),
                 findings,
                 usage.InputTokens,
                 usage.OutputTokens,
@@ -136,6 +150,11 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
         {
             _logger.LogWarning("Gemini transport request failed for repository {RepositoryId}", request.RepositoryId);
             return Failure("AI_PROVIDER_UNAVAILABLE");
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Gemini response envelope was invalid for repository {RepositoryId}", request.RepositoryId);
+            return Failure("AI_RESPONSE_INVALID");
         }
     }
 
@@ -157,7 +176,9 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
 
     private static string? ExtractCandidateText(JsonElement root)
     {
-        if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+        if (!root.TryGetProperty("candidates", out var candidates) ||
+            candidates.ValueKind != JsonValueKind.Array ||
+            candidates.GetArrayLength() == 0)
         {
             return null;
         }
@@ -165,8 +186,10 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
         var candidate = candidates[0];
         if (!candidate.TryGetProperty("content", out var content) ||
             !content.TryGetProperty("parts", out var parts) ||
+            parts.ValueKind != JsonValueKind.Array ||
             parts.GetArrayLength() == 0 ||
-            !parts[0].TryGetProperty("text", out var text))
+            !parts[0].TryGetProperty("text", out var text) ||
+            text.ValueKind != JsonValueKind.String)
         {
             return null;
         }
@@ -176,24 +199,63 @@ public sealed class GeminiAnalysisProvider : IAiAnalysisProvider
 
     private static (int? InputTokens, int? OutputTokens) ExtractUsage(JsonElement root)
     {
-        if (!root.TryGetProperty("usageMetadata", out var usage))
+        if (!root.TryGetProperty("usageMetadata", out var usage) || usage.ValueKind != JsonValueKind.Object)
         {
             return (null, null);
         }
 
-        int? input = usage.TryGetProperty("promptTokenCount", out var promptTokens) ? promptTokens.GetInt32() : null;
-        int? output = usage.TryGetProperty("candidatesTokenCount", out var outputTokens) ? outputTokens.GetInt32() : null;
+        int? input = usage.TryGetProperty("promptTokenCount", out var promptTokens) && promptTokens.TryGetInt32(out var inputValue)
+            ? inputValue
+            : null;
+        int? output = usage.TryGetProperty("candidatesTokenCount", out var outputTokens) && outputTokens.TryGetInt32(out var outputValue)
+            ? outputValue
+            : null;
         return (input, output);
     }
 
-    private static string NormalizeSeverity(string? severity)
+    private static string NormalizeJsonPayload(string value)
     {
-        return severity?.ToLowerInvariant() switch
+        var trimmed = value.Trim();
+        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        var firstLineBreak = trimmed.IndexOf('\n');
+        var lastFence = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+        if (firstLineBreak < 0 || lastFence <= firstLineBreak)
+        {
+            return trimmed;
+        }
+
+        return trimmed[(firstLineBreak + 1)..lastFence].Trim();
+    }
+
+    private static bool IsTransient(HttpStatusCode statusCode)
+        => statusCode == HttpStatusCode.RequestTimeout ||
+           (int)statusCode == 429 ||
+           (int)statusCode >= 500;
+
+    private static string NormalizeSeverity(string? severity)
+        => severity?.ToLowerInvariant() switch
         {
             "critical" => "critical",
             "warning" => "warning",
             _ => "info"
         };
+
+    private static decimal? NormalizeConfidence(decimal? confidence)
+        => confidence is null ? null : Math.Clamp(confidence.Value, 0m, 1m);
+
+    private static string? Limit(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
     private static AiAnalysisResult Failure(string errorCode)

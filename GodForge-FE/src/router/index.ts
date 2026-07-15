@@ -31,6 +31,12 @@ const router = createRouter({
             name: 'forgotPassword',
             component: () => import('../views/ForgotPasswordView.vue'),
             meta: { requiresGuest: true }
+        },
+        {
+            path: '/reset-password',
+            name: 'resetPassword',
+            component: () => import('../views/ResetPasswordView.vue'),
+            meta: { requiresGuest: true }
         }
     ]
 });
@@ -44,8 +50,9 @@ router.beforeEach((to) => {
         return { name: 'login' };
     } else if (to.meta.requiresGuest && isAuthenticated) {
         // Redirect away from login/register if already logged in
-        return { name: 'dashboard' }; 
+        return { name: 'dashboard' };
     }
 });
 
 export default router;
+

@@ -28,7 +28,7 @@ public sealed class EmailService : IEmailService
             EnableSsl = _settings.Smtp.EnableSsl
         };
 
-        var mailMessage = new MailMessage
+        using var mailMessage = new MailMessage
         {
             From = new MailAddress(_settings.Smtp.FromEmail, _settings.Smtp.FromName),
             Subject = subject,
@@ -38,12 +38,9 @@ public sealed class EmailService : IEmailService
 
         mailMessage.To.Add(to);
 
-        // System.Net.Mail doesn't directly support passing CancellationToken to SendMailAsync in old versions,
-        // but .NET Core's SendMailAsync accepts CancellationToken in newer versions.
-        // Let's use the overload with CancellationToken or just await SendMailAsync(mailMessage) if not available,
-        // or check .NET 9 features. In .NET 9 / .NET Standard, SendMailAsync has a CancellationToken overload.
         await client.SendMailAsync(mailMessage, cancellationToken);
 
         _logger.LogInformation("Email sent successfully to {To}", to);
     }
 }
+

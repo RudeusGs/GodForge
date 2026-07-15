@@ -41,7 +41,7 @@ const handleSendOtp = async () => {
         errorMsg.value = 'Email is required to request verification credentials.';
         return;
     }
-    
+
     try {
         sendingOtp.value = true;
         errorMsg.value = '';
@@ -73,12 +73,12 @@ const handleRegister = async () => {
         errorMsg.value = 'Token verification failed. Inputs do not match.';
         return;
     }
-    
+
     try {
         loading.value = true;
         errorMsg.value = '';
-        await authStore.register({ 
-            email: email.value, 
+        await authStore.register({
+            email: email.value,
             displayName: displayName.value,
             password: password.value,
             otp: otp.value
@@ -95,7 +95,7 @@ const handleRegister = async () => {
 
 <template>
     <div class="w-full max-w-md mx-auto p-6 sm:p-10 flex flex-col justify-center bg-[#09090b] relative z-10 h-full overflow-y-auto custom-scrollbar">
-        
+
         <!-- Header -->
         <div class="mb-8 mt-4 font-sans">
             <div class="flex items-center space-x-2.5 mb-3">
@@ -109,14 +109,14 @@ const handleRegister = async () => {
 
         <!-- Form -->
         <form @submit.prevent="handleRegister" class="space-y-5 mb-4">
-            
+
             <!-- Error Message -->
-            <transition 
-                enter-active-class="transition ease-out duration-200" 
-                enter-from-class="opacity-0 -translate-y-2" 
-                enter-to-class="opacity-100 translate-y-0" 
-                leave-active-class="transition ease-in duration-150" 
-                leave-from-class="opacity-100 translate-y-0" 
+            <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 -translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
                 leave-to-class="opacity-0 -translate-y-2"
             >
                 <div v-if="errorMsg" class="bg-red-500/10 border border-red-500/20 p-3 flex items-start space-x-3 rounded-lg">
@@ -126,11 +126,11 @@ const handleRegister = async () => {
             </transition>
 
             <div class="space-y-4">
-                <AuthInput 
-                    v-model="displayName" 
-                    label="Alias / Callsign" 
-                    type="text" 
-                    icon="bi-person-badge" 
+                <AuthInput
+                    v-model="displayName"
+                    label="Alias / Callsign"
+                    type="text"
+                    icon="bi-person-badge"
                     placeholder="dev_alpha"
                 />
 
@@ -141,15 +141,15 @@ const handleRegister = async () => {
                             <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-cyan-500 transition-colors">
                                 <i class="bi bi-envelope"></i>
                             </div>
-                            <input 
-                                type="email" 
+                            <input
+                                type="email"
                                 v-model="email"
                                 placeholder="dev@domain.com"
                                 class="w-full bg-[#121214] border border-white/5 hover:border-white/10 focus:border-cyan-500/50 rounded-lg py-2.5 pl-10 pr-4 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all text-sm font-sans"
                             />
                         </div>
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             @click="handleSendOtp"
                             :disabled="otpCooldown > 0 || !email || sendingOtp"
                             class="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 disabled:bg-zinc-900 disabled:text-zinc-600 text-emerald-400 border border-emerald-500/20 disabled:border-white/5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[90px]"
@@ -160,47 +160,47 @@ const handleRegister = async () => {
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- OTP Verification Code Field -->
-                <transition 
-                    enter-active-class="transition ease-out duration-200" 
-                    enter-from-class="opacity-0 -translate-y-2" 
-                    enter-to-class="opacity-100 translate-y-0" 
-                    leave-active-class="transition ease-in duration-150" 
-                    leave-from-class="opacity-100 translate-y-0" 
+                <transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0 -translate-y-2"
+                    enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100 translate-y-0"
                     leave-to-class="opacity-0 -translate-y-2"
                 >
-                    <AuthInput 
+                    <AuthInput
                         v-if="otpSent"
-                        v-model="otp" 
-                        label="Verification Code (OTP)" 
-                        type="text" 
-                        icon="bi-shield-lock" 
+                        v-model="otp"
+                        label="Verification Code (OTP)"
+                        type="text"
+                        icon="bi-shield-lock"
                         placeholder="••••••"
                         maxlength="6"
                     />
                 </transition>
 
-                <AuthInput 
-                    v-model="password" 
-                    label="Access Token" 
-                    type="password" 
-                    icon="bi-key" 
+                <AuthInput
+                    v-model="password"
+                    label="Access Token"
+                    type="password"
+                    icon="bi-key"
                     placeholder="••••••••••••"
                 />
 
-                <AuthInput 
-                    v-model="confirmPassword" 
-                    label="Verify Token" 
-                    type="password" 
-                    icon="bi-shield-check" 
+                <AuthInput
+                    v-model="confirmPassword"
+                    label="Verify Token"
+                    type="password"
+                    icon="bi-shield-check"
                     placeholder="••••••••••••"
                 />
             </div>
 
             <div class="pt-2">
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     :disabled="loading"
                     class="w-full bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-sans font-medium text-sm py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
                 >
@@ -214,7 +214,7 @@ const handleRegister = async () => {
                     </span>
                 </button>
             </div>
-            
+
             <div class="text-center pt-6 border-t border-white/5">
                 <div class="mt-2">
                     <router-link to="/login" class="text-xs text-zinc-400 hover:text-zinc-200 font-sans underline decoration-white/20 hover:decoration-white/60 transition-colors">
@@ -225,3 +225,4 @@ const handleRegister = async () => {
         </form>
     </div>
 </template>
+

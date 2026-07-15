@@ -69,7 +69,6 @@ public class GodForgeDbContext : DbContext
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ParserDiagnostic> ParserDiagnostics => Set<ParserDiagnostic>();
-    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<PreviewRequest> PreviewRequests => Set<PreviewRequest>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectInvite> ProjectInvites => Set<ProjectInvite>();
@@ -121,3 +120,4 @@ public class GodForgeDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }
+

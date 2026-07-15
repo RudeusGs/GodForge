@@ -1,6 +1,5 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Projects.Commands.CreateProject;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
@@ -17,7 +16,6 @@ public class CreateProjectCommandHandlerTests
         // Arrange
         var mockProjectRepo = new Mock<IProjectRepository>();
         var mockMemberRepo = new Mock<IProjectMemberRepository>();
-        var mockAuthService = new Mock<IAuthorizationService>();
         var mockActivityWriter = new Mock<IActivityWriter>();
         var mockUow = new Mock<IUnitOfWork>();
         var mockClock = new Mock<IClock>();
@@ -29,7 +27,6 @@ public class CreateProjectCommandHandlerTests
         var handler = new CreateProjectCommandHandler(
             mockProjectRepo.Object,
             mockMemberRepo.Object,
-            mockAuthService.Object,
             mockActivityWriter.Object,
             mockUow.Object,
             mockClock.Object);
@@ -50,7 +47,6 @@ public class CreateProjectCommandHandlerTests
         // Arrange
         var mockProjectRepo = new Mock<IProjectRepository>();
         var mockMemberRepo = new Mock<IProjectMemberRepository>();
-        var mockAuthService = new Mock<IAuthorizationService>();
         var mockActivityWriter = new Mock<IActivityWriter>();
         var mockUow = new Mock<IUnitOfWork>();
         var mockClock = new Mock<IClock>();
@@ -61,11 +57,12 @@ public class CreateProjectCommandHandlerTests
 
         mockProjectRepo.Setup(r => r.NameExistsAsync(actorId, "New Project", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        mockProjectRepo.Setup(r => r.SlugExistsAsync("new-project", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         var handler = new CreateProjectCommandHandler(
             mockProjectRepo.Object,
             mockMemberRepo.Object,
-            mockAuthService.Object,
             mockActivityWriter.Object,
             mockUow.Object,
             mockClock.Object);
@@ -85,3 +82,4 @@ public class CreateProjectCommandHandlerTests
         mockUow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
+

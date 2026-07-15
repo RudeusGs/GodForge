@@ -12,7 +12,7 @@ public sealed class LinkRepositoryCommandValidator : AbstractValidator<LinkRepos
             .NotEmpty()
             .MaximumLength(800)
             .Must(IsSupportedUrl)
-            .WithMessage("RemoteUrl must be an absolute HTTP(S) URL without embedded credentials.");
+            .WithMessage("RemoteUrl must be an absolute HTTPS URL without embedded credentials.");
         RuleFor(x => x.Provider)
             .NotEmpty()
             .IsEnumName(typeof(GitProvider), caseSensitive: false);
@@ -27,7 +27,8 @@ public sealed class LinkRepositoryCommandValidator : AbstractValidator<LinkRepos
             return false;
         }
 
-        return (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) &&
+        return uri.Scheme == Uri.UriSchemeHttps &&
                string.IsNullOrEmpty(uri.UserInfo);
     }
 }
+

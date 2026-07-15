@@ -3,10 +3,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using GodForge.Application.Common.Interfaces;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Identity;
 using GodForge.Infrastructure.Configuration;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -35,6 +33,7 @@ public sealed class JwtTokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim("role", user.SystemRole.ToString()),
+            new Claim("security_stamp", user.SecurityStamp),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
@@ -66,3 +65,4 @@ public sealed class JwtTokenService : ITokenService
         return Convert.ToBase64String(hash);
     }
 }
+

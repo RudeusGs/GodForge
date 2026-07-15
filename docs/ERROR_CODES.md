@@ -56,3 +56,32 @@ Errors use `SCREAMING_SNAKE_CASE`, a safe message, correlation ID and optional v
 | `WORKER_MESSAGE_INVALID` | job dead-lettered | Message schema or required identifier is invalid. |
 | `VALIDATION_ERROR` | 400 | Request validation failed. |
 | `INTERNAL_SERVER_ERROR` | 500 | Sanitized unhandled error. |
+
+
+## Additional authentication codes used by the current implementation
+
+| Code | Status | Meaning |
+|---|---:|---|
+| `AUTH_ACCOUNT_DISABLED` | 403 | The account was disabled by an administrator. |
+| `AUTH_ACCOUNT_LOCKED` | 403 | Login is temporarily locked after repeated failures. |
+| `AUTH_EMAIL_EXISTS` | 409 | Registration email is already in use. |
+| `AUTH_INVALID_RESET_TOKEN` | 400 | Password reset token is invalid or expired. |
+| `AUTH_INVALID_TOKEN` | 401 | Token payload or signature is invalid. |
+| `AUTH_INVALID_USER` | 401 | Token refers to a user that is no longer active. |
+| `AUTH_OTP_EXPIRED` | 400 | Registration OTP has expired. |
+| `AUTH_OTP_INVALID` | 400 | Registration OTP is invalid. |
+
+## Deterministic Godot findings and processing failures
+
+| Code | Status | Meaning |
+|---|---:|---|
+| `GODOT_RESOURCE_MISSING` | finding | A `res://` reference points to a missing file. |
+| `GODOT_RESOURCE_PATH_INVALID` | finding | A parsed resource path attempts to escape the workspace root. |
+| `GODOT_SCENE_NOT_FOUND` | finding | No `.tscn` scene was found. |
+| `GODOT_SCENE_OVERSIZED` | finding | A scene exceeds the maintainability threshold. |
+| `GODOT_TEXT_FILE_TOO_LARGE` | finding | A Godot text file exceeded the parser limit. |
+| `PARSER_FILE_READ_FAILED` | finding | A Godot text file could not be decoded or read. |
+| `REPOSITORY_ANALYSIS_FAILED` | job terminal | Repository analysis failed after retries were exhausted. |
+| `AI_ANALYSIS_FAILED` | degraded | AI returned a failure not covered by a provider-specific code. |
+| `AI_PROVIDER_REQUEST_FAILED` | degraded | AI rejected a non-retryable request. |
+| `PROJECT_NAME_EXISTS` | 409 | The owner already has a project with the same name. |
