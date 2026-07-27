@@ -16,7 +16,7 @@ const handleForgotPassword = async () => {
         successMsg.value = '';
         return;
     }
-    
+
     try {
         loading.value = true;
         errorMsg.value = '';
@@ -34,7 +34,7 @@ const handleForgotPassword = async () => {
 
 <template>
     <div class="w-full max-w-md mx-auto p-6 sm:p-10 flex flex-col justify-center bg-[#09090b] relative z-10 h-full overflow-y-auto custom-scrollbar">
-        
+
         <!-- Header -->
         <div class="mb-8 font-sans">
             <div class="flex items-center space-x-2.5 mb-3">
@@ -48,14 +48,14 @@ const handleForgotPassword = async () => {
 
         <!-- Form -->
         <form @submit.prevent="handleForgotPassword" class="space-y-5 mb-4">
-            
+
             <!-- Error Message -->
-            <transition 
-                enter-active-class="transition ease-out duration-200" 
-                enter-from-class="opacity-0 -translate-y-2" 
-                enter-to-class="opacity-100 translate-y-0" 
-                leave-active-class="transition ease-in duration-150" 
-                leave-from-class="opacity-100 translate-y-0" 
+            <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 -translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
                 leave-to-class="opacity-0 -translate-y-2"
             >
                 <div v-if="errorMsg" class="bg-red-500/10 border border-red-500/20 p-3 flex items-start space-x-3 rounded-lg">
@@ -65,12 +65,12 @@ const handleForgotPassword = async () => {
             </transition>
 
             <!-- Success Message -->
-            <transition 
-                enter-active-class="transition ease-out duration-200" 
-                enter-from-class="opacity-0 -translate-y-2" 
-                enter-to-class="opacity-100 translate-y-0" 
-                leave-active-class="transition ease-in duration-150" 
-                leave-from-class="opacity-100 translate-y-0" 
+            <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 -translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
                 leave-to-class="opacity-0 -translate-y-2"
             >
                 <div v-if="successMsg" class="bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-start space-x-3 rounded-lg">
@@ -80,18 +80,18 @@ const handleForgotPassword = async () => {
             </transition>
 
             <div class="space-y-4">
-                <AuthInput 
-                    v-model="email" 
-                    label="User Identity" 
-                    type="email" 
-                    icon="bi-terminal" 
+                <AuthInput
+                    v-model="email"
+                    label="User Identity"
+                    type="email"
+                    icon="bi-terminal"
                     placeholder="dev@domain.com"
                 />
             </div>
 
             <div class="pt-2">
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     :disabled="loading"
                     class="w-full bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-zinc-950 font-sans font-medium text-sm py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
                 >
@@ -105,7 +105,7 @@ const handleForgotPassword = async () => {
                     </span>
                 </button>
             </div>
-            
+
             <div class="text-center pt-5 border-t border-white/5">
                 <div class="mt-4">
                     <router-link to="/login" class="text-xs text-zinc-400 hover:text-zinc-200 font-sans underline decoration-white/20 hover:decoration-white/60 transition-colors">
@@ -116,3 +116,4 @@ const handleForgotPassword = async () => {
         </form>
     </div>
 </template>
+

@@ -40,8 +40,9 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/auth/register/send-otp", command);
 
         // Assert
-        // Standardize ApiResponse might return Ok(new { meta = ... }) 
+        // Standardize ApiResponse might return Ok(new { meta = ... })
         // Either way, it should be a successful status code
         Assert.True(response.IsSuccessStatusCode);
     }
 }
+

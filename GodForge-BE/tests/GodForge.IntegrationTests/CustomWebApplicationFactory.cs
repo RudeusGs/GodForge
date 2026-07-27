@@ -1,4 +1,3 @@
-using System.Data.Common;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Infrastructure.Persistence;
@@ -15,9 +14,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
-            // Remove the app's GodForgeDbContext registration and options
+            services.RemoveAll<DbContextOptions<GodForgeDbContext>>();
+            services.RemoveAll<GodForgeDbContext>();
+            services.AddDbContext<GodForgeDbContext>(options =>
+                options.UseInMemoryDatabase($"GodForgeIntegrationTests-{Guid.NewGuid():N}"));
+
+            // Replace repositories/unit of work used by the current integration tests.
             var unitOfWorkDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IUnitOfWork));
             if (unitOfWorkDescriptor != null) services.Remove(unitOfWorkDescriptor);
             var uowMock = new Mock<IUnitOfWork>();

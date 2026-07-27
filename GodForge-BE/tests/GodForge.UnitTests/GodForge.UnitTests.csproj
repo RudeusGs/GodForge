@@ -16,7 +16,7 @@
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.19.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.1" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
@@ -30,6 +30,8 @@
     <ProjectReference Include="..\..\src\GodForge.Domain\GodForge.Domain.csproj" />
     <ProjectReference Include="..\..\src\GodForge.Api\GodForge.Api.csproj" />
     <ProjectReference Include="..\..\src\GodForge.Infrastructure\GodForge.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\GodForge.Worker\GodForge.Worker.csproj" />
   </ItemGroup>
 
 </Project>
+

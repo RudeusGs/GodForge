@@ -19,11 +19,11 @@ public sealed class DependencyGraphSnapshot : BaseEntity
     public static DependencyGraphSnapshot Create(
         Guid projectId, Guid repositoryId, Guid snapshotId,
         Guid analysisRunId, string graphHash, int nodeCount,
-        int edgeCount, int cycleCount, DateTimeOffset now)
+        int edgeCount, int cycleCount, DateTimeOffset now, Guid? id = null)
     {
         return new DependencyGraphSnapshot
         {
-            Id = Guid.NewGuid(),
+            Id = id ?? Guid.NewGuid(),
             ProjectId = projectId,
             RepositoryId = repositoryId,
             SnapshotId = snapshotId,

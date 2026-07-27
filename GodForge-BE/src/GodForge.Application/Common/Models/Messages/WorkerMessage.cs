@@ -6,21 +6,24 @@ public abstract record WorkerMessage
     public Guid MessageId { get; init; } = Guid.NewGuid();
     public Guid JobId { get; init; }
     public Guid ProjectId { get; init; }
+    public Guid? RepositoryId { get; init; }
     public string CorrelationId { get; init; } = default!;
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public int AttemptCount { get; init; }
+    public string? InputHash { get; init; }
 }
 
-public record CloneJobMessage(Guid RepositoryId, string RemoteUrl, string? Branch) : WorkerMessage;
+public sealed record RepositoryAnalysisJobMessage : WorkerMessage
+{
+    public string Branch { get; init; } = "main";
+    public string AnalysisProfile { get; init; } = "health_overview";
+    public bool IncludeAi { get; init; }
+}
 
-public record FetchJobMessage(Guid RepositoryId, string RemoteUrl) : WorkerMessage;
-
-public record ParseJobMessage(Guid RepositoryId, Guid SnapshotId, string CommitHash) : WorkerMessage;
-
-public record AnalyzeJobMessage(Guid RepositoryId, Guid SnapshotId, string CommitHash) : WorkerMessage;
-
-public record DiffJobMessage(Guid RepositoryId, Guid BaseSnapshotId, Guid HeadSnapshotId) : WorkerMessage;
-
-public record PreviewJobMessage(Guid AssetId, string StorageKey) : WorkerMessage;
-
-public record NotificationJobMessage(Guid UserId, string NotificationType, Guid EntityId) : WorkerMessage;
+public sealed record HostedRepositoryProvisionJobMessage : WorkerMessage
+{
+    public string Owner { get; init; } = default!;
+    public string Name { get; init; } = default!;
+    public bool IsPrivate { get; init; } = true;
+    public string DefaultBranch { get; init; } = "main";
+}

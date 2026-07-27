@@ -1,4 +1,3 @@
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Identity;
 
 namespace GodForge.Application.Common.Interfaces;

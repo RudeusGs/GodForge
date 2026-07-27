@@ -38,9 +38,7 @@ Use this skill whenever architectural, API, database, or security behavior chang
 - Do not weaken existing SRS constraints.
 
 ## Completion Checklist
-- [ ] Impacted docs identified.
-- [ ] Content explicitly updated.
-- [ ] Terminology remains consistent.
+
 
 ## Output Expectations
 The agent must declare what files were updated and why they were updated to keep them in sync with codebase changes.

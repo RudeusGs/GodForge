@@ -87,7 +87,27 @@ public sealed class Job : BaseAuditableEntity
         Status = JobStatus.Failed;
         ErrorCode = errorCode;
         ErrorMessage = errorMessage;
-        CompletedAt = now; // SRS doesn't have FailedAt, so we use CompletedAt or just UpdatedAt.
+        CompletedAt = now;
+        LastHeartbeatAt = now;
+        UpdatedAt = now;
+    }
+
+    public void MarkRetrying(string errorCode, string errorMessage, DateTimeOffset availableAt, DateTimeOffset now)
+    {
+        Status = JobStatus.Retrying;
+        ErrorCode = errorCode;
+        ErrorMessage = errorMessage;
+        AvailableAt = availableAt;
+        LastHeartbeatAt = now;
+        UpdatedAt = now;
+    }
+
+    public void MarkDeadLettered(string errorCode, string errorMessage, DateTimeOffset now)
+    {
+        Status = JobStatus.DeadLettered;
+        ErrorCode = errorCode;
+        ErrorMessage = errorMessage;
+        CompletedAt = now;
         LastHeartbeatAt = now;
         UpdatedAt = now;
     }

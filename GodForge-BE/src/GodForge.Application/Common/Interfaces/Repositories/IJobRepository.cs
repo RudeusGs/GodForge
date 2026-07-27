@@ -1,5 +1,4 @@
 using GodForge.Application.Common.Models;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Ops;
 
 namespace GodForge.Application.Common.Interfaces.Repositories;
@@ -8,5 +7,6 @@ public interface IJobRepository
 {
     Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task AddAsync(Job job, CancellationToken cancellationToken = default);
+    Task<Job?> GetByIdempotencyKeyAsync(Guid projectId, GodForge.Domain.Enums.JobType type, string idempotencyKey, CancellationToken cancellationToken = default);
     Task<PagedResult<Job>> GetProjectJobsAsync(Guid projectId, int page, int pageSize, CancellationToken cancellationToken = default);
 }

@@ -4,17 +4,17 @@
 
 <template>
     <div class="relative w-full h-full bg-transparent overflow-hidden hidden lg:flex items-center justify-center p-12 select-none">
-        
+
         <!-- Radial gradient overlay for depth -->
         <div class="absolute inset-0 bg-gradient-to-tr from-[#09090b]/80 via-transparent to-[#09090b]/80 pointer-events-none z-0"></div>
-        
+
         <!-- Decorative Ambient Glows -->
         <div class="absolute top-[20%] right-[20%] w-[350px] h-[350px] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
         <div class="absolute bottom-[20%] left-[10%] w-[300px] h-[300px] bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
         <!-- SaaS Style Editor Mockup Dashboard -->
         <div class="relative w-full max-w-[860px] h-[550px] bg-[#0c0c0e]/80 border border-white/5 backdrop-blur-xl rounded-xl shadow-[0_30px_70px_-15px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden z-10 transition-all duration-500 hover:border-white/10">
-            
+
             <!-- Window Top Bar -->
             <div class="flex items-center justify-between px-5 py-3.5 border-b border-white/5 bg-[#101014]/60">
                 <div class="flex items-center space-x-3">
@@ -24,9 +24,9 @@
                         <span class="w-2 h-2 rounded-full bg-zinc-800 border border-zinc-700"></span>
                         <span class="w-2 h-2 rounded-full bg-zinc-800 border border-zinc-700"></span>
                     </div>
-                    
+
                     <span class="text-zinc-700 font-mono pl-1">|</span>
-                    
+
                     <!-- App Status / Breadcrumb -->
                     <div class="flex items-center space-x-2 font-sans text-xs pl-1">
                         <i class="bi bi-folder-fill text-zinc-500"></i>
@@ -47,7 +47,7 @@
 
             <!-- Main Panel Workspace -->
             <div class="flex flex-1 overflow-hidden font-sans">
-                
+
                 <!-- Left Sidebar: Scene Tree Explorer (1/4 width) -->
                 <div class="w-[220px] border-r border-white/5 bg-[#0c0c0e]/40 p-4 flex flex-col justify-between text-xs">
                     <div>
@@ -122,7 +122,7 @@
                             <path d="M50 50 L20 80" stroke-width="1" vector-effect="non-scaling-stroke" />
                             <path d="M50 50 L50 80" stroke-width="1" vector-effect="non-scaling-stroke" />
                             <path d="M50 50 L80 80" stroke-width="1" vector-effect="non-scaling-stroke" />
-                            
+
                             <!-- Soft flow pulse -->
                             <circle r="0.8" fill="#06b6d4" opacity="0.6">
                                 <animateMotion dur="4s" repeatCount="indefinite" path="M50 20 L50 50" />
@@ -166,7 +166,7 @@
                 <div class="w-[220px] border-l border-white/5 bg-[#0c0c0e]/40 p-4 flex flex-col justify-between text-xs">
                     <div>
                         <div class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-4">Node Inspector</div>
-                        
+
                         <!-- Properties -->
                         <div class="space-y-4">
                             <div class="bg-white/5 border border-white/5 p-2.5 rounded-md">
@@ -233,12 +233,13 @@
                     <span>Workspace Observer v1.0.0</span>
                 </div>
             </div>
-            
+
         </div>
-        
+
     </div>
 </template>
 
 <style scoped>
 /* Clean & Minimal Styles */
 </style>
+

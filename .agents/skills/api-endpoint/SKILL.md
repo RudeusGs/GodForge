@@ -4,20 +4,8 @@ description: guidance for adding or modifying api endpoints in the godforge back
 ---
 
 
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
 Use this skill to add or update API endpoints in the GodForge backend while staying aligned with the SRS, API specification, RBAC model, async-job rules, and backend architecture boundaries.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 - Treat `docs/SRS/05-api.md` as the source of truth for method, path, request body, response body, validation, permissions, success status, and error cases.
 - Cross-check security requirements in `docs/SRS/06-security.md`, non-functional requirements in `docs/SRS/07-non-functional.md`, workflow rules in `docs/SRS/08-workflows.md`, and worker/job rules in `docs/SRS/12-worker-processing.md` when relevant.
@@ -26,19 +14,6 @@ Use this skill when performing tasks related to its name.
 - Never return EF/domain entities directly from the API. Always map to response DTOs.
 - Never expose secrets, stack traces, raw internal exception details, Git credentials, token values, or sensitive paths in responses, logs, activity messages, or notifications.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Before writing code, inspect the SRS and record:
 
@@ -55,12 +30,6 @@ Before writing code, inspect the SRS and record:
 
 Do not invent a new route or response shape if the endpoint exists in `05-api.md`. If the SRS is missing or ambiguous, implement the smallest consistent endpoint and add a TODO or update request for the SRS/API spec.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Place request contracts at the API boundary, for example:
 
@@ -74,75 +43,18 @@ Place application-facing DTOs or result models near the feature slice, for examp
 
 Use immutable records unless mutation is required.
 
-```csharp
-public sealed record CreateProjectRequest(
-    string Name,
-    string? Description,
-    string GodotVersion,
-    string Visibility);
-
-public sealed record ProjectDto(
-    Guid Id,
-    string Name,
-    string Slug,
-    string? Description,
-    string GodotVersion,
-    string Visibility,
-    int? HealthScore,
-    DateTimeOffset CreatedAt);
-```
 
 Avoid over-posting by only exposing fields the client is allowed to set.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Create a validator for every request body or complex query model.
 
-```csharp
-public sealed class CreateProjectRequestValidator : AbstractValidator<CreateProjectRequest>
-{
-    public CreateProjectRequestValidator()
-    {
-        RuleFor(x => x.Name)
-            .NotEmpty()
-            .MaximumLength(50);
-
-        RuleFor(x => x.GodotVersion)
-            .NotEmpty()
-            .MaximumLength(20);
-
-        RuleFor(x => x.Visibility)
-            .NotEmpty()
-            .Must(v => v is "private" or "internal")
-            .WithMessage("Visibility must be either 'private' or 'internal'.");
-    }
-}
-```
 
 Validation failures must map to the standard error response and must not leak internal implementation details.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use a command for write operations and a query for read operations. Include actor context explicitly.
 
-```csharp
-public sealed record CreateProjectCommand(
-    string Name,
-    string? Description,
-    string GodotVersion,
-    string Visibility,
-    Guid ActorUserId) : IRequest<Result<ProjectDto>>;
-```
 
 The handler should:
 
@@ -153,104 +65,24 @@ The handler should:
 - Return typed failures with stable error codes.
 - Avoid direct HTTP concepts unless the project has an established application result abstraction.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Controller actions should bind input, call MediatR, and convert the result to the standardized API response.
 
-```csharp
-/// <summary>
-/// Creates a new GodForge project.
-/// </summary>
-[HttpPost]
-[Authorize]
-[ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status201Created)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
-public async Task<IActionResult> Create(
-    [FromBody] CreateProjectRequest request,
-    CancellationToken cancellationToken)
-{
-    Guid actorUserId = User.GetUserId();
-
-    var command = new CreateProjectCommand(
-        request.Name,
-        request.Description,
-        request.GodotVersion,
-        request.Visibility,
-        actorUserId);
-
-    Result<ProjectDto> result = await _mediator.Send(command, cancellationToken);
-
-    return result.Match(
-        success => CreatedAtAction(
-            nameof(GetById),
-            new { id = success.Id },
-            ApiResponse.Success(success)),
-        failure => failure.ToProblemDetails(HttpContext));
-}
-```
 
 Use `[Authorize]` for authenticated endpoints, but do not rely only on controller attributes for project-level authorization. Project-level RBAC must be enforced in the application use case because it needs project membership and target-resource context.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Successful single-resource response:
 
-```json
-{
-  "data": {
-    "id": "00000000-0000-0000-0000-000000000000"
-  }
-}
-```
 
 Successful paginated response:
 
-```json
-{
-  "data": [],
-  "meta": {
-    "page": 1,
-    "pageSize": 20,
-    "totalItems": 100,
-    "totalPages": 5
-  }
-}
-```
 
 Error response:
 
-```json
-{
-  "error": {
-    "code": "PROJECT_NAME_EXISTS",
-    "message": "A project with this name already exists.",
-    "correlationId": "abc-123",
-    "details": []
-  }
-}
-```
 
 Error details must be safe for clients. Do not include stack traces, raw SQL, full Git command output, credential values, or internal filesystem paths.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use stable, SRS-aligned error codes. Prefer module-prefixed codes when available.
 
@@ -269,12 +101,6 @@ Common mappings:
 
 For security-sensitive resources, follow the project convention on whether to return `403` or mask existence with `404`.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use the RBAC matrix from `06-security.md`.
 
@@ -288,37 +114,12 @@ General pattern:
 
 Example application-layer check:
 
-```csharp
-PermissionResult permission = await _authorizationService.EnsureProjectPermissionAsync(
-    actorUserId,
-    projectId,
-    ProjectPermission.ConfigureRepository,
-    cancellationToken);
-
-if (!permission.Allowed)
-{
-    return Result.Failure<ProjectDto>(Errors.Forbidden());
-}
-```
 
 Do not put project membership queries inside the controller.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 For list endpoints, use a query model rather than many loose parameters when filters grow.
 
-```csharp
-public sealed record ProjectListQueryParameters(
-    int Page = 1,
-    int PageSize = 20,
-    string? SortBy = "createdAt",
-    string SortOrder = "desc");
-```
 
 Rules:
 
@@ -328,39 +129,11 @@ Rules:
 - Validate sort fields against an allow-list.
 - Apply permission filters before returning results.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Endpoints that trigger clone, parse, analyze, diff, preview, or other heavy work must not run the work inside the request.
 
 Return `202 Accepted` with a job DTO.
 
-```csharp
-[HttpPost("{id:guid}/analyze")]
-[Authorize]
-[ProducesResponseType(typeof(ApiResponse<JobDto>), StatusCodes.Status202Accepted)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
-[ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
-public async Task<IActionResult> Analyze(
-    Guid id,
-    CancellationToken cancellationToken)
-{
-    Guid actorUserId = User.GetUserId();
-    var command = new TriggerProjectAnalyzeCommand(id, actorUserId);
-
-    Result<JobDto> result = await _mediator.Send(command, cancellationToken);
-
-    return result.Match(
-        job => Accepted(ApiResponse.Success(job)),
-        failure => failure.ToProblemDetails(HttpContext));
-}
-```
 
 Job-producing handlers should:
 
@@ -370,12 +143,6 @@ Job-producing handlers should:
 - Publish a RabbitMQ message after persisting the job.
 - Return quickly and let the worker update progress, heartbeat, timeout, and final status.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 For repository and Git operations:
 
@@ -386,12 +153,6 @@ For repository and Git operations:
 - Convert known Git failures into stable API errors, such as rejected push, merge conflict, dirty working tree, invalid branch, or repository locked.
 - Write activity logs for successful and failed write operations.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Write activity logs for important state changes, including:
 
@@ -406,12 +167,6 @@ Activity logs must include actor, action, target type, target id, status, timest
 
 Create notifications only when the workflow requires them, and ensure the recipient is authorized to see the linked object.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Every request should carry or create a correlation id. Ensure errors and important operational events can be traced through logs and job records.
 
@@ -422,12 +177,6 @@ For endpoint code and handlers:
 - Do not log secrets, tokens, credentials, raw authorization headers, or sensitive files.
 - Preserve cancellation token usage through async calls.
 
-##
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Add or update tests for:
 
@@ -441,53 +190,4 @@ Add or update tests for:
 - Job creation and queue publication for async endpoints.
 - Repository lock behavior for Git operations.
 
-#
 
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-- [ ] Endpoint method and path match `docs/SRS/05-api.md`.
-- [ ] Related functional requirement ID is identified.
-- [ ] Request and response DTOs are defined and do not expose domain entities.
-- [ ] FluentValidation rules match SRS constraints.
-- [ ] Controller is thin and contains no business logic.
-- [ ] Command/query handler performs business rules and RBAC checks.
-- [ ] Auth and RBAC match `docs/SRS/06-security.md`.
-- [ ] Standard `ApiResponse<T>` / `ApiErrorResponse` format is used.
-- [ ] Error codes are stable, SRS-aligned, and safe.
-- [ ] Pagination uses default `page = 1`, default `pageSize = 20`, and max `pageSize = 100`.
-- [ ] Heavy work returns `202 Accepted` and creates a tracked job.
-- [ ] Job endpoint records progress/status and publishes to RabbitMQ when needed.
-- [ ] Git/repository operation uses the approved Git service and repository lock.
-- [ ] Write operation records activity log with correlation id.
-- [ ] Sensitive data is never returned or logged.
-- [ ] Cancellation tokens are passed through async calls.
-- [ ] Unit/integration tests cover success, validation, auth, RBAC, conflict, and error cases.
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Ensure all steps in the workflow are followed.
-- Follow all rules defined in AGENTS.md.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Do not violate architecture boundaries.
-- Do not skip the required tests.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Provide a summary of the changes made.
-- List any quality gates run and their results.

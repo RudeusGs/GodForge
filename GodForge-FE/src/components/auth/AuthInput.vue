@@ -20,8 +20,8 @@ defineEmits<{
             <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-cyan-500 transition-colors">
                 <i v-if="icon" :class="['bi', icon]"></i>
             </div>
-            <input 
-                :type="type || 'text'" 
+            <input
+                :type="type || 'text'"
                 :value="modelValue"
                 @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
                 :placeholder="placeholder"
@@ -32,3 +32,4 @@ defineEmits<{
         <span v-if="error" class="text-xs text-red-400 mt-1 font-mono">{{ error }}</span>
     </div>
 </template>
+

@@ -38,12 +38,12 @@ const draw = () => {
     animationFrameId = requestAnimationFrame(draw);
     if (!needsRedraw || !canvasRef.value) return;
     needsRedraw = false;
-    
+
     const ctx = canvasRef.value.getContext('2d');
     if (!ctx) return;
 
     ctx.clearRect(0, 0, width, height);
-    
+
     // Draw background (near-black, refined palette)
     ctx.fillStyle = '#09090b';
     ctx.fillRect(0, 0, width, height);
@@ -63,9 +63,9 @@ const draw = () => {
             let dx = x - mouse.x;
             let dy = y - mouse.y;
             let distance = Math.sqrt(dx * dx + dy * dy);
-            
+
             let alpha = 0.06; // static faint grid opacity
-            
+
             if (distance < 240) {
                 // soft lighting glow based on distance
                 const factor = (240 - distance) / 240;
@@ -99,3 +99,4 @@ onUnmounted(() => {
 <template>
     <canvas ref="canvasRef" class="fixed inset-0 w-full h-full pointer-events-none z-0"></canvas>
 </template>
+

@@ -5,9 +5,9 @@ import { useRouter } from 'vue-router';
 const authStore = useAuthStore();
 const router = useRouter();
 
-const handleLogout = () => {
-    authStore.logout();
-    router.push({ name: 'login' });
+const handleLogout = async () => {
+    await authStore.logout();
+    await router.push({ name: 'login' });
 };
 </script>
 
@@ -23,7 +23,7 @@ const handleLogout = () => {
                     Logout
                 </button>
             </div>
-            
+
             <div class="prose max-w-none">
                 <h2>Welcome to GodForge!</h2>
                 <p>Hello {{ authStore.user?.email }}, you have successfully logged in.</p>
@@ -32,3 +32,4 @@ const handleLogout = () => {
         </div>
     </div>
 </template>
+

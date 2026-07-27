@@ -4,22 +4,10 @@ description: skill for implementing async background jobs and worker processing 
 ---
 
 
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
 Use this skill when implementing or modifying GodForge background jobs for long-running work such as repository clone/fetch, project parse, project analyze, scene diff, and preview generation.
 
 GodForge API requests must stay lightweight. Any operation that can exceed the API latency target or depends on repository/project size must create a durable job, publish a RabbitMQ message, and return a `202 Accepted` response with a `jobId` and `correlationId`.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Before coding, read the relevant sections in `docs/SRS/`:
 
@@ -44,39 +32,9 @@ Confirm these items before writing code:
 - Metadata/artifact output target: PostgreSQL, MinIO, or both.
 - Activity log, notification, cache invalidation, and SignalR progress events.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-```text
-API Controller
-  -> Application service validates permission, state, and input
-  -> Create durable job row in PostgreSQL
-  -> Publish RabbitMQ message after DB commit / outbox publish
-  -> Return 202 Accepted { data: { jobId, status }, correlationId }
-
-RabbitMQ durable queue
-  -> Worker consumes message
-  -> Validate message schema, freshness, and idempotency
-  -> Acquire lock if needed
-  -> Mark job running and heartbeat
-  -> Execute engine/service work
-  -> Persist metadata/artifact/output
-  -> Update progress and emit SignalR events
-  -> Complete/fail/retry/dead-letter with activity log and notification
-```
 
 Do not put business rules directly in RabbitMQ plumbing or API controllers. API/Application decides whether the job may be created. Worker executes the already-authorized job safely and revalidates stale state before committing results.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use stable job type names in code and persistence:
 
@@ -91,49 +49,9 @@ Use stable job type names in code and persistence:
 
 Prefer immutable inputs such as `commitHash`, `snapshotRef`, or `metadataVersion`. Avoid workers reading a mutable working tree without a lock.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Every job message must include enough data for retries, delayed delivery, stale-message detection, and tracing.
 
-```csharp
-namespace GodForge.Application.Features.Jobs.Messages;
-
-public interface IJobMessage
-{
-    string SchemaVersion { get; }
-    Guid MessageId { get; }
-    Guid JobId { get; }
-    string JobType { get; }
-    Guid ProjectId { get; }
-    Guid? RepositoryId { get; }
-    Guid? ActorId { get; }
-    string CorrelationId { get; }
-    DateTimeOffset CreatedAt { get; }
-    int AttemptCount { get; }
-    string InputHash { get; }
-}
-
-public sealed record ParseProjectJobMessage(
-    string SchemaVersion,
-    Guid MessageId,
-    Guid JobId,
-    string JobType,
-    Guid ProjectId,
-    Guid? RepositoryId,
-    Guid? ActorId,
-    string CorrelationId,
-    DateTimeOffset CreatedAt,
-    int AttemptCount,
-    string InputHash,
-    string CommitHash,
-    string? SnapshotRef,
-    string MetadataVersion) : IJobMessage;
-```
 
 Rules:
 
@@ -144,31 +62,12 @@ Rules:
 - `InputHash` must be deterministic from job type, project id, repository id, revision/snapshot, and important parameters.
 - Do not include Git credentials, secrets, tokens, raw stdout/stderr with secrets, or large payloads in messages. Store large inputs in PostgreSQL/MinIO and pass references.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 A job row should be created before publishing the message. At minimum, persist:
 
-```text
-id, project_id, repository_id, type, status, progress,
-input_hash, input_ref, result_ref, error_code, error_message,
-attempt_count, max_attempts, correlation_id, actor_id,
-created_at, queued_at, started_at, heartbeat_at, finished_at,
-timeout_at, cancelled_at, metadata_version, schema_version
-```
 
 The database is the source of truth for job state. RabbitMQ is the transport, not the job database.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use this sequence in Application/Service layer:
 
@@ -182,57 +81,6 @@ Use this sequence in Application/Service layer:
 8. Emit activity log `job.queued`.
 9. Return `202 Accepted` with `jobId`, `status`, and `correlationId`.
 
-```csharp
-public async Task<Result<JobDto>> QueueParseAsync(
-    QueueParseRequest request,
-    ActorContext actor,
-    CancellationToken cancellationToken)
-{
-    await _authorization.RequireProjectPermissionAsync(
-        actor.UserId,
-        request.ProjectId,
-        ProjectPermissions.AnalyzeProject,
-        cancellationToken);
-
-    var project = await _projects.GetByIdAsync(request.ProjectId, cancellationToken);
-    if (project is null || project.IsDeleted)
-        return Result.Fail(JobErrors.ProjectNotFound);
-
-    var inputHash = JobInputHash.ForParse(
-        request.ProjectId,
-        request.RepositoryId,
-        request.CommitHash,
-        request.ParserOptions);
-
-    var existing = await _jobs.FindActiveByInputHashAsync(inputHash, cancellationToken);
-    if (existing is not null)
-        return Result.Ok(JobDto.From(existing));
-
-    var job = Job.Queue(
-        JobTypes.Parse,
-        request.ProjectId,
-        request.RepositoryId,
-        actor.UserId,
-        inputHash,
-        actor.CorrelationId,
-        timeoutAt: _clock.UtcNow.Add(_options.ParseTimeout));
-
-    _jobs.Add(job);
-    await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-    await _publisher.PublishAsync(ParseProjectJobMessageFactory.Create(job, request), cancellationToken);
-    await _activityLog.WriteAsync(ActivityEvents.JobQueued, job, actor, cancellationToken);
-
-    return Result.Ok(JobDto.From(job));
-}
-```
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Every worker handler must follow this order:
 
@@ -249,110 +97,6 @@ Every worker handler must follow this order:
 11. Mark terminal status or retry/dead-letter.
 12. Release locks using the lock token, never by key only.
 
-```csharp
-public sealed class ParseProjectJobHandler : IJobHandler<ParseProjectJobMessage>
-{
-    public async Task HandleAsync(ParseProjectJobMessage message, CancellationToken ct)
-    {
-        using var scope = _logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["CorrelationId"] = message.CorrelationId,
-            ["JobId"] = message.JobId,
-            ["ProjectId"] = message.ProjectId,
-            ["RepositoryId"] = message.RepositoryId,
-            ["MessageId"] = message.MessageId,
-            ["AttemptCount"] = message.AttemptCount
-        });
-
-        var validation = _messageValidator.Validate(message);
-        if (!validation.IsValid)
-        {
-            await DeadLetterAsync(message, JobErrors.InvalidMessageSchema, validation.Error, ct);
-            return;
-        }
-
-        var job = await _jobs.GetForUpdateAsync(message.JobId, ct);
-        if (job is null || job.IsTerminal || job.IsCancelled)
-            return;
-
-        if (!job.InputHashEquals(message.InputHash))
-        {
-            await DeadLetterAsync(message, JobErrors.StaleOrMismatchedMessage, "Input hash mismatch.", ct);
-            return;
-        }
-
-        await using var repoLock = await _repositoryLocks.TryAcquireAsync(
-            message.RepositoryId!.Value,
-            message.CorrelationId,
-            job.TimeoutRemaining,
-            ct);
-
-        if (!repoLock.Acquired)
-        {
-            await MarkRetryingAsync(job, JobErrors.RepositoryLocked, ct);
-            throw new TransientJobException(JobErrors.RepositoryLocked.Code);
-        }
-
-        try
-        {
-            job.MarkRunning(_clock.UtcNow);
-            await _jobs.SaveAsync(job, ct);
-            await _activityLog.WriteJobStartedAsync(job, ct);
-
-            var result = await _parserEngine.ParseAsync(new ParseInput(
-                message.ProjectId,
-                message.RepositoryId.Value,
-                message.CommitHash,
-                message.SnapshotRef,
-                message.MetadataVersion,
-                message.CorrelationId),
-                progress: async progress =>
-                {
-                    job.UpdateProgress(progress.Percent, _clock.UtcNow);
-                    await _jobs.SaveProgressAsync(job, ct);
-                    await _progress.ReportAsync(job.ProjectId, job.Id, progress, message.CorrelationId, ct);
-                },
-                ct);
-
-            await _metadata.UpsertParseResultAsync(result, ct);
-
-            job.MarkCompleted(result.ResultRef, _clock.UtcNow);
-            await _jobs.SaveAsync(job, ct);
-            await _activityLog.WriteJobCompletedAsync(job, ct);
-            await _notifications.JobCompletedAsync(job, ct);
-            await _cacheInvalidator.InvalidateProjectMetadataAsync(job.ProjectId, ct);
-        }
-        catch (OperationCanceledException) when (job.IsCancellationRequested)
-        {
-            job.MarkCancelled(_clock.UtcNow);
-            await _jobs.SaveAsync(job, ct);
-            await _activityLog.WriteJobCancelledAsync(job, ct);
-            await _notifications.JobCancelledAsync(job, ct);
-        }
-        catch (TimeoutException ex)
-        {
-            await HandleFailureAsync(job, JobErrors.Timeout, ex, ct);
-            throw;
-        }
-        catch (Exception ex) when (_errorClassifier.IsTransient(ex))
-        {
-            await HandleFailureAsync(job, JobErrors.TransientDependencyFailure, ex, ct);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            await HandleFailureAsync(job, JobErrors.JobProcessingFailed, ex, ct);
-        }
-    }
-}
-```
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use these states and only these transitions:
 
@@ -369,12 +113,6 @@ Use these states and only these transitions:
 
 Never allow stale worker completion to overwrite a newer project/repository state. Re-check service-layer state transitions before committing final results.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Workers must update progress and heartbeat for long jobs.
 
@@ -384,40 +122,6 @@ Workers must update progress and heartbeat for long jobs.
 - SignalR groups should be project-scoped: `project:{projectId}`.
 - Do not use SignalR as the source of truth. The UI must be able to refresh from `GET /jobs/{id}`.
 
-```csharp
-public sealed class ProgressReporter : IProgressReporter
-{
-    private readonly IHubContext<GodForgeHub> _hubContext;
-
-    public Task ReportAsync(
-        Guid projectId,
-        Guid jobId,
-        JobProgress progress,
-        string correlationId,
-        CancellationToken ct)
-    {
-        return _hubContext.Clients
-            .Group($"project:{projectId}")
-            .SendAsync("JobProgressUpdate", new
-            {
-                jobId,
-                projectId,
-                status = progress.Status,
-                progress = progress.Percent,
-                message = progress.Message,
-                correlationId,
-                timestamp = progress.Timestamp
-            }, ct);
-    }
-}
-```
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Classify errors before choosing retry behavior.
 
@@ -440,12 +144,6 @@ Retry defaults:
 - Create a new `MessageId` for each publish attempt.
 - Move poison messages and retry-exhausted messages to the DLQ.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Every job must be safe to run more than once.
 
@@ -457,20 +155,11 @@ Every job must be safe to run more than once.
 - Do not create duplicate activity logs unless the event represents a real retry attempt.
 - Git write operations are special: avoid automatic retry if retrying can duplicate commits/pushes. Prefer safe precondition checks and explicit user retry.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use Redis distributed locks for jobs that read or mutate a mutable repository workspace.
 
 Key format:
 
-```text
-repo-lock:{repositoryId}
-```
 
 Rules:
 
@@ -480,12 +169,6 @@ Rules:
 - Lock failure should usually become `retrying`, not immediate `failed`.
 - Prefer immutable repository snapshots to reduce lock duration.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Cancellation must be cooperative:
 
@@ -501,12 +184,6 @@ Timeout handling:
 - A watchdog should mark stale `running` jobs as `timeout` or requeue according to policy.
 - Timeout must not leave repository locks, temp files, partial artifacts, or half-committed metadata as active outputs.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Use the right storage target:
 
@@ -516,19 +193,9 @@ Use the right storage target:
 
 Any artifact saved to MinIO must include metadata: `project_id`, `job_id`, `content_type`, `checksum`, `created_at`, and retention policy.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Every worker must log structured events with:
 
-```text
-correlation_id, job_id, project_id, repository_id, actor_id,
-job_type, status, attempt_count, duration_ms, error_code
-```
 
 Metrics should include:
 
@@ -544,12 +211,6 @@ Metrics should include:
 
 Never log secrets, credential tokens, raw authorization headers, full Git remote URLs with embedded credentials, or stack traces in API responses.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Write activity logs for important lifecycle events:
 
@@ -565,12 +226,6 @@ Write activity logs for important lifecycle events:
 
 Notifications should be sent for final user-visible outcomes: completed, failed, timeout, dead-lettered, and cancelled when the actor is not the only audience.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Emit domain events after durable state is committed:
 
@@ -581,12 +236,6 @@ Emit domain events after durable state is committed:
 
 Do not publish completion events before outputs are committed.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 Add tests at the correct layer:
 
@@ -598,43 +247,9 @@ Add tests at the correct layer:
 
 Minimum verification commands:
 
-```bash
-dotnet build
-dotnet test
-```
 
 When touching RabbitMQ/Redis/MinIO behavior, also run the project integration test profile or docker-compose-based test environment if available.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-
-- [ ] SRS job type, producer, consumer, timeout, retry, DLQ, and idempotency rules are confirmed.
-- [ ] API/Application creates a durable job and returns `202 Accepted` with `jobId` and `correlationId`.
-- [ ] Message includes `schemaVersion`, `messageId`, `jobId`, `jobType`, `projectId`, `repositoryId`, `actorId`, `correlationId`, `createdAt`, `attemptCount`, and `inputHash`.
-- [ ] Message does not contain secrets or large payloads.
-- [ ] Handler validates schema, job state, cancellation, and input hash before work.
-- [ ] Handler uses correlation id in logging scope and downstream engine calls.
-- [ ] Repository lock is used for mutable Git workspace access and released by owner token.
-- [ ] Job lifecycle transitions are valid and persisted.
-- [ ] Progress and heartbeat are updated; SignalR event is emitted for UI.
-- [ ] Retry policy distinguishes transient errors, poison messages, data issues, timeout, and Git credential/conflict errors.
-- [ ] DLQ path marks job `dead_lettered` when appropriate.
-- [ ] Outputs are written idempotently to PostgreSQL/MinIO.
-- [ ] Activity logs and notifications are written for lifecycle events.
-- [ ] Dashboard/search cache invalidation happens after successful output commit.
-- [ ] Unit/integration tests cover success, retry, DLQ, cancellation, timeout, idempotency, and lock behavior.
-- [ ] `dotnet build` and `dotnet test` pass without warnings.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
 
 - Do not run clone, parse, analyze, diff, or preview synchronously inside HTTP requests when the work can exceed API latency targets.
 - Do not treat RabbitMQ as the source of truth for job state.
@@ -643,29 +258,5 @@ Use this skill when performing tasks related to its name.
 - Do not let one file parse error crash the whole parse job when partial parse is supported.
 - Do not complete a stale worker job without checking current project/repository state.
 - Do not log credentials, tokens, secrets, or stack traces to client responses.
-#
 
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Ensure all steps in the workflow are followed.
-- Follow all rules defined in AGENTS.md.
 
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Do not violate architecture boundaries.
-- Do not skip the required tests.
-
-#
-
-## Required Reading
-- docs/SRS/README.md
-- .agents/AGENTS.md
-Use this skill when performing tasks related to its name.
-- Provide a summary of the changes made.
-- List any quality gates run and their results.

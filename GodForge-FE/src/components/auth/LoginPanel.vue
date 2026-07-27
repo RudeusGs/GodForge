@@ -22,7 +22,7 @@ const handleLogin = async () => {
         errorMsg.value = 'Password verification failed. Missing input.';
         return;
     }
-    
+
     try {
         loading.value = true;
         errorMsg.value = '';
@@ -40,7 +40,7 @@ const handleLogin = async () => {
 
 <template>
     <div class="w-full max-w-md mx-auto p-6 sm:p-10 flex flex-col justify-center bg-[#09090b] relative z-10 h-full overflow-y-auto custom-scrollbar">
-        
+
         <!-- Header -->
         <div class="mb-8 font-sans">
             <div class="flex items-center space-x-2.5 mb-3">
@@ -54,14 +54,14 @@ const handleLogin = async () => {
 
         <!-- Form -->
         <form @submit.prevent="handleLogin" class="space-y-5 mb-4">
-            
+
             <!-- Error Message -->
-            <transition 
-                enter-active-class="transition ease-out duration-200" 
-                enter-from-class="opacity-0 -translate-y-2" 
-                enter-to-class="opacity-100 translate-y-0" 
-                leave-active-class="transition ease-in duration-150" 
-                leave-from-class="opacity-100 translate-y-0" 
+            <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 -translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
                 leave-to-class="opacity-0 -translate-y-2"
             >
                 <div v-if="errorMsg" class="bg-red-500/10 border border-red-500/20 p-3 flex items-start space-x-3 rounded-lg">
@@ -71,19 +71,19 @@ const handleLogin = async () => {
             </transition>
 
             <div class="space-y-4">
-                <AuthInput 
-                    v-model="email" 
-                    label="User Identity" 
-                    type="email" 
-                    icon="bi-terminal" 
+                <AuthInput
+                    v-model="email"
+                    label="User Identity"
+                    type="email"
+                    icon="bi-terminal"
                     placeholder="dev@domain.com"
                 />
-                
-                <AuthInput 
-                    v-model="password" 
-                    label="Access Token" 
-                    type="password" 
-                    icon="bi-key" 
+
+                <AuthInput
+                    v-model="password"
+                    label="Access Token"
+                    type="password"
+                    icon="bi-key"
                     placeholder="••••••••••••"
                 />
             </div>
@@ -100,8 +100,8 @@ const handleLogin = async () => {
             </div>
 
             <div class="pt-2">
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     :disabled="loading"
                     class="w-full bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-zinc-950 font-sans font-medium text-sm py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
                 >
@@ -115,10 +115,10 @@ const handleLogin = async () => {
                     </span>
                 </button>
             </div>
-            
+
             <div class="text-center pt-5 border-t border-white/5">
                 <p class="text-[11px] text-zinc-500 font-sans flex items-center justify-center">
-                    <i class="bi bi-shield-check mr-1.5 text-emerald-500"></i> 
+                    <i class="bi bi-shield-check mr-1.5 text-emerald-500"></i>
                     Protected by role-based access control
                 </p>
                 <div class="mt-4">
@@ -130,3 +130,4 @@ const handleLogin = async () => {
         </form>
     </div>
 </template>
+

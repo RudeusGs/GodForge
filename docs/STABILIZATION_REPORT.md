@@ -1,34 +1,43 @@
-# GodForge Stabilization Report
+# Stabilization Report — Blueprint FixPack v2
 
-## Executive Summary
-This report details the stabilization efforts applied to the GodForge codebase, addressing critical authentication, infrastructure, API, frontend routing, testing, and continuous integration concerns. The goal was to reach a reliable foundational state where the platform can be safely deployed and built upon.
+Date: 2026-07-15
 
-All priority tasks (P0 to P2) have been successfully completed, resulting in a significantly more secure and stable environment.
+## Current status
 
-## 1. Authentication & Security (P0)
-- **JWT Configuration**: Replaced placeholder secrets in `appsettings.json` and `.env.example`. Added `ValidateOnStart()` to explicitly catch misconfigurations on application startup.
-- **Authorization Middlewares**: Enforced proper API endpoint security checks via `[Authorize]` attributes and proper integration in `DependencyInjection.cs` and `Program.cs`.
-- **Registration OTP**: Removed naive token generation and integrated a cryptographically secure `RandomNumberGenerator`. OTP generation now utilizes `IDistributedCache` for short-lived token caching and rate limiting.
-- **Password Reset Lifecycle**: Implemented `/api/v1/auth/forgot-password` and `/api/v1/auth/reset-password`. Tokens are securely hashed and stored inside the `User` entity, mitigating token exposure risks. Replaced predictable password generation.
-- **Refresh Token Lifecycle**: Integrated proper frontend (`axios` single-flight interceptor) and backend endpoints for JWT rotation to handle `401 Unauthorized` responses securely without forcing users to re-login repeatedly.
-- **Account Lock**: Hardened brute-force security by locking accounts upon multiple failed login attempts. Unlocking is securely orchestrated within the backend.
+**Structurally stabilized, but not merge-ready until the machine-level quality gates pass.**
 
-## 2. Database & Infrastructure (P0)
-- **Docker Compose**: Consolidated all local development services (PostgreSQL, Redis, RabbitMQ, Mailpit) into a unified, clean `docker-compose.yml`.
-- **Database Migrations**: Verified EF Core mappings. New migrations accurately map `PasswordResetToken` variables inside the `Users` table and define constraints properly. Validated `dotnet ef database update`.
+The repository has been aligned to the Blueprint direction: linked Git repository, durable job state, RabbitMQ worker pipeline, deterministic analysis, bounded/redacted AI context, and optional Gemini advisory. The second review removed stale placeholder implementations and corrected critical job, auth, Git-workspace, and AI-cache behavior.
 
-## 3. Worker and Message Queues (P1)
-- **Stub Check**: Configured `StubJobPublisher` with an explicit configuration check. If `RabbitMQ` connection strings are injected before a fully realized RabbitMQ architecture is ready, the system securely throws a `NotImplementedException`, avoiding silent black-hole message failures.
+## Completed in source
 
-## 4. API & Backend Contracts (P1)
-- **Unified Responses**: Enforced a standardized `ApiResponse<T>` wrapper within `BaseApiController.cs` to guarantee identical meta-data response formats whether the data payload is null or populated.
-- **Integration Testing**: Restructured the `GodForge.IntegrationTests` project using `WebApplicationFactory` and Mock integrations (for cache and repositories) to correctly validate API requests such as `Login` and `Projects`. Cleaned out dummy templates like `UnitTest1.cs`.
+- RabbitMQ publisher and consumer use the same queue/DLQ topology; publisher confirms are enabled.
+- Repository analysis no longer reuses a stale job based on the last synchronized commit.
+- Worker retry/cancellation/terminal-state handling has been corrected.
+- AI failed runs can be retried and only completed runs are reused.
+- Password reset has one persistence model, a working frontend route, session revocation, and JWT security-stamp validation.
+- External Git URLs are HTTPS-only, non-interactive, and private-network targets are denied by default.
+- Parser/context traversal skips reparse points and secret redaction covers common structured formats.
+- Project slug generation is Unicode-aware and consistent with database constraints.
+- CI now requires a committed frontend lockfile instead of silently producing a different dependency graph.
 
-## 5. Frontend Enhancements (P1 & P2)
-- **Routing & Rendering**: Fixed the infinite redirect loop inside Vue router (`router/index.ts`). Constructed an operational, authenticated `/dashboard` view placeholder.
-- **Local Storage Management**: Expanded the `auth.store.ts` logic to respect `rememberMe` during login, switching seamlessly between `sessionStorage` and `localStorage`.
-- **Aesthetics & Performance**: Repaired typing warnings. Optimized `InteractiveDotGrid.vue` animation frame rendering by tracking mouse movement invalidation, vastly decreasing GPU footprint. Removed dead template components (`BaseButton`, `BaseInput`, etc).
-- **Tooling**: Segregated `npm run lint` from `npm run lint:fix`. Successfully established a clean CI pipeline utilizing Vitest and JSDOM. Resolved TypeScript 6.0 deprecation warnings for path resolution aliases in `vite.config.ts`.
+## Mandatory unresolved validation
 
-## Conclusion
-The GodForge project architecture has been solidified. Continuous integration checks (build, test, formatting, linting, typings) now pass 100% without warnings, securing the baseline for future feature iterations.
+The current execution environment used for this source review did not contain .NET 9 or Docker and did not have package-registry network access. Therefore this report does **not** claim that build, tests, EF migration, Docker Compose, RabbitMQ, Forgejo, Gemini, or npm installation passed.
+
+Before merge:
+
+1. Generate and commit `GodForge-FE/package-lock.json`.
+2. Generate and review the EF blueprint baseline/forward migration.
+3. Run `dotnet format`, build, tests, coverage, and vulnerability checks.
+4. Run frontend lint, typecheck, unit tests, build, and audit with `npm ci`.
+5. Execute the linked-repository smoke test with PostgreSQL, Redis, RabbitMQ, and MinIO.
+
+## Production blockers still deferred
+
+- Transactional DB outbox dispatcher.
+- Distributed repository lock for multiple worker instances.
+- Private repository credential vault and rotation.
+- Forgejo permission synchronization and signed webhook vertical slice.
+- Production observability, backup/restore, and retention verification.
+
+See `docs/MERGE_READINESS.md`, `docs/MILESTONES.md`, and the FixPack `VALIDATION.md` for the exact exit gates.

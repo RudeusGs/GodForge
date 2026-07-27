@@ -30,17 +30,17 @@ describe('Auth Store', () => {
 
   it('updates state upon successful login with rememberMe=true', async () => {
     const store = useAuthStore();
-    
+
     // Mock the API response
     const mockResponse = {
       data: {
         accessToken: 'mock-token',
         refreshToken: 'mock-refresh',
-        user: { id: '1', email: 'test@example.com', displayName: 'Test User', createdAt: '' }
+        user: { id: '1', email: 'test@example.com', displayName: 'Test User', systemRole: 'User', status: 'Active' }
       },
       meta: { correlationId: '123' }
     };
-    
+
     // @ts-expect-error - mocking axios response
     vi.mocked(authApi.login).mockResolvedValueOnce(mockResponse);
 
@@ -55,17 +55,17 @@ describe('Auth Store', () => {
 
   it('updates state upon successful login with rememberMe=false', async () => {
     const store = useAuthStore();
-    
+
     // Mock the API response
     const mockResponse = {
       data: {
         accessToken: 'mock-token-session',
         refreshToken: 'mock-refresh-session',
-        user: { id: '1', email: 'session@example.com', displayName: 'Session User', createdAt: '' }
+        user: { id: '1', email: 'session@example.com', displayName: 'Session User', systemRole: 'User', status: 'Active' }
       },
       meta: { correlationId: '123' }
     };
-    
+
     // @ts-expect-error - mocking axios response
     vi.mocked(authApi.login).mockResolvedValueOnce(mockResponse);
 
@@ -77,13 +77,13 @@ describe('Auth Store', () => {
     expect(sessionStorage.getItem('access_token')).toBe('mock-token-session');
   });
 
-  it('clears state on logout', () => {
+  it('clears state on logout', async () => {
     const store = useAuthStore();
-    
+
     // Setup initial state
     localStorage.setItem('access_token', 'token');
     sessionStorage.setItem('access_token', 'session_token');
-    store.logout();
+    await store.logout();
 
     expect(store.isAuthenticated).toBe(false);
     expect(store.accessToken).toBeNull();

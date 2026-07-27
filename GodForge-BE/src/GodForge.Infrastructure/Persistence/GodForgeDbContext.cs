@@ -1,5 +1,4 @@
 using System.Reflection;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Admin;
 using GodForge.Domain.Entities.Analysis;
 using GodForge.Domain.Entities.Audit;
@@ -21,6 +20,8 @@ public class GodForgeDbContext : DbContext
     public GodForgeDbContext(DbContextOptions<GodForgeDbContext> options) : base(options) { }
 
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<AiAnalysisRun> AiAnalysisRuns => Set<AiAnalysisRun>();
+    public DbSet<AiFinding> AiFindings => Set<AiFinding>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<AnalysisRun> AnalysisRuns => Set<AnalysisRun>();
     public DbSet<AppVersion> AppVersions => Set<AppVersion>();
@@ -67,7 +68,6 @@ public class GodForgeDbContext : DbContext
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ParserDiagnostic> ParserDiagnostics => Set<ParserDiagnostic>();
-    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<PreviewRequest> PreviewRequests => Set<PreviewRequest>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectInvite> ProjectInvites => Set<ProjectInvite>();

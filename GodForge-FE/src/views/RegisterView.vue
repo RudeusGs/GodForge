@@ -11,7 +11,7 @@ import InteractiveDotGrid from '../components/auth/InteractiveDotGrid.vue';
         <div class="w-full lg:w-[480px] xl:w-[560px] bg-[#09090b] flex-shrink-0 flex items-center justify-center border-r border-white/10 z-10 shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
             <RegisterPanel />
         </div>
-        
+
         <!-- Right Panel: Visual Hero (hidden on mobile, visible on desktop) -->
         <div class="flex-1 hidden lg:block relative">
             <LoginHeroVisual />
@@ -26,3 +26,4 @@ body {
     color: #f8f8f8;
 }
 </style>
+

@@ -38,14 +38,16 @@ export interface RefreshPayload {
 }
 
 export interface LogoutPayload {
-    refreshToken: string;
+    refreshToken?: string | null;
 }
 
-export interface SetupPasswordPayload {
+export interface ResetPasswordPayload {
+    email: string;
     token: string;
-    password?: string;
+    newPassword: string;
 }
 
 export interface ForgotPasswordPayload {
     email: string;
 }
+

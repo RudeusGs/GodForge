@@ -1,5 +1,4 @@
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Domain.Entities;
 using GodForge.Domain.Entities.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,4 +29,13 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         _context.RefreshTokens.Remove(token);
         return Task.CompletedTask;
     }
+
+    public async Task DeleteAllForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var tokens = await _context.RefreshTokens
+            .Where(token => token.UserId == userId)
+            .ToListAsync(cancellationToken);
+        _context.RefreshTokens.RemoveRange(tokens);
+    }
 }
+
