@@ -2,43 +2,46 @@ export interface UserDto {
     id: string;
     email: string;
     displayName: string;
-    systemRole: string;
     status: string;
-    avatarUrl?: string | null;
+    emailVerifiedAt: string | null;
+    createdAt: string;
+    version: number;
+}
+
+export interface SessionDto {
+    id: string;
+    deviceName: string | null;
+    createdAt: string;
+    lastSeenAt: string | null;
+    expiresAt: string;
+    current: boolean;
+    revokedAt: string | null;
 }
 
 export interface AuthResponseDto {
-    accessToken: string;
-    refreshToken: string;
-    expiresIn: number;
     user: UserDto;
-}
-
-export interface RefreshResponseDto {
+    session: SessionDto;
     accessToken: string;
-    refreshToken: string;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
 }
 
-// Request Payloads (Separated as requested)
+export interface ChallengeAcceptedDto {
+    requestAccepted: boolean;
+    resendAfterSeconds: number;
+}
 
 export interface LoginPayload {
     email: string;
-    password?: string;
+    password: string;
+    deviceName?: string | null;
 }
 
 export interface RegisterPayload {
     email: string;
     displayName: string;
-    password?: string;
+    password: string;
     otp: string;
-}
-
-export interface RefreshPayload {
-    refreshToken: string;
-}
-
-export interface LogoutPayload {
-    refreshToken?: string | null;
 }
 
 export interface ResetPasswordPayload {
@@ -50,4 +53,3 @@ export interface ResetPasswordPayload {
 export interface ForgotPasswordPayload {
     email: string;
 }
-

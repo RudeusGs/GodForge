@@ -1,44 +1,67 @@
-# GodForge SRS
+# GodForge Software Requirements Specification
 
-`docs/SRS` is the primary documentation source for the GodForge Software Requirements Specification. The Word-based SRS maintenance flow has been replaced with Markdown in the repository for easier reviewing, versioning, traceability, and updating alongside the source code.
+## Purpose
 
-The Word file `SRS_GodForge.docx`, if still present in the repository, is considered only a reference/archive document. Do not update the primary content in the Word file.
+This SRS defines the target graduation-project and production design. `../IMPLEMENTATION_STATUS.md` separately records what is currently implemented.
 
-## Document Structure
+## Requirement language
 
-| Path | Content |
-| --- | --- |
-| `00-overview.md` | Product overview, goals, user roles. |
-| `01-scope.md` | Included/excluded scope, boundaries, and MVP limits. |
-| `02-architecture.md` | Multi-tier web architecture, async workers, and design principles. |
-| `03-functional/` | Functional requirements by module. |
-| `04-database.md` | PostgreSQL schema, Redis, MinIO, and data rules. |
-| `05-api.md` | REST API `/api/v1`, response/error formats, and endpoint catalog. |
-| `06-security.md` | Authentication, RBAC, secret handling, threat model. |
-| `07-non-functional.md` | Performance, reliability, scalability, observability, maintainability. |
-| `08-workflows.md` | Primary business workflows. |
-| `09-ui-ux.md` | Screens, navigation, states, and role-based visibility. |
-| `10-traceability.md` | Requirement mapping to APIs, database, UI, and test cases. |
-| `11-testing-acceptance.md` | Test strategy, acceptance criteria, DoD, and test case format. |
-| `12-worker-processing.md` | Queues, job lifecycle, retries, DLQ, idempotency, and worker metrics. |
-| `13-deployment-operations.md` | Local/dev/prod deployment, monitoring, backups, incidents, and DR. |
+- **Must**: required for the graduation-project release gate.
+- **Should**: expected unless a documented risk or schedule decision defers it.
+- **Could**: extension after Core completion.
+- **Will not**: explicitly excluded.
 
-## Update Rules
+## Requirement IDs
 
-- Write in clear, technical, and consistent English.
-- Do not add features outside the SRS scope without product decisions.
-- When adding or modifying a requirement, you must update:
-  - the corresponding module file in `03-functional/`;
-  - `10-traceability.md`;
-  - `11-testing-acceptance.md` or related test cases.
-- Keep requirement IDs stable if the requirement retains the same meaning: `FR-xx`, `NFR-xx`, `BR-xx`, `AC-xx`.
-- If API contracts change, update `05-api.md` and traceability.
-- If schemas change, update `04-database.md`, traceability, and testing.
-- If worker/job behaviors change, update `12-worker-processing.md` and related workflows.
-- If information is uncertain, add a brief confirmation note in the relevant file.
+- `FR-*`: functional requirement.
+- `NFR-*`: non-functional requirement.
+- `SEC-*`: security control.
+- `WF-*`: end-to-end workflow.
+- `AC-*`: acceptance criterion.
+- `TC-*`: test case.
 
-## Review Rules
+IDs are stable. Do not renumber existing requirements; mark deprecated and add a new ID. `../REQUIREMENT_REGISTRY.md` records ownership of requirement families and prevents duplicates.
 
-- Every PR changing SRS docs must ensure the product name is `GodForge`.
-- Do not use placeholders for content that can be inferred from the SRS; explicitly state any missing decisions in a confirmation section.
-- Do not delete valuable content from the original SRS; if content overlaps, merge it more concisely.
+## Functional-document section order
+
+Every file under `03-functional/` uses this order:
+
+1. Purpose.
+2. Actors.
+3. Requirements.
+4. Main flow.
+5. Error and edge cases.
+6. Authorization and security.
+7. Async processing and idempotency.
+8. Acceptance criteria with `AC-*` IDs.
+9. Related API.
+10. Related data.
+11. Tests and observability.
+
+Do not place table names under Authorization, test assertions under Related API or routes under Related data.
+
+## Structure
+
+- `00-overview.md`: product and stakeholders.
+- `01-scope.md`: release scope and exclusions.
+- `02-architecture.md`: boundaries and system design.
+- `03-functional/`: module requirements.
+- `04-database.md`: target logical data model.
+- `04-database-m1-physical.md`: implementation-ready physical data design for M1.
+- `05-api.md`: API route catalog and contract index.
+- `05-api-contracts/`: implementation-ready API contracts, beginning with M1.
+- `06-security.md`: mandatory security controls.
+- `07-non-functional.md`: performance, reliability and quality targets.
+- `08-workflows.md`: end-to-end flows.
+- `09-ui-ux.md`: screens and interaction rules.
+- `10-traceability.md`: requirements mapping.
+- `11-testing-acceptance.md`: test strategy and release acceptance.
+- `12-worker-processing.md`: queue and job semantics.
+- `13-deployment-operations.md`: environment and production operations.
+- `14-data-retention.md`: retention, deletion and legal hold.
+- `15-observability.md`: logs, metrics, traces and alerts.
+- `16-research-evaluation.md`: thesis experiments and evidence.
+
+## Change rule
+
+A change to behavior is incomplete until relevant functional, API, database, security, workflow, testing and traceability documents are synchronized. A Must requirement is not implementation-ready without at least one objective acceptance criterion and mapped automated test ID.

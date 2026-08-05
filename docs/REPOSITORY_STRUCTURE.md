@@ -1,29 +1,49 @@
 # Repository Structure
 
-GodForge is a monorepo containing both the backend and frontend.
-
 ```text
 GodForge/
-├── GodForge-BE/                         # Backend (ASP.NET Core .NET 9)
+├── GodForge-BE/
 │   ├── src/
-│   │   ├── GodForge.Api/                # API controllers, WebHost
-│   │   ├── GodForge.Application/        # MediatR CQRS, Interfaces
-│   │   ├── GodForge.Domain/             # Entities, Enums
-│   │   ├── GodForge.Infrastructure/     # EF Core, external adapters
-│   │   └── GodForge.Worker/             # Background job host
+│   │   ├── GodForge.Api/              # HTTP, middleware, contracts, DI
+│   │   ├── GodForge.Application/      # CQRS, DTOs, interfaces, authorization
+│   │   ├── GodForge.Domain/           # Entities, value objects, invariants
+│   │   ├── GodForge.Infrastructure/   # EF Core and provider implementations
+│   │   └── GodForge.Worker/           # Logical queue consumers and handlers
 │   └── tests/
-│       ├── GodForge.UnitTests/          # Fast Domain/Application tests
-│       └── GodForge.IntegrationTests/   # Slower DB/API tests
-├── GodForge-FE/                         # Frontend (Vue 3 / Vite)
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── composables/
-│   │   ├── pages/
-│   │   ├── router/
-│   │   └── stores/
-├── docs/                                # Documentation, ADRs, SRS
-└── .agents/                             # AI Agent constraints and skills
+│       ├── GodForge.UnitTests/
+│       └── GodForge.IntegrationTests/
+├── GodForge-FE/                        # Vue 3 + TypeScript + Vite
+├── docs/                               # Product and engineering source of truth
+├── .agents/                            # AI-agent rules and task skills
+├── .github/                            # CI workflows
+├── docker-compose.yml                  # Local services
+└── .env.example                        # Non-secret configuration template
 ```
 
-AI Agents must respect these boundaries. Do not place UI logic in the backend, and do not place DB connections in the frontend.
+## Backend feature layout
+
+```text
+GodForge.Application/Features/{Module}/
+├── Commands/{Action}/
+├── Queries/{ReadModel}/
+└── DTOs/
+```
+
+Infrastructure implementation follows concern-specific folders such as `Persistence`, `Git`, `Messaging`, `Storage`, `Security`, `AI`, `Caching` and `Observability`.
+
+## Worker layout target
+
+```text
+GodForge.Worker/
+├── Consumers/
+├── Handlers/
+├── Contracts/
+├── Scheduling/
+└── Observability/
+```
+
+Each logical job type has an explicit consumer/handler pair. A shared host must not become a universal business-logic class.
+
+## Documentation rule
+
+Do not rename or relocate major projects without an accepted ADR and synchronized documentation.

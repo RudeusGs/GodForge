@@ -5,26 +5,19 @@ namespace GodForge.Application.Common.Security;
 
 public sealed class AuthorizationService : IAuthorizationService
 {
-    private static readonly HashSet<string> InternalProjectReadPermissions = new(StringComparer.Ordinal)
-    {
-        Permissions.ProjectsRead,
-        Permissions.RepositoryRead,
-        Permissions.RevisionsRead,
-        Permissions.AnalysisRead,
-        Permissions.JobsRead,
-        Permissions.ActivityRead
-    };
-
     private readonly IProjectMemberRepository _projectMembers;
+    private readonly IOrganizationMemberRepository _organizationMembers;
     private readonly IUserRepository _users;
     private readonly IProjectRepository _projects;
 
     public AuthorizationService(
         IProjectMemberRepository projectMembers,
+        IOrganizationMemberRepository organizationMembers,
         IUserRepository users,
         IProjectRepository projects)
     {
         _projectMembers = projectMembers;
+        _organizationMembers = organizationMembers;
         _users = users;
         _projects = projects;
     }
@@ -41,29 +34,17 @@ public sealed class AuthorizationService : IAuthorizationService
             return false;
         }
 
-        if (user.SystemRole == SystemRole.SystemAdmin)
-        {
-            return true;
-        }
+        var project = await _projects.GetByIdAsync(projectId, cancellationToken);
+        if (project is null || project.Status is ProjectStatus.Deleted or ProjectStatus.Deleting || project.DeletedAt is not null)
+            return false;
+
+        if (!await _organizationMembers.IsActiveAsync(project.OrganizationId, userId, cancellationToken))
+            return false;
 
         var membership = await _projectMembers.GetMembershipAsync(projectId, userId, cancellationToken);
-        if (membership is not null)
-        {
-            return RolePermissions.GetPermissionsForRole(membership.Role).Contains(permission);
-        }
-
-        if (!InternalProjectReadPermissions.Contains(permission))
-        {
-            return false;
-        }
-
-        var project = await _projects.GetByIdAsync(projectId, cancellationToken);
-        return project is
-        {
-            Visibility: ProjectVisibility.Internal,
-            Status: not ProjectStatus.Deleted,
-            DeletedAt: null
-        };
+        return membership is not null &&
+            membership.OrganizationId == project.OrganizationId &&
+            RolePermissions.GetPermissionsForRole(membership.Role).Contains(permission);
     }
 
     public async Task<bool> IsSystemAdminAsync(Guid userId, CancellationToken cancellationToken = default)

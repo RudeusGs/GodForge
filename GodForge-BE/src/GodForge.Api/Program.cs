@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add GodForge Layers
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddIdentityInfrastructure(builder.Configuration);
 builder.Services.AddApiServices(builder.Configuration, builder.Environment);
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
@@ -21,7 +22,10 @@ builder.Services.AddHealthChecks()
     .AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: ["ready"]);
 
 var app = builder.Build();
-await app.Services.InitializeGodForgeDatabaseAsync();
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.InitializeGodForgeDatabaseAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -59,11 +63,14 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     Predicate = registration => registration.Tags.Contains("ready")
 });
 app.MapControllers();
-app.MapGet("/", context =>
+if (app.Environment.IsDevelopment())
 {
-    context.Response.Redirect("/swagger");
-    return Task.CompletedTask;
-});
+    app.MapGet("/", context =>
+    {
+        context.Response.Redirect("/swagger");
+        return Task.CompletedTask;
+    });
+}
 
 app.Run();
 

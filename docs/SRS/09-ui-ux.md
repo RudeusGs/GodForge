@@ -1,98 +1,52 @@
-# 9. UI/UX
+# 9. UI/UX Requirements
 
-## Purpose
+## Navigation
 
-The UI/UX of GodForge must serve repetitive technical workflows: managing projects, syncing snapshots, viewing metadata, reviewing diffs, tracking health, and auditing. The interface prioritizes clarity, appropriate information density, comprehensible system states, and required confirmations for dangerous operations.
+- Organization switcher.
+- Project list and project workspace.
+- Repository, Revisions, Health, Graph, Scenes, Assets, Findings, Jobs, Activity, Reports and Settings.
+- User notifications and session/settings menu.
 
-## Main Navigation
+## Screens
 
-| Area | Content |
-| --- | --- |
-| Global header | Project switcher, search, notification bell, user menu. |
-| Project sidebar | Dashboard, Repository/Snapshots, Scenes, Assets, Dependency Graph, Health, Scene Diff, Activity, Settings. |
-| Admin area | User Management, System Activity, system settings if user is System Admin. |
-| Context actions | Screen-specific buttons: parse, analyze, sync snapshot, invite member, connect repository. |
+| Screen | Required content |
+|---|---|
+| Authentication | Login, registration/OTP, forgot/reset password. |
+| Organization | Projects, members, policies, quotas and activity. |
+| Project dashboard | Repository state, latest revision, health trend, critical findings, jobs and activity. |
+| Repository | Mode/provider, clone information, branches, commits, tree and bounded text blob. |
+| Revision detail | Validation, parser/analysis versions, status and provenance. |
+| Scene Explorer | Searchable/lazy scene tree and node details. |
+| Asset Explorer | Filters, usage, duplicates, health, preview and visibility. |
+| Dependency Graph | Bounded graph, search, type filters, depth and impact mode. |
+| Health | Score categories, finding list, evidence, suppression and comparison. |
+| AI Advisory | Clearly labeled advisory, evidence links, model/prompt provenance and degraded state. |
+| Findings | Assignment, comments, state and revision history. |
+| Jobs | Status, progress, attempts, safe errors, cancel/retry actions. |
+| Asset Vault | Versions, policy, manifest state, upload/download audit. |
+| Reports | Export requests, status, provenance and download. |
+| Settings | Effective platform/org/project policies and version conflicts. |
 
-## Screen List
+## Interaction rules
 
-| Screen | Purpose | Main Components |
-| --- | --- | --- |
-| Login | System login. | Email/password form, validation, lock/disabled messages. |
-| Dashboard | Project overview. | Health score, repo status, metadata summary, jobs, activity, top issues. |
-| Project List | View/search projects. | List/table, search, filters, create project. |
-| Project Detail | View project information. | Summary, members, settings link, repository state. |
-| Repository Settings | Connect/update repository. | Remote URL, credential state, default branch, clone status. |
-| Snapshot History | View repository snapshot history. | Commit list, branches, commit detail, file diff links. |
-| Scene Explorer | View scene tree. | Scene list, node tree, node detail, search/filter, breadcrumb. |
-| Asset Explorer | View assets and usage. | Asset grid/list, detail panel, usage, warnings. |
-| Dependency Graph | View dependencies. | Graph canvas, filter, legend, node detail, cycle highlight. |
-| Health Report | View project health. | Score, issue list, severity filter, trend/history. |
-| Scene Diff Viewer | Review scene diff. | Revision selector, tree diff, property diff, summary. |
-| Notification Center | Manage notifications. | Notification list, unread filter, mark read/all. |
-| Activity Log | View audit/activity. | Timeline/table, action filter, actor filter, correlation ID. |
-| Admin/User Management | Manage users. | User list, invite, status, role. |
+- A user always sees selected organization, project and revision context.
+- Destructive actions require confirmation and explain retention effect.
+- Long operations immediately show a durable job and navigable status.
+- SignalR updates are optional acceleration; page refresh obtains authoritative job state.
+- AI content is visually separated from deterministic findings.
+- Partial and stale data are labeled with last successful revision/time.
+- Permission-denied actions are hidden when appropriate, but backend remains authoritative.
 
-## Role-based Visibility
+## Large data
 
-| UI Capability | Owner/Admin | Developer | Reviewer/QA | Viewer |
-| --- | :---: | :---: | :---: | :---: |
-| Create/update/delete project | Yes | No | No | No |
-| Manage members | Yes | No | No | No |
-| Configure repository | Yes | No | No | No |
-| Sync repository snapshot | Yes | Yes | No | No |
-| Trigger parse/analyze | Yes | Yes | No | No |
-| View scene/asset/graph/health/diff | Yes | Yes | Yes | Yes |
-| View activity | Yes | Yes | Yes | Yes |
-| Admin user management | System Admin only | No | No | No |
-
-Note: Role-based visibility is merely a UX aid. The backend must enforce permissions.
-
-## Empty States
-
-| State | Display |
-| --- | --- |
-| No projects | Instructions to create a project if authorized. |
-| Project lacks repository | CTA to connect repository for Project Admin; readonly message for Viewer. |
-| Repository is cloning | Job progress, queue/running state, and job detail link. |
-| Metadata not parsed | CTA to parse/analyze for Developer+; readonly message for Viewer. |
-| Graph lacks data | Explanation of need to analyze and analyze button if authorized. |
-| No notifications/activities | Concise empty list, no error displayed. |
-
-## Loading States
-
-- API list/table uses skeleton or light spinner.
-- Long jobs display progress, status, and start time.
-- Large scenes/graphs have specific loading for canvas/tree.
-- Loading states must not obscure known error states.
-
-## Error States
-
-Error messages must answer:
-
-1. What happened.
-2. What the user can do.
-3. Correlation ID for error reporting.
-
-Do not display stack traces, server paths, or credentials.
-
-## Confirmation Dialogs for Dangerous Operations
-
-| Operation | Confirmation |
-| --- | --- |
-| Delete project | Must clearly confirm project name. |
-| Disconnect repository | Must confirm impact on workspace/metadata. |
-| Update Git credential | Confirm replacing old credentials. |
-| Sync Snapshot | Warning if a sync/analysis job is already running. |
-| Cancel job | Confirm job may stop in a partial state. |
+- Virtualize or paginate scene trees, commits, assets and findings.
+- Graph defaults to a meaningful bounded subgraph, not the entire repository.
+- Filters and search are shareable through safe URL query parameters where appropriate.
 
 ## Accessibility
 
-- Forms and tables support keyboard navigation.
-- Color is not the sole indicator of state.
-- Errors placed near relevant fields.
-- Important icons have labels/tooltips.
-- Sufficient contrast for dashboards, graphs, and diffs.
-
-## MVP Decisions
-
-- MVP UI prioritizes English to match the updated business documentation. The API must return stable error codes so the frontend can localize messages in the future.
+- Keyboard-accessible forms, dialogs and navigation.
+- Focus management on route/dialog changes.
+- Severity has icon/text in addition to color.
+- Error summary links to invalid fields.
+- Graph has a tabular/list alternative for essential relationships.

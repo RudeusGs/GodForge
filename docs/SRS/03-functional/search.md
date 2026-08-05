@@ -2,75 +2,57 @@
 
 ## Purpose
 
-Search helps users quickly find projects, scenes, nodes, assets, scripts, and commits within the scope they are authorized to access.
+Find authorized projects, revisions, scenes, scripts, assets, findings and commits.
 
 ## Actors
 
-- Project Admin
-- Developer
-- Reviewer/QA
-- Viewer
+Authenticated users with resource access.
 
-## Scope
+## Requirements
 
-- Full-text search on metadata and project fields.
-- Filter by project, type, and date.
-- Pagination.
-- Mandatory RBAC filtering.
-- Full source code content search (beyond parsed metadata) is out of scope.
+| ID | Requirement | Priority |
+|---|---|---|
+| FR-15.1 | Project-scoped metadata search | Must |
+| FR-15.2 | Organization/global authorized search | Should |
+| FR-15.3 | Saved search/filter | Could |
 
-## Functional Requirements
+## Main flow
 
-| ID | Requirement Name | Description | Priority | Actor |
-| --- | --- | --- | --- | --- |
-| FR-15 | Search | Find projects, scenes, nodes, assets, scripts, and commits according to permissions. | Should | Viewer+ |
-| BR-17 | RBAC Search | Search results only include data from projects the user is authorized for. | Must | System |
-| BR-18 | Query Sanitization | Queries are capped at 200 characters and sanitized/parameterized to prevent injection. | Must | System |
+Query is normalized, length-limited and filtered by tenant permissions before results are returned. Results include type, safe highlight and navigation target.
 
-## Main Workflow
+## Error and edge cases
 
-1. User enters a query and filters.
-2. API validates query length, page size, and filters.
-3. Backend determines the project scope the user is allowed to view.
-4. Search query runs on PostgreSQL full-text/search indexes or optimized metadata queries.
-5. API returns paginated results and facets if available.
+- Query too short/long.
+- Unsupported filter/sort.
+- Search index stale or unavailable.
+- Result resource removed after index.
 
-## Exceptions / Errors
+## Authorization and security
 
-| Situation | HTTP Status | Error Code | Behavior |
-| --- | --- | --- | --- |
-| Query empty or too long | 400 | `VALIDATION_ERROR` | Return field error. |
-| Project filter outside permissions | 403 / empty | `FORBIDDEN` | Do not return data for that project. |
-| Page size exceeds limit | 400 | `VALIDATION_ERROR` | Max page size is 100. |
-| Search index not ready | 200 degraded | `SEARCH_INDEX_NOT_READY` | Fallback to metadata queries or empty state. |
+- Authorization is applied before/within search, never only after returning IDs.
+- Highlights are escaped.
+- Private source content is not globally indexed without policy.
 
-## Acceptance Criteria
+## Async processing and idempotency
 
-- AC-21: Searching for `Player` returns scenes, nodes, or scripts containing `Player` within authorized scopes.
-- AC-22: If a user lacks permission for Project A, the results will not contain data from Project A.
-- AC-23: Results are paginated correctly.
+- Index refresh may run asynchronously after analysis completion.
+
+## Acceptance criteria
+
+- `AC-FR-15-01`: Non-member cannot discover private project names or metadata.
+- `AC-FR-15-02`: Pagination and query timeout are enforced.
+- `AC-FR-15-03`: Stale result resolves safely to not found.
 
 ## Related API
 
-| Method | Path | Permission | Main Request | Main Response | Main Errors |
-| --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/search` | Authenticated | q, type, projectId, page, pageSize | Search results, pagination | `VALIDATION_ERROR` |
-| GET | `/api/v1/projects/{projectId}/scenes` | `viewer+` | search/filter | Scene results | `FORBIDDEN` |
-| GET | `/api/v1/projects/{projectId}/assets` | `viewer+` | search/filter | Asset results | `FORBIDDEN` |
-| GET | `/api/v1/projects/{projectId}/git/commits` | `viewer+` | author/date/search | Commit results | `REPO_NOT_READY` |
+- `GET /api/v1/search`, project-scoped search and saved-search endpoints
 
-## Related Database Tables
+## Related data
 
-| Table | Role |
-| --- | --- |
-| `projects` | Project name/slug searches. |
-| `project_members` | RBAC scope limits. |
-| `scenes`, `scene_nodes` | Scene/node searches. |
-| `assets`, `scripts`, `resources` | Metadata searches. |
-| `repositories` | Commit history scopes and repo states. |
+- `search.search_documents`, `search.search_index_runs`, `search.saved_searches`
 
-## Security / Authorization Notes
+## Tests and observability
 
-- Queries must use parameterized SQL or safe ORM expressions.
-- Search results must be filtered by permission before being returned to the client.
-- Snippets containing secrets or internal server paths must not be returned.
+- Test suite: `TC-SEARCH-*`, including tenant isolation, stale index, escaping, limits and timeout.
+- Metrics: query latency, result count, timeout, indexing lag and authorization-filter rejection.
+- Indexing traces never record Restricted source content.

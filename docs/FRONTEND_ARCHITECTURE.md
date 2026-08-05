@@ -1,32 +1,59 @@
 # Frontend Architecture
 
-## Framework
-- **Vue 3** with Composition API and `<script setup>`.
-- **TypeScript** strictly enforced.
+## Stack
 
-## State Management
-- **Pinia** for global state. Do not mutate state directly outside of actions.
-- Pinia stores must be modular (e.g., `useAuthStore`, `useProjectStore`).
+- Vue 3 Composition API.
+- TypeScript with strict mode.
+- Vite.
+- Vue Router.
+- Pinia.
+- Axios or equivalent typed API client.
+- Cytoscape.js or an approved graph library for dependency visualization.
 
-## Routing
-- **Vue Router**. Routes must be declared centrally.
-- Use Route Meta fields for RBAC and authentication guards (`meta: { requiresAuth: true }`).
+## Structure target
 
-## API Client
-- Centralized **Axios** instance.
-- Must include request interceptors to attach the JWT token.
-- Must include response interceptors to handle `401 Unauthorized` (triggering token refresh or redirect to login).
+```text
+src/
+├── api/                 # typed transport models and clients
+├── components/          # reusable presentational components
+├── composables/         # reusable stateful behavior
+├── features/            # module-specific views/components/store
+├── router/
+├── stores/              # session and global UI state only
+├── types/
+├── utils/
+└── views/
+```
 
-## Components
-- Components should be "dumb" (presentation) or "smart" (container/data-fetching).
-- Prefer composables (`useFetchProjects()`) over mixing heavy logic directly in `.vue` files.
+## State rules
 
-## UI/UX Rules
-- No raw alert boxes.
-- Implement proper Skeleton Loaders for async views.
-- Implement explicit Empty States.
+- Server state is re-fetchable and must not exist only in Pinia.
+- Job progress may use polling and optional SignalR, but REST job state is authoritative.
+- Tokens are handled according to the chosen session strategy; never log or expose them in URLs.
+- Project context includes organization ID, project ID and current revision.
 
-## CSS & Styling
-- **TailwindCSS** is the mandatory CSS framework for all styling.
-- **Bootstrap Icons** (`bootstrap-icons`) is the standard for iconography. Do not use system icons or SVG strings directly unless absolutely necessary.
-- Follow a sleek, modern, and minimalist design language without excessive colors.
+## Required UI states
+
+Every screen must implement:
+
+- Loading skeleton.
+- Empty state.
+- Permission-denied or masked-not-found state.
+- Recoverable error state.
+- Degraded AI state when deterministic output remains available.
+- Stale/retry state for jobs.
+
+## Performance
+
+- Lazy-load feature routes.
+- Virtualize large trees and tables.
+- Never render an unbounded dependency graph; apply server/client limits and filters.
+- Paginate commit, activity, finding and asset lists.
+- Escape repository text and sanitize rendered Markdown/HTML.
+
+## Accessibility
+
+- Keyboard navigation for major workflows.
+- Visible focus state.
+- Semantic labels for graph controls, forms and status indicators.
+- Do not encode severity by color alone.

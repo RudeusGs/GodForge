@@ -9,7 +9,7 @@ public enum ProjectRole
     /// <summary>Chủ sở hữu dự án</summary>
     ProjectOwner,
     /// <summary>Quản trị viên dự án</summary>
-    ProjectAdmin,
+    Maintainer,
     /// <summary>Lập trình viên</summary>
     Developer,
     /// <summary>Người đánh giá (Reviewer)</summary>

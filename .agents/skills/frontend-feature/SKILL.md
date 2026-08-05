@@ -1,49 +1,44 @@
 ---
 name: frontend-feature
-description: Skill for implementing frontend features in the Vue 3 GodForge-FE application.
+description: Implement a Vue 3 product feature.
 ---
 
-# Frontend Feature Implementation
+# Frontend Feature
 
-## When to Use
-Use this skill when building UI components, pages, forms, or routing logic in `GodForge-FE`.
+## Use when
 
-## Required Reading
+Implement a Vue 3 product feature.
+
+## Required reading
+
 - `docs/FRONTEND_ARCHITECTURE.md`
 - `docs/SRS/09-ui-ux.md`
-- `docs/RBAC_MATRIX.md`
+- Relevant functional/API/RBAC docs
 
 ## Workflow
-1. Identify the required Vue components and Pinia state.
-2. Build UI using Composition API and TypeScript strict mode.
-3. Connect Axios client to backend API.
-4. Implement Loading, Empty, and Error states.
-5. Add route guards if RBAC is required.
 
-## Mandatory Checks
-- Vue 3 Composition API must be used.
-- TypeScript strict mode must be followed.
-- Pinia store boundaries must be respected.
-- Centralized Axios client MUST attach authorization tokens.
-- API envelope handling must be consistent.
-- Auth token refresh logic must be handled.
-- 401/403/404 behavior must be correctly mapped to UX.
-- Server-side pagination MUST be supported for lists.
-- Proper Skeleton Loaders or spinners must be used.
-- SignalR subscribe/unsubscribe must be managed correctly.
-- RBAC UI visibility must be properly applied.
-- Basic accessibility standards must be implemented.
-- TailwindCSS must be used for styling; avoid Vanilla CSS.
-- Bootstrap Icons must be used for all icons.
+1. Define route, actor and API contracts.
+2. Add typed API models/client.
+3. Implement feature components/composables/store only where needed.
+4. Add loading, empty, error, degraded, stale and forbidden states.
+5. Add pagination/virtualization and accessible controls.
+6. Escape/sanitize repository/user content.
+7. Add component/store/e2e tests and build checks.
 
-## Forbidden Actions
-- Do not hardcode backend URLs.
-- Do not rely solely on the UI for security (backend is the strict security boundary).
-- Do not expose any secrets in the frontend.
-- Do not alert raw errors to the user.
+## Mandatory checks
 
-## Completion Checklist
+- Server state re-fetchable.
+- UI does not assume authorization.
+- Large graph/tree bounded.
+- Job progress falls back to REST.
+- AI is visibly labeled.
 
+## Forbidden
 
-## Output Expectations
-The agent must explain the Vue components and Pinia stores created, the error/loading states implemented, and confirm no secrets are exposed.
+- No `any` for convenience in domain contracts.
+- No token/source content in logs.
+- No unbounded render or raw HTML from repository.
+
+## Completion output
+
+Report route/components/API/state/tests/accessibility and known browser/performance limits.

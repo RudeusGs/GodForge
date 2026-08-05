@@ -20,10 +20,13 @@ public sealed class OutboxMessage : BaseEntity
     private OutboxMessage() { } // EF Core
 
     public static OutboxMessage Create(string aggregateType, Guid? aggregateId, string eventType, string payloadJson, string? headersJson, string correlationId, DateTimeOffset now)
+        => CreateWithId(Guid.NewGuid(), aggregateType, aggregateId, eventType, payloadJson, headersJson, correlationId, now);
+
+    public static OutboxMessage CreateWithId(Guid id, string aggregateType, Guid? aggregateId, string eventType, string payloadJson, string? headersJson, string correlationId, DateTimeOffset now)
     {
         return new OutboxMessage
         {
-            Id = Guid.NewGuid(),
+            Id = id,
             AggregateType = aggregateType,
             AggregateId = aggregateId,
             EventType = eventType,

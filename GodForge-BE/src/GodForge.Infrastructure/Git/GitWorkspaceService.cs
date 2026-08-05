@@ -71,18 +71,37 @@ public sealed class GitWorkspaceService : IRepositoryWorkspaceService
                 Directory.Delete(workspacePath, recursive: true);
             }
 
-            await RunGitAsync(
-                new[]
-                {
-                    "-c", "credential.helper=", "clone", "--no-tags", "--single-branch", "--depth", "1",
-                    "--branch", branch, "--", remoteUrl, workspacePath
-                },
-                cancellationToken);
+            try
+            {
+                await ValidateRemoteUrlAsync(remoteUrl, cancellationToken);
+                await RunGitAsync(
+                    new[]
+                    {
+                        "-c", "credential.helper=",
+                        "-c", "http.followRedirects=false",
+                        "clone", "--no-tags", "--single-branch", "--depth", "1",
+                        "--branch", branch, "--", remoteUrl, workspacePath
+                    },
+                    cancellationToken);
+                EnsureRepositorySize(workspacePath);
+            }
+            catch
+            {
+                DeleteWorkspace(workspacePath);
+                throw;
+            }
         }
         else
         {
             await RunGitAsync(new[] { "-C", workspacePath, "remote", "set-url", "origin", remoteUrl }, cancellationToken);
-            await RunGitAsync(new[] { "-c", "credential.helper=", "-C", workspacePath, "fetch", "--prune", "--depth", "1", "origin", branch }, cancellationToken);
+            await ValidateRemoteUrlAsync(remoteUrl, cancellationToken);
+            await RunGitAsync(new[]
+            {
+                "-c", "credential.helper=",
+                "-c", "http.followRedirects=false",
+                "-C", workspacePath, "fetch", "--prune", "--depth", "1", "origin", branch
+            }, cancellationToken);
+            EnsureRepositorySize(workspacePath);
             await RunGitAsync(new[] { "-C", workspacePath, "checkout", "-B", branch, $"origin/{branch}" }, cancellationToken);
             await RunGitAsync(new[] { "-C", workspacePath, "reset", "--hard", $"origin/{branch}" }, cancellationToken);
             await RunGitAsync(new[] { "-C", workspacePath, "clean", "-ffd" }, cancellationToken);
@@ -94,12 +113,7 @@ public sealed class GitWorkspaceService : IRepositoryWorkspaceService
             throw new InvalidOperationException("Git returned an invalid commit identifier.");
         }
 
-        var repositorySize = CalculateDirectorySize(workspacePath);
-        if (repositorySize > _settings.MaxRepositoryBytes)
-        {
-            throw new InvalidOperationException("Repository exceeds the configured processing size limit.");
-        }
-
+        var repositorySize = EnsureRepositorySize(workspacePath);
         return new WorkspaceSyncResult(workspacePath, commitSha.ToLowerInvariant(), branch, repositorySize);
     }
 
@@ -287,6 +301,35 @@ public sealed class GitWorkspaceService : IRepositoryWorkspaceService
         if (!candidate.StartsWith(normalizedRoot, comparison))
         {
             throw new InvalidOperationException("Workspace path escaped the configured root.");
+        }
+    }
+
+    private long EnsureRepositorySize(string workspacePath)
+    {
+        var repositorySize = CalculateDirectorySize(workspacePath);
+        if (repositorySize <= _settings.MaxRepositoryBytes)
+            return repositorySize;
+
+        DeleteWorkspace(workspacePath);
+        throw new InvalidOperationException("Repository exceeds the configured processing size limit.");
+    }
+
+    private static void DeleteWorkspace(string workspacePath)
+    {
+        if (!Directory.Exists(workspacePath))
+            return;
+
+        try
+        {
+            Directory.Delete(workspacePath, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Cleanup is best effort; the processing error is preserved.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Cleanup is best effort; the processing error is preserved.
         }
     }
 

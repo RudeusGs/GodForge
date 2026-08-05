@@ -26,7 +26,7 @@ public class LinkRepositoryCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _activityWriterMock = new Mock<IActivityWriter>();
         _clockMock = new Mock<IClock>();
-        
+
         _handler = new LinkRepositoryCommandHandler(
             _repositoriesMock.Object,
             _authorizationMock.Object,
@@ -114,8 +114,8 @@ public class LinkRepositoryCommandHandlerTests
         Assert.Equal(request.RemoteUrl, result.Value!.CloneUrl);
         Assert.Equal(request.DefaultBranch, result.Value.DefaultBranch);
         Assert.Equal(GitProvider.GitHub.ToString(), result.Value.Provider);
-        
-        _repositoriesMock.Verify(r => r.AddAsync(It.Is<GitRepository>(repo => 
+
+        _repositoriesMock.Verify(r => r.AddAsync(It.Is<GitRepository>(repo =>
             repo.ProjectId == request.ProjectId &&
             repo.RemoteUrl == request.RemoteUrl &&
             repo.Provider == GitProvider.GitHub &&

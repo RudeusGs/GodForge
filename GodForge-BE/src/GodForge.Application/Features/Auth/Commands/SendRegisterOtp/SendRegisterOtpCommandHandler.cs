@@ -1,57 +1,89 @@
+using System.Net;
+using System.Security.Cryptography;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Features.Auth.DTOs;
+using GodForge.Domain.Entities.Identity;
 using MediatR;
 
 namespace GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
 
-public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegisterOtpCommand, Result>
+public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegisterOtpCommand, Result<ChallengeAcceptedDto>>
 {
+    private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(60);
     private readonly IUserRepository _users;
-    private readonly ICacheService _cacheService;
-    private readonly IEmailService _emailService;
+    private readonly IAuthChallengeRepository _challenges;
+    private readonly ISecretHashService _secretHash;
+    private readonly IEmailOutbox _emailOutbox;
+    private readonly IAuditWriter _auditWriter;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IClock _clock;
 
     public SendRegisterOtpCommandHandler(
         IUserRepository users,
-        ICacheService cacheService,
-        IEmailService emailService)
+        IAuthChallengeRepository challenges,
+        ISecretHashService secretHash,
+        IEmailOutbox emailOutbox,
+        IAuditWriter auditWriter,
+        IUnitOfWork unitOfWork,
+        IClock clock)
     {
         _users = users;
-        _cacheService = cacheService;
-        _emailService = emailService;
+        _challenges = challenges;
+        _secretHash = secretHash;
+        _emailOutbox = emailOutbox;
+        _auditWriter = auditWriter;
+        _unitOfWork = unitOfWork;
+        _clock = clock;
     }
 
-    public async Task<Result> Handle(SendRegisterOtpCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ChallengeAcceptedDto>> Handle(SendRegisterOtpCommand request, CancellationToken cancellationToken)
     {
-        var existingUser = await _users.GetByEmailAsync(request.Email, cancellationToken);
-        if (existingUser is not null)
+        var email = request.Email.Trim();
+        if (await _users.GetByEmailAsync(email, cancellationToken) is not null)
+            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
+
+        var now = _clock.UtcNow;
+        var normalizedEmail = User.NormalizeEmail(email);
+        var challenge = await _challenges.GetActiveAsync(normalizedEmail, AuthChallengePurposes.Registration, cancellationToken);
+        if (challenge is not null && challenge.IsInCooldown(now))
         {
-            return Result.Failure(ApplicationError.Conflict("AUTH_EMAIL_EXISTS", "Email is already in use."));
+            var remaining = Math.Max(1, (int)Math.Ceiling((challenge.ResendAvailableAt - now).TotalSeconds));
+            return new ChallengeAcceptedDto(true, remaining);
         }
 
-        // Generate a 6-digit random code securely
-        var otp = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        var otp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        var hash = _secretHash.Hash(otp);
+        if (challenge is null)
+        {
+            challenge = AuthChallenge.Create(normalizedEmail, AuthChallengePurposes.Registration, hash, now, Lifetime, Cooldown);
+            await _challenges.AddAsync(challenge, cancellationToken);
+        }
+        else
+        {
+            challenge.ReplaceSecret(hash, now, Lifetime, Cooldown);
+        }
 
-        // Store the OTP in cache with 5 minutes expiration
-        var cacheKey = $"otp:register:{request.Email.Trim().ToLowerInvariant()}";
-        await _cacheService.SetAsync(cacheKey, otp, TimeSpan.FromMinutes(5), cancellationToken: cancellationToken);
-
-        // Send email containing the OTP
-        var subject = "GodForge - Email Verification OTP";
-        var body = $@"
-            <div style=""font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e4e4e7; border-radius: 8px; background-color: #fafafa;"">
-                <h2 style=""color: #0f172a; margin-bottom: 16px;"">Verify your email address</h2>
-                <p style=""color: #334155; font-size: 16px; line-height: 24px;"">Thank you for signing up for GodForge. Please use the following One-Time Password (OTP) to verify your account:</p>
-                <div style=""background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin: 24px 0; text-align: center;"">
-                    <span style=""font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #10b981;"">{otp}</span>
-                </div>
-                <p style=""color: #64748b; font-size: 14px; line-height: 20px;"">This code will expire in 5 minutes. If you did not make this request, you can safely ignore this email.</p>
-                <hr style=""border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;"" />
-                <p style=""color: #94a3b8; font-size: 12px; text-align: center;"">© {DateTime.UtcNow.Year} GodForge. All rights reserved.</p>
-            </div>";
-
-        await _emailService.SendEmailAsync(request.Email.Trim(), subject, body, cancellationToken);
-
-        return Result.Success();
+        var safeOtp = WebUtility.HtmlEncode(otp);
+        var body = $"<h2>Verify your email address</h2><p>Your GodForge verification code is <strong>{safeOtp}</strong>.</p><p>This code expires in 5 minutes.</p>";
+        await _emailOutbox.EnqueueAsync(email, "GodForge - Email verification", body, request.CorrelationId, cancellationToken);
+        await _auditWriter.WriteSecurityAsync(null, "auth.registration_challenge_created", "informational", new { NormalizedEmail = normalizedEmail }, cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_auth_challenges_active_scope")
+        {
+            _unitOfWork.ClearTrackedChanges();
+            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            _unitOfWork.ClearTrackedChanges();
+            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
+        }
+        return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
     }
 }

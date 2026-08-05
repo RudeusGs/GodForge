@@ -21,4 +21,11 @@ public sealed class FrontendUrlBuilder : IFrontendUrlBuilder
         var baseUrl = _settings.BaseUrl.TrimEnd('/');
         return $"{baseUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(email)}";
     }
+
+    public string BuildOrganizationInvitationUrl(string token)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        var baseUrl = _settings.BaseUrl.TrimEnd('/');
+        return $"{baseUrl}/organization-invitations/accept?token={Uri.EscapeDataString(token)}";
+    }
 }

@@ -9,6 +9,7 @@ DotNetEnv.Env.TraversePath().Load();
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddOutboxDispatching();
 builder.Services.AddScoped<RepositoryAnalysisPipelineHandler>();
 builder.Services.AddHostedService<RabbitMqWorkerService>();
 

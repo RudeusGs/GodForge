@@ -2,6 +2,7 @@ using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Infrastructure.AI;
 using GodForge.Infrastructure.Analysis;
+using GodForge.Infrastructure.Auditing;
 using GodForge.Infrastructure.Configuration;
 using GodForge.Infrastructure.Git;
 using GodForge.Infrastructure.HostedGit;
@@ -27,13 +28,19 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAuthChallengeRepository, AuthChallengeRepository>();
+        services.AddScoped<IUserSessionRepository, UserSessionRepository>();
+        services.AddScoped<IUserInviteRepository, UserInviteRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+        services.AddScoped<IOrganizationMemberRepository, OrganizationMemberRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IGitRepositoryRepository, GitRepositoryRepository>();
         services.AddScoped<IRepositorySnapshotRepository, RepositorySnapshotRepository>();
         services.AddScoped<IAiAnalysisRepository, AiAnalysisRepository>();
         services.AddScoped<IHealthReportRepository, HealthReportRepository>();
+        services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
         services.AddScoped<IDependencyGraphSnapshotRepository, DependencyGraphSnapshotRepository>();
         services.AddScoped<IAnalysisRunRepository, AnalysisRunRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
@@ -41,18 +48,22 @@ public static class DependencyInjection
         services.AddScoped<INotificationRepository, NotificationRepository>();
 
         services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton<IM1QuotaPolicy, M1QuotaPolicy>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
-        services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
+        services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddSingleton<IFrontendUrlBuilder, FrontendUrlBuilder>();
         services.AddSingleton<IJobPublisher, RabbitMqJobPublisher>();
         services.AddScoped<IOutboxWriter, OutboxWriter>();
-        services.AddHostedService<OutboxDispatcherService>();
+        services.AddScoped<IEmailOutbox, EmailOutbox>();
 
-        services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
-        services.AddOptions<JwtSettings>()
+        services.AddOptions<OutboxEncryptionSettings>()
+            .Bind(configuration.GetSection(OutboxEncryptionSettings.SectionName))
             .ValidateDataAnnotations()
+            .Validate(
+                settings => !string.Equals(settings.Key, configuration["Jwt:Secret"], StringComparison.Ordinal),
+                "Outbox encryption key must be different from the JWT signing secret.")
             .ValidateOnStart();
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services
@@ -100,6 +111,10 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.Configure<GeminiSettings>(configuration.GetSection("Gemini"));
         services.Configure<ForgejoSettings>(configuration.GetSection("Forgejo"));
+        services.AddOptions<M1QuotaSettings>()
+            .Bind(configuration.GetSection(M1QuotaSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
         services.AddOptions<FrontendSettings>()
             .Bind(configuration.GetSection("Frontend"))
             .ValidateDataAnnotations()
@@ -144,6 +159,25 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
+        return services;
+    }
+
+    public static IServiceCollection AddIdentityInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddScoped<ITokenService, JwtTokenService>();
+        services.AddSingleton<ISecretHashService, SecretHashService>();
+        services.AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection("Jwt"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        return services;
+    }
+
+    public static IServiceCollection AddOutboxDispatching(this IServiceCollection services)
+    {
+        services.AddHostedService<OutboxDispatcherService>();
         return services;
     }
 }

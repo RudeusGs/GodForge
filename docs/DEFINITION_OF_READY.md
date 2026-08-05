@@ -1,20 +1,38 @@
-# Definition of Ready (DoR)
+# Definition of Ready
 
-Before any feature ticket or development task begins implementation, it must meet the following criteria. AI agents must explicitly verify these elements are defined and clear before writing code. NO FEATURE CAN BE IMPLEMENTED unless it has:
+A feature is ready for implementation only when all applicable items are complete.
 
-- [ ] **SRS Requirement ID**: Maps directly to a Functional or Non-Functional Requirement.
-- [ ] **Affected Functional Doc**: Which `docs/SRS/03-functional/*` file covers this.
-- [ ] **API Contract**: The exact route, method, request schema, and response schema.
-- [ ] **Database Impact**: Which tables are read from or written to, and if any schema changes are needed.
-- [ ] **RBAC Permission**: The specific role or project-level permission required to execute the action.
-- [ ] **Sync/Async Decision**: Is this a fast synchronous HTTP response, or a long-running async job?
-- [ ] **Worker/Job Behavior**: If async, the RabbitMQ queue, idempotency key, DLQ strategy, and timeout rules.
-- [ ] **Error Codes**: Exact `SCREAMING_SNAKE_CASE` error codes that the feature can produce.
-- [ ] **Acceptance Criteria**: Clear, testable conditions that prove the feature works.
-- [ ] **Tests Required**: What unit, integration, or regression tests must be created or updated.
-- [ ] **Observability Requirements**: Required correlation IDs, activity log events, metrics, and sanitized logging.
-- [ ] **Security Considerations**: How the feature handles sensitive data, inputs, or workspace state.
-- [ ] **Docs That Must Be Updated**: Which docs (SRS, ADR, etc.) require changes.
+## Product and requirements
 
-## Agent Prohibition
-If a task lacks any of the above information, the AI agent MUST NOT write implementation code. Instead, the agent must ask the user for clarification or update the documentation to satisfy the DoR.
+- A stable requirement ID exists in `docs/SRS/03-functional/`.
+- Purpose, actors, main flow, alternate flows and error cases are documented.
+- Scope is classified as Core, Advanced, Extension or Deferred.
+- Acceptance criteria are objective and testable.
+- Current-versus-target status is explicit.
+
+## Architecture and data
+
+- Architectural impact is consistent with `SRS/02-architecture.md`.
+- A new architectural decision has an accepted ADR when required.
+- Database tables, ownership, indexes, uniqueness, retention and migration impact are documented.
+- Storage placement is decided: PostgreSQL, MinIO, Redis cache or Forgejo.
+- Sync versus async execution is decided.
+- Idempotency and concurrency behavior are defined.
+
+## API and security
+
+- Endpoint method, route, permission, request, response and error codes are documented.
+- RBAC and tenant boundaries are mapped.
+- Threats, secret exposure, input validation, audit requirements and rate limits are identified.
+- Sensitive data classification is known.
+
+## Operations and testing
+
+- Logs, metrics, traces and alert conditions are defined.
+- Unit, integration, security and acceptance tests are listed.
+- Rollback, retry, cancellation and cleanup behavior are defined where applicable.
+- Performance budget is defined for expensive operations.
+
+## Agent prohibition
+
+AI coding agents must not implement a feature that fails this definition. They must update or request updates to documentation first.

@@ -22,6 +22,8 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddScoped<IRequestContext, HttpRequestContext>();
+        services.AddSingleton<RefreshTokenCookieService>();
 
         services.AddSwaggerGen(c =>
         {
@@ -100,21 +102,29 @@ public static class DependencyInjection
                     var userIdValue = principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value
                         ?? principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                     var securityStamp = principal?.FindFirst("security_stamp")?.Value;
+                    var sessionIdValue = principal?.FindFirst("sid")?.Value;
 
-                    if (!Guid.TryParse(userIdValue, out var userId) || string.IsNullOrWhiteSpace(securityStamp))
+                    if (!Guid.TryParse(userIdValue, out var userId) ||
+                        !Guid.TryParse(sessionIdValue, out var sessionId) ||
+                        string.IsNullOrWhiteSpace(securityStamp))
                     {
                         context.Fail("The token is missing required identity claims.");
                         return;
                     }
 
                     var userRepository = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                    var sessionRepository = context.HttpContext.RequestServices.GetRequiredService<IUserSessionRepository>();
+                    var clock = context.HttpContext.RequestServices.GetRequiredService<IClock>();
                     var user = await userRepository.GetByIdAsync(userId, context.HttpContext.RequestAborted);
+                    var session = await sessionRepository.GetActiveAsync(sessionId, userId, context.HttpContext.RequestAborted);
                     if (user is null ||
                         user.DeletedAt is not null ||
                         user.Status != UserStatus.Active ||
-                        !string.Equals(user.SecurityStamp, securityStamp, StringComparison.Ordinal))
+                        !string.Equals(user.SecurityStamp, securityStamp, StringComparison.Ordinal) ||
+                        session is null ||
+                        !session.IsActive(clock.UtcNow))
                     {
-                        context.Fail("The token is no longer valid for this account.");
+                        context.Fail("The token is no longer valid for this account or session.");
                         return;
                     }
 
@@ -125,7 +135,23 @@ public static class DependencyInjection
                     {
                         context.Fail("This token has been revoked.");
                     }
-                }
+                },
+                OnChallenge = async context =>
+                {
+                    context.HandleResponse();
+                    await ApiErrorResponseWriter.WriteAsync(
+                        context.HttpContext,
+                        StatusCodes.Status401Unauthorized,
+                        "UNAUTHORIZED",
+                        "Authentication is required.",
+                        context.HttpContext.RequestAborted);
+                },
+                OnForbidden = context => ApiErrorResponseWriter.WriteAsync(
+                    context.HttpContext,
+                    StatusCodes.Status403Forbidden,
+                    "SECURITY_FORBIDDEN",
+                    "You do not have permission to perform this operation.",
+                    context.HttpContext.RequestAborted)
             };
         });
 
@@ -134,6 +160,13 @@ public static class DependencyInjection
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = (context, cancellationToken) => new ValueTask(
+                ApiErrorResponseWriter.WriteAsync(
+                    context.HttpContext,
+                    StatusCodes.Status429TooManyRequests,
+                    "RATE_LIMIT_EXCEEDED",
+                    "Too many requests. Please try again later.",
+                    cancellationToken));
             options.AddPolicy("auth-sensitive", httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -175,4 +208,3 @@ public static class DependencyInjection
         return services;
     }
 }
-

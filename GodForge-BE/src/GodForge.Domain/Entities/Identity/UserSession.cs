@@ -13,29 +13,32 @@ public sealed class UserSession : BaseEntity
     public DateTimeOffset ExpiresAt { get; private set; }
     public DateTimeOffset? RevokedAt { get; private set; }
     public string? RevokedReason { get; private set; }
+    public string ConcurrencyStamp { get; private set; } = default!;
 
-    private UserSession() { } // EF Core
+    private UserSession() { }
 
     public static UserSession Create(Guid userId, string? deviceName, string? ipAddress, string? userAgent, DateTimeOffset expiresAt, DateTimeOffset now)
-    {
-        return new UserSession
+        => new()
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            DeviceName = deviceName,
-            IpAddress = ipAddress,
-            UserAgent = userAgent,
+            DeviceName = string.IsNullOrWhiteSpace(deviceName) ? null : deviceName.Trim(),
+            IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? null : ipAddress.Trim(),
+            UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent.Trim(),
             CreatedAt = now,
             LastSeenAt = now,
-            ExpiresAt = expiresAt
+            ExpiresAt = expiresAt,
+            ConcurrencyStamp = Guid.NewGuid().ToString("N")
         };
-    }
+
+    public bool IsActive(DateTimeOffset now) => RevokedAt is null && now < ExpiresAt;
 
     public void RecordActivity(DateTimeOffset now)
     {
-        if (RevokedAt is null && now < ExpiresAt)
+        if (IsActive(now))
         {
             LastSeenAt = now;
+            ConcurrencyStamp = Guid.NewGuid().ToString("N");
         }
     }
 
@@ -45,6 +48,7 @@ public sealed class UserSession : BaseEntity
         {
             RevokedAt = now;
             RevokedReason = reason;
+            ConcurrencyStamp = Guid.NewGuid().ToString("N");
         }
     }
 }

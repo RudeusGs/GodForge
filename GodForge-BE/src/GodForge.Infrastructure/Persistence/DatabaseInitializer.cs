@@ -1,5 +1,6 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -147,7 +148,7 @@ public static class DatabaseInitializer
 
         var productVersionParameter = command.CreateParameter();
         productVersionParameter.ParameterName = "productVersion";
-        productVersionParameter.Value = "9.0.1";
+        productVersionParameter.Value = ProductInfo.GetVersion();
         command.Parameters.Add(productVersionParameter);
 
         await command.ExecuteNonQueryAsync(cancellationToken);

@@ -1,134 +1,137 @@
+using GodForge.Api.Models;
+using GodForge.Api.Services;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.Commands.ForgotPassword;
 using GodForge.Application.Features.Auth.Commands.Login;
 using GodForge.Application.Features.Auth.Commands.Logout;
+using GodForge.Application.Features.Auth.Commands.RefreshToken;
 using GodForge.Application.Features.Auth.Commands.Register;
+using GodForge.Application.Features.Auth.Commands.ResetPassword;
 using GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
 using GodForge.Application.Features.Auth.DTOs;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace GodForge.Api.Controllers;
 
-public class AuthController : BaseApiController
+public sealed class AuthController : BaseApiController
 {
     private readonly IMediator _mediator;
+    private readonly RefreshTokenCookieService _refreshTokenCookie;
 
-    public AuthController(IMediator mediator)
+    public AuthController(IMediator mediator, RefreshTokenCookieService refreshTokenCookie)
     {
         _mediator = mediator;
+        _refreshTokenCookie = refreshTokenCookie;
     }
 
-    /// <summary>
-    /// Authenticates a user and returns a JWT token.
-    /// </summary>
     [HttpPost("login")]
     [EnableRateLimiting("auth-sensitive")]
-    [ProducesResponseType(typeof(ApiResponse<AuthResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<AuthSessionResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var command = new LoginCommand(request.Email, request.Password);
-        Result<AuthResultDto> result = await _mediator.Send(command, cancellationToken);
-        return HandleResult(result);
+        var command = new LoginCommand(
+            request.Email,
+            request.Password,
+            request.DeviceName,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Request.Headers.UserAgent.ToString());
+        var result = await _mediator.Send(command, cancellationToken);
+        return HandleAuthResult(result);
     }
 
-    /// <summary>
-    /// Sends a registration OTP to the provided email address.
-    /// </summary>
     [HttpPost("register/send-otp")]
     [EnableRateLimiting("auth-otp")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<ChallengeAcceptedDto>), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> SendRegisterOtp([FromBody] SendRegisterOtpRequest request, CancellationToken cancellationToken)
     {
-        var command = new SendRegisterOtpCommand(request.Email);
-        Result result = await _mediator.Send(command, cancellationToken);
-        return HandleResult(result);
+        var result = await _mediator.Send(new SendRegisterOtpCommand(request.Email, CorrelationId), cancellationToken);
+        if (!result.IsSuccess)
+            return HandleResult(result);
+        return Accepted(new ApiResponse<ChallengeAcceptedDto> { Data = result.Value, Meta = new ApiMeta { CorrelationId = CorrelationId } });
     }
 
-    /// <summary>
-    /// Registers a new user account using an OTP.
-    /// </summary>
     [HttpPost("register")]
     [EnableRateLimiting("auth-sensitive")]
-    [ProducesResponseType(typeof(ApiResponse<AuthResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status201Created)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
-        var command = new RegisterCommand(request.Email, request.DisplayName, request.Password, request.Otp);
-        Result<AuthResultDto> result = await _mediator.Send(command, cancellationToken);
-        return HandleResult(result);
+        var result = await _mediator.Send(new RegisterCommand(request.Email, request.DisplayName, request.Password, request.Otp), cancellationToken);
+        if (!result.IsSuccess)
+            return HandleResult(result);
+        return Created("/api/v1/users/me", new ApiResponse<UserDto> { Data = result.Value, Meta = new ApiMeta { CorrelationId = CorrelationId } });
     }
 
-    /// <summary>
-    /// Initiates the password reset process by sending an OTP to the user's email.
-    /// </summary>
     [HttpPost("forgot-password")]
     [EnableRateLimiting("auth-otp")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<ChallengeAcceptedDto>), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
-        var command = new ForgotPasswordCommand(request.Email);
-        Result result = await _mediator.Send(command, cancellationToken);
-        return HandleResult(result);
+        var result = await _mediator.Send(new ForgotPasswordCommand(request.Email, CorrelationId), cancellationToken);
+        if (!result.IsSuccess)
+            return HandleResult(result);
+        return Accepted(new ApiResponse<ChallengeAcceptedDto> { Data = result.Value, Meta = new ApiMeta { CorrelationId = CorrelationId } });
     }
 
-    /// <summary>
-    /// Logs out the current user and invalidates the refresh token.
-    /// </summary>
     [HttpPost("logout")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken cancellationToken)
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
-        var command = new LogoutCommand(request.RefreshToken);
-        Result result = await _mediator.Send(command, cancellationToken);
-        return HandleResult(result);
+        var result = await _mediator.Send(new LogoutCommand(), cancellationToken);
+        if (!result.IsSuccess)
+            return HandleResult(result);
+
+        _refreshTokenCookie.Delete(Response);
+        return NoContent();
     }
 
-    /// <summary>
-    /// Resets the user's password using the provided token.
-    /// </summary>
     [HttpPost("reset-password")]
     [EnableRateLimiting("auth-sensitive")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
-        var command = new GodForge.Application.Features.Auth.Commands.ResetPassword.ResetPasswordCommand(request.Email, request.Token, request.NewPassword);
-        Result result = await _mediator.Send(command, cancellationToken);
-        return HandleResult(result);
+        var result = await _mediator.Send(new ResetPasswordCommand(request.Email, request.Token, request.NewPassword), cancellationToken);
+        return result.IsSuccess ? NoContent() : HandleResult(result);
     }
 
-    /// <summary>
-    /// Refreshes the JWT token using a valid refresh token.
-    /// </summary>
     [HttpPost("refresh")]
     [EnableRateLimiting("auth-sensitive")]
-    [ProducesResponseType(typeof(ApiResponse<AuthResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ApiResponse<AuthSessionResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {
-        var command = new GodForge.Application.Features.Auth.Commands.RefreshToken.RefreshTokenCommand(request.RefreshToken);
-        Result<AuthResultDto> result = await _mediator.Send(command, cancellationToken);
-        return HandleResult(result);
+        var refreshToken = _refreshTokenCookie.Read(Request);
+        if (refreshToken is null)
+            return HandleResult<AuthResultDto>(ApplicationError.Unauthorized("AUTH_TOKEN_REVOKED", "Refresh token is invalid or revoked."));
+
+        var result = await _mediator.Send(new RefreshTokenCommand(refreshToken), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            _refreshTokenCookie.Delete(Response);
+            return HandleResult(result);
+        }
+
+        return HandleAuthResult(result);
+    }
+
+    private IActionResult HandleAuthResult(Result<AuthResultDto> result)
+    {
+        if (!result.IsSuccess)
+            return HandleResult(result);
+
+        _refreshTokenCookie.Write(Response, result.Value.RefreshToken, result.Value.RefreshTokenExpiresAt);
+        return Ok(new ApiResponse<AuthSessionResponseDto>
+        {
+            Data = AuthSessionResponseDto.From(result.Value),
+            Meta = new ApiMeta { CorrelationId = CorrelationId }
+        });
     }
 }
 
-public record LoginRequest(string Email, string Password);
-public record RegisterRequest(string Email, string DisplayName, string Password, string Otp);
-public record SendRegisterOtpRequest(string Email);
-public record LogoutRequest(string? RefreshToken);
-public record ForgotPasswordRequest(string Email);
-public record ResetPasswordRequest(string Email, string Token, string NewPassword);
-public record RefreshTokenRequest(string RefreshToken);
-
-
+public sealed record LoginRequest(string Email, string Password, string? DeviceName);
+public sealed record RegisterRequest(string Email, string DisplayName, string Password, string Otp);
+public sealed record SendRegisterOtpRequest(string Email);
+public sealed record ForgotPasswordRequest(string Email);
+public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);

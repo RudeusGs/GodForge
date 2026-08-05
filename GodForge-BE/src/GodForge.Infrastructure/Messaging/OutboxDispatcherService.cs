@@ -3,6 +3,8 @@ using GodForge.Application.Common.Constants;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Models.Messages;
 using GodForge.Infrastructure.Persistence;
+using GodForge.Infrastructure.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -16,6 +18,7 @@ public sealed class OutboxDispatcherService : BackgroundService
     private static readonly TimeSpan EmptyPollDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan ClaimLease = TimeSpan.FromMinutes(1);
     private const int BatchSize = 20;
+    private const string RetiredProviderReconciliationEventType = "provider.reconciliation.requested";
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
@@ -126,8 +129,27 @@ public sealed class OutboxDispatcherService : BackgroundService
 
         try
         {
-            var workerMessage = DeserializeMessage(message.EventType, message.PayloadJson);
-            await publisher.PublishAsync(message.EventType, workerMessage, cancellationToken);
+            if (message.EventType == RetiredProviderReconciliationEventType)
+            {
+                _logger.LogWarning(
+                    "Retiring legacy provider reconciliation outbox message {OutboxMessageId}; no provider membership adapter exists in this codebase.",
+                    message.Id);
+            }
+            else if (message.EventType == EmailOutbox.EventType)
+            {
+                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                var encryptionSettings = scope.ServiceProvider.GetRequiredService<IOptions<OutboxEncryptionSettings>>().Value;
+                var payload = EmailOutbox.Decrypt(
+                    message.PayloadJson,
+                    encryptionSettings.Key,
+                    encryptionSettings.LegacyKey);
+                await emailService.SendEmailAsync(payload.Recipient, payload.Subject, payload.HtmlBody, cancellationToken);
+            }
+            else
+            {
+                var workerMessage = DeserializeMessage(message.EventType, message.PayloadJson);
+                await publisher.PublishAsync(message.EventType, workerMessage, cancellationToken);
+            }
             message.MarkAsProcessed(_clock.UtcNow);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

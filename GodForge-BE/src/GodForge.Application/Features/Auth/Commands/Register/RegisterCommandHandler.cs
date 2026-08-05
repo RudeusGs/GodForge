@@ -3,89 +3,75 @@ using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.DTOs;
 using GodForge.Domain.Entities.Identity;
-using GodForge.Domain.Enums;
 using MediatR;
 
 namespace GodForge.Application.Features.Auth.Commands.Register;
 
-public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<AuthResultDto>>
+public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<UserDto>>
 {
     private readonly IUserRepository _users;
-    private readonly IRefreshTokenRepository _refreshTokens;
+    private readonly IAuthChallengeRepository _challenges;
+    private readonly ISecretHashService _secretHash;
     private readonly IPasswordHasher _passwordHasher;
-    private readonly ITokenService _tokenService;
+    private readonly IAuditWriter _auditWriter;
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ICacheService _cacheService;
 
     public RegisterCommandHandler(
         IUserRepository users,
-        IRefreshTokenRepository refreshTokens,
+        IAuthChallengeRepository challenges,
+        ISecretHashService secretHash,
         IPasswordHasher passwordHasher,
-        ITokenService tokenService,
+        IAuditWriter auditWriter,
         IClock clock,
-        IUnitOfWork unitOfWork,
-        ICacheService cacheService)
+        IUnitOfWork unitOfWork)
     {
         _users = users;
-        _refreshTokens = refreshTokens;
+        _challenges = challenges;
+        _secretHash = secretHash;
         _passwordHasher = passwordHasher;
-        _tokenService = tokenService;
+        _auditWriter = auditWriter;
         _clock = clock;
         _unitOfWork = unitOfWork;
-        _cacheService = cacheService;
     }
 
-    public async Task<Result<AuthResultDto>> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<Result<UserDto>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        var cacheKey = $"otp:register:{request.Email.Trim().ToLowerInvariant()}";
-        var cachedOtp = await _cacheService.GetAsync<string>(cacheKey, cancellationToken);
-
-        if (string.IsNullOrEmpty(cachedOtp))
-        {
+        var now = _clock.UtcNow;
+        var normalizedEmail = User.NormalizeEmail(request.Email);
+        var challenge = await _challenges.GetActiveAsync(normalizedEmail, AuthChallengePurposes.Registration, cancellationToken);
+        if (challenge is null || now >= challenge.ExpiresAt)
             return ApplicationError.Validation("AUTH_OTP_EXPIRED", "OTP expired or not found. Please request a new one.");
-        }
 
-        if (cachedOtp != request.Otp)
+        if (!_secretHash.Verify(request.Otp, challenge.SecretHash))
         {
+            challenge.RecordFailedAttempt(now);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationError.Validation("AUTH_OTP_INVALID", "Invalid OTP verification code.");
         }
 
-        var now = _clock.UtcNow;
-        var existingUser = await _users.GetByEmailAsync(request.Email, cancellationToken);
-
-        if (existingUser is not null)
+        if (await _users.GetByEmailAsync(request.Email, cancellationToken) is not null)
             return ApplicationError.Conflict("AUTH_EMAIL_EXISTS", "Email is already in use.");
 
-        var passwordHash = _passwordHasher.HashPassword(request.Password);
-
-        var user = User.Create(
-            request.Email,
-            request.DisplayName,
-            passwordHash,
-            now);
-
+        var user = User.Create(request.Email, request.DisplayName, _passwordHasher.HashPassword(request.Password), now);
+        user.MarkEmailVerified(now);
+        challenge.Consume(now);
         await _users.AddAsync(user, cancellationToken);
+        await _auditWriter.WriteSecurityAsync(user.Id, "auth.registration_completed", "informational", new { user.Email }, cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return ApplicationError.Validation("AUTH_OTP_INVALID", "The OTP has already been consumed.");
+        }
+        catch (UniqueConstraintConflictException exception)
+            when (exception.ConstraintName == "ux_users_normalized_email")
+        {
+            return ApplicationError.Conflict("AUTH_EMAIL_EXISTS", "Email is already in use.");
+        }
 
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var refreshToken = _tokenService.GenerateRefreshToken();
-        var hashedRefreshToken = _tokenService.HashRefreshToken(refreshToken);
-
-        var tokenEntity = GodForge.Domain.Entities.Identity.RefreshToken.Create(
-            user.Id,
-            hashedRefreshToken,
-            null, // deviceName
-            null, // ipAddress
-            now.AddDays(7),
-            now);
-
-        await _refreshTokens.AddAsync(tokenEntity, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        // Delete the OTP code from cache as it was successfully consumed
-        await _cacheService.RemoveAsync(cacheKey, cancellationToken);
-
-        var userDto = new UserDto(user.Id, user.Email, user.DisplayName, user.SystemRole.ToString());
-        return new AuthResultDto(accessToken, refreshToken, userDto);
+        return UserDto.From(user);
     }
 }

@@ -1,11 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using GodForge.Domain.Entities.Identity;
 using GodForge.Domain.Enums;
 using GodForge.Infrastructure.Configuration;
 using GodForge.Infrastructure.Security;
 using Microsoft.Extensions.Options;
 using Moq;
+using Xunit;
 
 namespace GodForge.UnitTests.Infrastructure.Security;
 
@@ -24,42 +24,31 @@ public class JwtTokenServiceTests
             ExpiryMinutes = 15
         };
 
-        var optionsMock = new Mock<IOptions<JwtSettings>>();
-        optionsMock.Setup(o => o.Value).Returns(_jwtSettings);
-        _sut = new JwtTokenService(optionsMock.Object);
+        var options = new Mock<IOptions<JwtSettings>>();
+        options.SetupGet(x => x.Value).Returns(_jwtSettings);
+        _sut = new JwtTokenService(options.Object);
     }
 
     [Fact]
-    public void GenerateAccessToken_Should_ReturnValidJwt_When_ConfigIsValid()
+    public void GenerateAccessToken_ReturnsJwtBoundToSession()
     {
-        // Arrange
-        var user = User.Create("test@example.com", "Test User", "hash", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var sessionId = Guid.NewGuid();
+        var user = User.Create("test@example.com", "Test User", "hash", now);
         user.UpdateSystemRole(SystemRole.SystemAdmin);
 
-        // Act
-        var tokenString = _sut.GenerateAccessToken(user);
+        var result = _sut.GenerateAccessToken(user, sessionId, now);
 
-        // Assert
-        Assert.False(string.IsNullOrWhiteSpace(tokenString));
+        Assert.False(string.IsNullOrWhiteSpace(result.Token));
+        Assert.Equal(now.AddMinutes(_jwtSettings.ExpiryMinutes), result.ExpiresAt);
 
-        var handler = new JwtSecurityTokenHandler();
-        var token = handler.ReadJwtToken(tokenString);
-
-        Assert.Equal("TestIssuer", token.Issuer);
-        Assert.Equal("TestAudience", token.Audiences.First());
-
-        var subClaim = token.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
-        Assert.NotNull(subClaim);
-        Assert.Equal(user.Id.ToString(), subClaim.Value);
-
-        var emailClaim = token.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email);
-        Assert.NotNull(emailClaim);
-        Assert.Equal(user.Email, emailClaim.Value);
-
-        var securityStampClaim = token.Claims.FirstOrDefault(c => c.Type == "security_stamp");
-        Assert.NotNull(securityStampClaim);
-        Assert.Equal(user.SecurityStamp, securityStampClaim.Value);
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        Assert.Equal(_jwtSettings.Issuer, token.Issuer);
+        Assert.Equal(_jwtSettings.Audience, token.Audiences.Single());
+        Assert.Equal(user.Id.ToString(), token.Claims.Single(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+        Assert.Equal(user.Email, token.Claims.Single(c => c.Type == JwtRegisteredClaimNames.Email).Value);
+        Assert.Equal(user.SecurityStamp, token.Claims.Single(c => c.Type == "security_stamp").Value);
+        Assert.Equal(sessionId.ToString(), token.Claims.Single(c => c.Type == "sid").Value);
+        Assert.False(string.IsNullOrWhiteSpace(token.Claims.Single(c => c.Type == JwtRegisteredClaimNames.Jti).Value));
     }
 }
-
-

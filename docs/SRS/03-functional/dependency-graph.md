@@ -1,92 +1,64 @@
-# Dependency Graph
+# Dependency Graph and Impact Analysis
 
 ## Purpose
 
-The Dependency Graph visualizes the relationships between scenes, scripts, resources, and assets to help users understand the project structure and detect risks such as missing/cyclic dependencies.
+Build and visualize directed relationships among Godot scenes, scripts, resources and assets.
 
 ## Actors
 
-- Developer
-- Reviewer/QA
-- Viewer
+Viewer and higher roles; Worker generates graph.
 
-## Scope
+## Requirements
 
-- Display nodes and edges from `dependencies`.
-- Filter by type, depth, and root.
-- Focus mode for incoming/outgoing dependencies.
-- Highlight cyclic dependencies.
-- Direct editing of dependencies is out of scope.
+| ID | Requirement | Priority |
+|---|---|---|
+| FR-11 | Generate versioned dependency graph | Must |
+| FR-11.1 | Filter, search and traverse direct/multi-hop relationships | Must |
+| FR-11.2 | Detect missing and cyclic relationships | Must |
+| FR-11.3 | Calculate reverse impact for changed files | Must |
 
-## Functional Requirements
+## Main flow
 
-| ID | Requirement Name | Description | Priority | Actor |
-| --- | --- | --- | --- | --- |
-| FR-11 | Dependency Graph | Build and visualize dependency graphs between resources in a Godot project. | Must | Viewer+ |
-| BR-50 | Data Source | Graph data is read from the `dependencies` table generated from the server-side workspace, not from real-time local editor state. | Must | System |
-| BR-51 | Project Scope | The graph only displays data belonging to the current project. | Must | System |
-| BR-52 | Analyze Required | Projects that have not been analyzed display an empty state and an analyze action if authorized. | Must | Viewer+, Developer |
-| BR-53 | Client Layout | The graph layout uses a force-directed layout on the client. | Should | Frontend |
+1. Parser emits normalized entities/references.
+2. Graph builder creates typed nodes and edges.
+3. API returns a bounded subgraph based on root/filter/depth.
+4. UI supports zoom, pan, search and detail navigation.
+5. Incremental analysis uses reverse graph to expand affected scope.
 
-## Main Workflow
+## Error and edge cases
 
-1. User opens the Dependency Graph.
-2. Frontend calls the dependencies API with default filters.
-3. API returns nodes/edges filtered by project permissions.
-4. UI renders the graph, legend, and detail panel.
-5. User filters by file type, depth, or selects a root.
-6. User clicks a node to highlight incoming/outgoing edges.
-7. Cyclic dependencies are highlighted and linked to health issues if they exist.
+- Node/edge limit exceeded.
+- Missing target reference.
+- Cycle detected.
+- Baseline graph unavailable for impact analysis.
 
-## Dependency Types
+## Authorization and security
 
-| From | To | Relation |
-| --- | --- | --- |
-| Scene | Scene | `instances` |
-| Scene | Script | `attaches` |
-| Scene | Resource | `uses` |
-| Scene | Asset | `references` |
-| Script | Script | `extends`, `preload`, `load` |
-| Script | Scene | `preload`, `load` |
-| Script | Asset | `preload`, `load` |
-| Resource | Asset | `references` |
+- Graph queries are project/revision scoped.
+- Never return protected asset download URLs in graph payload.
+- Limit depth and node count to prevent denial of service.
 
-## Exceptions / Errors
+## Async processing and idempotency
 
-| Situation | HTTP Status | Error Code | Behavior |
-| --- | --- | --- | --- |
-| Project not analyzed | 409 / 200 empty | `ANALYZE_REQUIRED` | Empty state, CTA to analyze for Developer+. |
-| Root node does not exist | 404 | `DEPENDENCY_ROOT_NOT_FOUND` | Do not return the graph. |
-| Filter depth too large | 400 | `VALIDATION_ERROR` | Limit depth to avoid overly large responses. |
-| User lacks permission | 403 | `FORBIDDEN` | Do not return the graph. |
+- No module-specific durable job is created by read operations.
+- Writes, where present, use normal transaction/concurrency rules and do not perform hidden heavy work.
 
-## Acceptance Criteria
+## Acceptance criteria
 
-- AC-65: Opening the Dependency Graph displays an interactive graph with nodes and edges.
-- AC-66: Filtering by scene only shows scene nodes and relevant connections.
-- AC-67: If a cyclic dependency A -> B -> A exists, the cycle is highlighted.
-- AC-68: Clicking a node toggles a focus mode for incoming/outgoing edges.
-- AC-69: An unanalyzed project displays a message and a button to trigger analysis for Developer+.
+- `AC-FR-11-01`: Same metadata version yields same canonical graph.
+- `AC-FR-11-02`: Missing/cyclic edges are represented with evidence.
+- `AC-FR-11-03`: Impact results are validated against full-analysis corpus.
 
 ## Related API
 
-| Method | Path | Permission | Main Request | Main Response | Main Errors |
-| --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{projectId}/dependencies` | `viewer+` | root, depth, type | Graph nodes/edges | `ANALYZE_REQUIRED` |
-| GET | `/api/v1/projects/{projectId}/health/{reportId}/issues` | `viewer+` | issue type | Cycle/missing issues | `REPORT_NOT_FOUND` |
-| POST | `/api/v1/projects/{projectId}/analyze` | `developer+` | options | Analyze job | `PARSE_REQUIRED` |
+- `GET /revisions/{sha}/graph`, impact and export endpoints
 
-## Related Database Tables
+## Related data
 
-| Table | Role |
-| --- | --- |
-| `dependencies` | Graph edges and relation types. |
-| `scenes`, `scripts`, `resources`, `assets` | Node labels, types, and metadata. |
-| `health_issues` | Cyclic/missing issue links. |
-| `jobs` | Analyze job state. |
+- `analysis.dependency_graph_snapshots`, `analysis.dependency_graph_nodes`, `analysis.dependency_graph_edges`
 
-## Security / Authorization Notes
+## Tests and observability
 
-- The graph can reveal source/asset structures, so project RBAC must be enforced.
-- Query depth and page/size must be limited to prevent DoS.
-- APIs must not return server workspace paths.
+- Test suite: `TC-GRAPH-*`, including canonical output, cycles, missing edges, impact and bounds.
+- Metrics: node/edge count, graph build/query latency, truncation and impact-analysis fallback.
+- Large-graph tests enforce depth/node limits.

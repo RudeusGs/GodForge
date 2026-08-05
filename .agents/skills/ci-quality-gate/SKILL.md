@@ -1,41 +1,40 @@
 ---
 name: ci-quality-gate
-description: Skill for running CI quality gates locally before reporting completion.
+description: Run the required local quality gates before completion.
 ---
 
-# CI Quality Gate
+# Ci Quality Gate
 
-## When to Use
-Use this skill after implementing a feature, just before declaring the task completed, to ensure it won't break the build.
+## Use when
 
-## Required Reading
+Run the required local quality gates before completion.
+
+## Required reading
+
 - `docs/QUALITY_GATES.md`
+- `docs/DEFINITION_OF_DONE.md`
 
 ## Workflow
-1. Run backend build: `cd GodForge-BE && dotnet restore && dotnet build --no-restore`.
-2. Run backend tests: `cd GodForge-BE && dotnet test --no-build`.
-3. Run backend format verification: `cd GodForge-BE && dotnet format --verify-no-changes`.
-4. Run backend package vulnerability check: `cd GodForge-BE && dotnet list package --vulnerable`.
-5. Run frontend lint: `cd GodForge-FE && npm ci && npm run lint`.
-6. Run frontend typecheck: `cd GodForge-FE && npm run typecheck`.
-7. Run frontend tests: `cd GodForge-FE && npm run test:unit`.
-8. Run frontend build: `cd GodForge-FE && npm run build`.
-9. Run frontend audit: `cd GodForge-FE && npm audit --audit-level=critical`.
 
-## Mandatory Checks
-- Zero warnings on `dotnet build`.
-- Zero type errors on frontend.
-- All tests pass.
-- No package vulnerabilities in backend or critical audit failures in frontend.
-- If a command cannot run because the skeleton is not created yet, you must report it as "not runnable yet" and specify the milestone that will make it runnable.
+1. Run backend restore/format/build/tests.
+2. Run frontend install/lint/type-check/tests/build.
+3. Run migrations/integration/security tests relevant to change.
+4. Run documentation link check.
+5. Record exact commands and failures.
+6. Do not declare completion if a mandatory gate fails.
 
-## Forbidden Actions
-- Do not ignore warnings or bypass tests.
-- Do not use this skill to write code; only use it for verification.
-- Do not claim the gate passed if a command could not be run.
+## Mandatory checks
 
-## Completion Checklist
+- Clean checkout reproducibility.
+- No skipped mandatory test without reason.
+- No generated/secrets accidentally added.
+- Artifact/package versions recorded.
 
+## Forbidden
 
-## Output Expectations
-The agent must list the exact commands executed and their pass/fail/not-runnable-yet status.
+- Do not alter tests merely to make gates green without preserving requirements.
+- Do not report unrun checks as passed.
+
+## Completion output
+
+Provide command-by-command result, environment limits and blockers.

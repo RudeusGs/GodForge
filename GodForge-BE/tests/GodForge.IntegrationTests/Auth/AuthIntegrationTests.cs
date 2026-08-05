@@ -1,8 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using GodForge.Application.Common.Models;
-using GodForge.Application.Features.Auth.Commands.Login;
-using GodForge.Application.Features.Auth.DTOs;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -21,7 +18,7 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
     public async Task Login_WithInvalidCredentials_ReturnsUnauthorized()
     {
         // Arrange
-        var command = new LoginCommand("invalid@domain.com", "wrongpassword");
+        var command = new { Email = "invalid@domain.com", Password = "wrongpassword", DeviceName = "integration-test" };
 
         // Act
         var response = await _client.PostAsJsonAsync("/api/v1/auth/login", command);
@@ -31,7 +28,15 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task SendOtp_WithValidEmail_ReturnsAcceptedOrNoContent()
+    public async Task Refresh_WithoutCookie_ReturnsUnauthorized()
+    {
+        var response = await _client.PostAsync("/api/v1/auth/refresh", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SendOtp_WithValidEmail_ReturnsAccepted()
     {
         // Arrange
         var command = new { Email = "test@domain.com" };
@@ -40,9 +45,6 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/auth/register/send-otp", command);
 
         // Assert
-        // Standardize ApiResponse might return Ok(new { meta = ... })
-        // Either way, it should be a successful status code
-        Assert.True(response.IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
     }
 }
-

@@ -1,67 +1,45 @@
 import baseApi from '../baseApi';
 import type { ApiResponse } from '../api.models';
 import type {
+    AuthResponseDto,
+    ChallengeAcceptedDto,
+    ForgotPasswordPayload,
     LoginPayload,
     RegisterPayload,
-    RefreshPayload,
-    LogoutPayload,
     ResetPasswordPayload,
-    AuthResponseDto,
-    RefreshResponseDto
+    UserDto,
 } from './auth.models';
 
 const API_PREFIX = '/auth';
 
 export const authApi = {
-    /**
-     * Login with email and password
-     */
     login(payload: LoginPayload): Promise<ApiResponse<AuthResponseDto>> {
         return baseApi.post<ApiResponse<AuthResponseDto>>(`${API_PREFIX}/login`, payload);
     },
 
-    /**
-     * Send OTP for registration verification
-     */
-    sendOtp(email: string): Promise<ApiResponse<void>> {
-        return baseApi.post<ApiResponse<void>>(`${API_PREFIX}/register/send-otp`, { email });
+    sendOtp(email: string): Promise<ApiResponse<ChallengeAcceptedDto>> {
+        return baseApi.post<ApiResponse<ChallengeAcceptedDto>>(`${API_PREFIX}/register/send-otp`, { email });
     },
 
-    /**
-     * Register a new user
-     */
-    register(payload: RegisterPayload): Promise<ApiResponse<AuthResponseDto>> {
-        return baseApi.post<ApiResponse<AuthResponseDto>>(`${API_PREFIX}/register`, payload);
+    register(payload: RegisterPayload): Promise<ApiResponse<UserDto>> {
+        return baseApi.post<ApiResponse<UserDto>>(`${API_PREFIX}/register`, payload);
     },
 
-    /**
-     * Refresh access and refresh tokens
-     */
-    refresh(payload: RefreshPayload): Promise<ApiResponse<RefreshResponseDto>> {
-        return baseApi.post<ApiResponse<RefreshResponseDto>>(`${API_PREFIX}/refresh`, payload);
+    refresh(): Promise<ApiResponse<AuthResponseDto>> {
+        return baseApi.post<ApiResponse<AuthResponseDto>>(`${API_PREFIX}/refresh`);
     },
 
-    /**
-     * Logout and invalidate refresh token
-     */
-    logout(payload: LogoutPayload): Promise<ApiResponse<void>> {
-        return baseApi.post<ApiResponse<void>>(`${API_PREFIX}/logout`, payload);
+    logout(): Promise<void> {
+        return baseApi.post<void>(`${API_PREFIX}/logout`);
     },
 
-    /**
-     * Reset password using the token delivered by email.
-     */
-    resetPassword(payload: ResetPasswordPayload): Promise<ApiResponse<void>> {
-        return baseApi.post<ApiResponse<void>>(`${API_PREFIX}/reset-password`, payload);
+    resetPassword(payload: ResetPasswordPayload): Promise<void> {
+        return baseApi.post<void>(`${API_PREFIX}/reset-password`, payload);
     },
 
-    /**
-     * Request forgot password
-     */
-    forgotPassword(payload: { email: string }): Promise<ApiResponse<void>> {
-        return baseApi.post<ApiResponse<void>>(`${API_PREFIX}/forgot-password`, payload);
-    }
+    forgotPassword(payload: ForgotPasswordPayload): Promise<ApiResponse<ChallengeAcceptedDto>> {
+        return baseApi.post<ApiResponse<ChallengeAcceptedDto>>(`${API_PREFIX}/forgot-password`, payload);
+    },
 };
 
 export default authApi;
-

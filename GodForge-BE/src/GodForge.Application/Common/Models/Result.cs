@@ -19,6 +19,7 @@ public class Result
 
     public static Result Success() => new(true, null);
     public static Result Failure(ApplicationError error) => new(false, error);
+    public static implicit operator Result(ApplicationError error) => Failure(error);
 
     public TResult Match<TResult>(Func<TResult> onSuccess, Func<ApplicationError, TResult> onFailure)
     {

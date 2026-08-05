@@ -1,31 +1,41 @@
 ---
 name: architecture-decision
-description: Skill for proposing and recording architectural decisions.
+description: Propose, review or record a foundational architecture decision.
 ---
 
 # Architecture Decision
 
-## When to Use
-Use this skill when proposing a new technical direction, library choice, or fundamental structural change to GodForge.
+## Use when
 
-## Required Reading
+Propose, review or record a foundational architecture decision.
+
+## Required reading
+
 - `docs/ADR/README.md`
-- Existing ADRs in `docs/ADR/`
+- Existing ADRs
+- `docs/SRS/02-architecture.md`
+- `docs/THREAT_MODEL.md`
 
 ## Workflow
-1. Identify the architectural problem or opportunity.
-2. Draft a new ADR using the standard format (Status, Context, Decision, Consequences, Constraints).
-3. Update `docs/ADR/README.md` to index the new ADR.
 
-## Mandatory Checks
-- Must clearly define "Constraints enforced on AI agents".
-- Must explain the "Negative" consequences of the decision.
+1. Confirm the decision is architectural, not a local implementation detail.
+2. Describe context and alternatives.
+3. Record decision, positive and negative consequences.
+4. State constraints for implementation and AI agents.
+5. Update ADR index and affected SRS/security/operations docs.
+6. Obtain user approval before implementation.
 
-## Forbidden Actions
-- Do not implement the architectural change before the ADR is written and approved by the user.
+## Mandatory checks
 
-## Completion Checklist
+- Alternative and rejection rationale included.
+- Migration/compatibility and security impact included.
+- ADR status and supersession are correct.
 
+## Forbidden
 
-## Output Expectations
+- Do not implement before accepted.
+- Do not edit an accepted decision silently; supersede when meaning changes.
 
+## Completion output
+
+Provide ADR path, decision summary, consequences and affected docs/code areas.

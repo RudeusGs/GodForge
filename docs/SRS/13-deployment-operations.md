@@ -1,21 +1,45 @@
-# Deployment and Operations
+# 13. Deployment and Operations
 
-## Base services
+## Environments
 
-PostgreSQL, Redis, RabbitMQ and MinIO start with `docker compose up -d`. Forgejo starts only with `docker compose --profile hosted-git up -d`.
+- Local: Docker Compose dependencies, API/Worker/Frontend run locally.
+- Test/CI: ephemeral PostgreSQL and provider substitutes/containers.
+- Staging: production-like topology and sanitized datasets.
+- Production: managed or hardened services, protected secrets, TLS, monitoring and backups.
 
-## Secrets
+## Services
 
-Production uses a secret manager or injected environment variables. Never commit `.env`, provider tokens, JWT secrets, SMTP passwords or repository credentials.
+- Vue static frontend behind HTTPS reverse proxy/CDN.
+- ASP.NET Core API with readiness/liveness.
+- One or more Worker instances with job-type concurrency limits.
+- PostgreSQL, Redis, RabbitMQ, MinIO and Forgejo.
+- Optional OTLP collector, Prometheus/Grafana and centralized logs.
 
-## Worker
+## Production requirements
 
-API and worker are separate processes. Worker requires Git CLI and writable ephemeral workspace storage. Production should use a non-root container, disk quota, network egress policy, CPU/memory limits and scheduled workspace cleanup.
+- No example/default password or token.
+- TLS for external traffic and secure internal transport where environment supports it.
+- Trusted proxy/header configuration.
+- Database migrations run as controlled release step, not uncontrolled concurrent startup.
+- Forgejo registration disabled; provisioning through GodForge service account.
+- MinIO buckets private by default with lifecycle and versioning policy.
+- RabbitMQ durable queues, DLQ and access isolation.
+- Worker non-root, read-only base filesystem where possible, constrained CPU/memory/disk.
 
-## Observability
+## Scaling
 
-All API/job logs include correlation ID, job ID and repository ID where applicable. Metrics include queue depth, job duration, retries/DLQ, workspace bytes, parser duration, context size, AI tokens and provider failures. Logs never include source content or credentials.
+- API scales horizontally; no local business state.
+- Worker scales by queue/job type after lock/idempotency controls.
+- PostgreSQL read/query tuning precedes premature cache expansion.
+- Graph and report payloads move to artifacts when too large.
 
-## Backup
+## Release and rollback
 
-Back up PostgreSQL and MinIO. Forgejo repository storage requires its own backup policy once hosted Git is enabled. RabbitMQ is not the source of business state.
+- Use immutable artifacts and release version.
+- Back up before schema change.
+- Prefer forward fix for migrated database; application rollback only when schema-compatible.
+- Validate health, queue/outbox lag, error rate and critical workflow after release.
+
+## Recovery
+
+Follow `../BACKUP_RESTORE_RUNBOOK.md`, `../OPERATIONS_RUNBOOK.md` and `../INCIDENT_RESPONSE.md`.

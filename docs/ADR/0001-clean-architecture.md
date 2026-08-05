@@ -1,34 +1,35 @@
-# ADR 0001: Clean Architecture
+# ADR 0001: Clean Architecture boundaries
 
 ## Status
 Accepted
 
 ## Context
-GodForge is a complex platform dealing with Git operations, metadata parsing, and Godot project management. We need an architecture that ensures business logic is independent of UI, database, and external agencies, allowing for robust testing and maintainability.
+GodForge integrates HTTP, Git, PostgreSQL, Redis, RabbitMQ, MinIO, Forgejo, Gemini and filesystem processing. Without strict boundaries, business rules become coupled to frameworks and difficult to test.
 
 ## Decision
-We will use **Clean Architecture** combined with the **CQRS** pattern for the backend (.NET 9).
+Use these dependencies:
 
-The solution structure will strictly enforce the following dependency rule:
-- `GodForge.Domain` -> (No external dependencies)
-- `GodForge.Application` -> depends only on `GodForge.Domain`
-- `GodForge.Infrastructure` -> depends on `GodForge.Application` and `GodForge.Domain`
-- `GodForge.Api` -> depends on `GodForge.Application` and `GodForge.Infrastructure`
-- `GodForge.Worker` -> depends on `GodForge.Application` and `GodForge.Infrastructure`
+```text
+Domain -> no project dependency
+Application -> Domain
+Infrastructure -> Application + Domain
+Api -> Application + Infrastructure
+Worker -> Application + Infrastructure
+```
 
-CQRS is implemented using MediatR. Every use case must be represented by exactly one Command or Query.
+Domain owns invariants and state transitions. Application owns use cases, authorization decisions, interfaces and transaction intent. Infrastructure implements persistence and providers. API and Worker are delivery hosts.
 
 ## Consequences
 ### Positive
-- Business logic is completely decoupled from frameworks and infrastructure.
-- High testability of Domain and Application layers.
-- Clear separation of read vs. write operations.
+- Testable business logic and replaceable providers.
+- Shared use cases between API and Worker.
+- Reduced framework leakage.
 
 ### Negative
-- Initial development overhead (creating handlers, models, validation for each operation).
-- Data mapping is required between layers to avoid domain entities bleeding into the API.
+- More abstractions and mapping code.
+- Small changes may touch several layers.
 
-## Constraints enforced on AI agents
-- Never reference infrastructure components from Domain/Application.
-- Never add database `DbContext`, Redis, or RabbitMQ logic inside MediatR handlers directly.
-- API controllers must not contain business logic; they only act as routing and orchestration layers.
+## Constraints enforced on implementation and AI agents
+- No EF Core, HTTP, Git, queue, Redis, MinIO or Gemini dependency in Domain/Application.
+- Controllers and consumers orchestrate only.
+- Domain entities are never returned directly through APIs.

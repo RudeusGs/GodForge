@@ -55,7 +55,7 @@ public sealed class GetAiAdvisoryQueryHandlerTests
     {
         // Arrange
         var projectId = Guid.NewGuid();
-        var project = Project.Create("Test Project", "test-project", "Desc", "4.2.1", ProjectVisibility.Private, Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var project = Project.Create(Guid.NewGuid(), "Test Project", "test-project", "Desc", "4.2.1", ProjectVisibility.Private, Guid.NewGuid(), DateTimeOffset.UtcNow);
         _projectsMock.Setup(p => p.GetByIdAsync(projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(project);
 
@@ -78,7 +78,7 @@ public sealed class GetAiAdvisoryQueryHandlerTests
         // Arrange
         var projectId = Guid.NewGuid();
         var repositoryId = Guid.NewGuid();
-        var project = Project.Create("Test Project", "test-project", "Desc", "4.2.1", ProjectVisibility.Private, Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var project = Project.Create(Guid.NewGuid(), "Test Project", "test-project", "Desc", "4.2.1", ProjectVisibility.Private, Guid.NewGuid(), DateTimeOffset.UtcNow);
         _projectsMock.Setup(p => p.GetByIdAsync(projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(project);
 
@@ -92,7 +92,7 @@ public sealed class GetAiAdvisoryQueryHandlerTests
             "health-overview-v1",
             "hash123",
             DateTimeOffset.UtcNow.AddMinutes(-5));
-        
+
         run.MarkCompleted("Great repo", 1000, 500, null, null, DateTimeOffset.UtcNow);
 
         _aiRepositoryMock.Setup(a => a.GetLatestByProjectAsync(projectId, It.IsAny<CancellationToken>()))
@@ -124,7 +124,7 @@ public sealed class GetAiAdvisoryQueryHandlerTests
         Assert.Equal(run.Id, result.Value.Advisory.Id);
         Assert.Equal("gemini", result.Value.Advisory.Provider);
         Assert.Equal("completed", result.Value.Advisory.Status);
-        
+
         Assert.Single(result.Value.Findings);
         Assert.Equal("warning", result.Value.Findings[0].Severity);
         Assert.Equal("Missing script", result.Value.Findings[0].Title);

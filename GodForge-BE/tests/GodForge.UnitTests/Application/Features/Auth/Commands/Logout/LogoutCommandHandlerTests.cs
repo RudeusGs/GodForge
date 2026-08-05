@@ -1,6 +1,5 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.Commands.Logout;
 using GodForge.Domain.Entities.Identity;
 using Moq;
@@ -10,78 +9,67 @@ namespace GodForge.UnitTests.Application.Features.Auth.Commands.Logout;
 
 public class LogoutCommandHandlerTests
 {
-    private readonly Mock<ICurrentUser> _mockCurrentUser;
-    private readonly Mock<ITokenBlacklistService> _mockTokenBlacklistService;
-    private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepository;
-    private readonly Mock<ITokenService> _mockTokenService;
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
-    private readonly Mock<IClock> _mockClock;
+    private readonly Mock<ICurrentUser> _currentUser = new();
+    private readonly Mock<ITokenBlacklistService> _blacklist = new();
+    private readonly Mock<IUserSessionRepository> _sessions = new();
+    private readonly Mock<IRefreshTokenRepository> _refreshTokens = new();
+    private readonly Mock<IAuditWriter> _auditWriter = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IClock> _clock = new();
     private readonly LogoutCommandHandler _handler;
 
     public LogoutCommandHandlerTests()
     {
-        _mockCurrentUser = new Mock<ICurrentUser>();
-        _mockTokenBlacklistService = new Mock<ITokenBlacklistService>();
-        _mockRefreshTokenRepository = new Mock<IRefreshTokenRepository>();
-        _mockTokenService = new Mock<ITokenService>();
-        _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _mockClock = new Mock<IClock>();
-
         _handler = new LogoutCommandHandler(
-            _mockCurrentUser.Object,
-            _mockTokenBlacklistService.Object,
-            _mockRefreshTokenRepository.Object,
-            _mockTokenService.Object,
-            _mockUnitOfWork.Object,
-            _mockClock.Object);
+            _currentUser.Object,
+            _blacklist.Object,
+            _sessions.Object,
+            _refreshTokens.Object,
+            _auditWriter.Object,
+            _unitOfWork.Object,
+            _clock.Object);
     }
 
     [Fact]
-    public async Task Handle_WhenJtiExists_AddsToBlacklist()
+    public async Task Handle_RevokesCurrentSessionRefreshTokensAndBlacklistsAccessToken()
     {
-        // Arrange
-        var jti = Guid.NewGuid().ToString();
         var now = DateTimeOffset.UtcNow;
-        var exp = now.AddMinutes(10);
-        var command = new LogoutCommand(null);
-
-        _mockClock.Setup(c => c.UtcNow).Returns(now);
-        _mockCurrentUser.Setup(c => c.Jti).Returns(jti);
-        _mockCurrentUser.Setup(c => c.TokenExpiration).Returns(exp);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsSuccess);
-        _mockTokenBlacklistService.Verify(x => x.BlacklistTokenAsync(jti, It.Is<TimeSpan>(t => t.TotalMinutes > 9 && t.TotalMinutes <= 10), It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_WhenRefreshTokenProvided_DeletesFromDatabase()
-    {
-        // Arrange
         var userId = Guid.NewGuid();
-        var command = new LogoutCommand("my-refresh-token");
-        var now = DateTimeOffset.UtcNow;
+        var jti = Guid.NewGuid().ToString("N");
+        var session = UserSession.Create(userId, "browser", null, null, now.AddDays(30), now);
+        var sessionId = session.Id;
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _currentUser.Setup(x => x.GetId()).Returns(userId);
+        _currentUser.Setup(x => x.GetSessionId()).Returns(sessionId);
+        _currentUser.SetupGet(x => x.Jti).Returns(jti);
+        _currentUser.SetupGet(x => x.TokenExpiration).Returns(now.AddMinutes(10));
+        _sessions.Setup(x => x.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
 
-        _mockClock.Setup(c => c.UtcNow).Returns(now);
-        _mockCurrentUser.Setup(c => c.GetId()).Returns(userId);
+        var result = await _handler.Handle(new LogoutCommand(), CancellationToken.None);
 
-        _mockTokenService.Setup(x => x.HashRefreshToken("my-refresh-token"))
-            .Returns("hashed-token");
-
-        var tokenEntity = RefreshToken.Create(userId, "hashed-token", null, null, now.AddDays(1), now);
-
-        _mockRefreshTokenRepository.Setup(x => x.GetByHashAsync("hashed-token", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(tokenEntity);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
         Assert.True(result.IsSuccess);
-        _mockRefreshTokenRepository.Verify(x => x.DeleteAsync(tokenEntity, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        Assert.NotNull(session.RevokedAt);
+        _refreshTokens.Verify(x => x.RevokeAllForSessionAsync(sessionId, "logout", now, It.IsAny<CancellationToken>()), Times.Once);
+        _blacklist.Verify(x => x.BlacklistTokenAsync(jti, It.Is<TimeSpan>(t => t > TimeSpan.FromMinutes(9)), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSessionDoesNotBelongToUser_DoesNotRevokeEntityButStillRevokesTokenScope()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var currentUserId = Guid.NewGuid();
+        var foreignSession = UserSession.Create(Guid.NewGuid(), null, null, null, now.AddDays(1), now);
+
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _currentUser.Setup(x => x.GetId()).Returns(currentUserId);
+        _currentUser.Setup(x => x.GetSessionId()).Returns(foreignSession.Id);
+        _sessions.Setup(x => x.GetByIdAsync(foreignSession.Id, It.IsAny<CancellationToken>())).ReturnsAsync(foreignSession);
+
+        var result = await _handler.Handle(new LogoutCommand(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(foreignSession.RevokedAt);
+        _refreshTokens.Verify(x => x.RevokeAllForSessionAsync(foreignSession.Id, "logout", now, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

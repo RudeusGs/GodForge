@@ -22,35 +22,51 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
     public string? AvatarUrl { get; private set; }
     public string SecurityStamp { get; private set; } = default!;
     public string ConcurrencyStamp { get; private set; } = default!;
+    public long Version { get; private set; }
 
     public string? PasswordResetTokenHash { get; private set; }
     public DateTimeOffset? PasswordResetTokenExpiry { get; private set; }
 
     public DateTimeOffset? DeletedAt { get; private set; }
 
-    private User() { } // EF Core
+    private User() { }
 
     public static User Create(string email, string displayName, string passwordHash, DateTimeOffset now)
     {
+        var normalizedEmail = NormalizeEmail(email);
         return new User
         {
             Id = Guid.NewGuid(),
-            Email = email,
-            NormalizedEmail = email.ToUpperInvariant(),
-            DisplayName = displayName,
+            Email = email.Trim(),
+            NormalizedEmail = normalizedEmail,
+            DisplayName = displayName.Trim(),
             PasswordHash = passwordHash,
             SystemRole = SystemRole.User,
             Status = UserStatus.Active,
-            SecurityStamp = Guid.NewGuid().ToString(),
-            ConcurrencyStamp = Guid.NewGuid().ToString(),
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            ConcurrencyStamp = Guid.NewGuid().ToString("N"),
+            Version = 1,
             CreatedAt = now,
             UpdatedAt = now
         };
     }
 
+    public static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
+
+    public void MarkEmailVerified(DateTimeOffset now)
+    {
+        if (EmailVerifiedAt is null)
+        {
+            EmailVerifiedAt = now;
+            Touch(now);
+        }
+    }
+
     public void UpdateSystemRole(SystemRole role)
     {
         SystemRole = role;
+        Version++;
+        ConcurrencyStamp = Guid.NewGuid().ToString("N");
     }
 
     public void SoftDelete(DateTimeOffset now)
@@ -58,7 +74,7 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
         if (DeletedAt is not null) return;
         DeletedAt = now;
         Status = UserStatus.Deleted;
-        UpdatedAt = now;
+        Touch(now);
     }
 
     public void RecordLoginSuccess(DateTimeOffset now)
@@ -66,7 +82,9 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
         LastLoginAt = now;
         FailedLoginCount = 0;
         LockedUntil = null;
-        UpdatedAt = now;
+        if (Status == UserStatus.Locked)
+            Status = UserStatus.Active;
+        Touch(now);
     }
 
     public void RecordLoginFailure(DateTimeOffset now, int maxFailedAccessAttempts, TimeSpan lockoutTimeSpan)
@@ -77,7 +95,7 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
             LockedUntil = now.Add(lockoutTimeSpan);
             Status = UserStatus.Locked;
         }
-        UpdatedAt = now;
+        Touch(now);
     }
 
     public void Unlock(DateTimeOffset now)
@@ -85,15 +103,15 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
         FailedLoginCount = 0;
         LockedUntil = null;
         Status = UserStatus.Active;
-        UpdatedAt = now;
+        Touch(now);
     }
 
     public void UpdatePassword(string passwordHash, DateTimeOffset now)
     {
         PasswordHash = passwordHash;
         PasswordChangedAt = now;
-        SecurityStamp = Guid.NewGuid().ToString();
-        UpdatedAt = now;
+        SecurityStamp = Guid.NewGuid().ToString("N");
+        Touch(now);
     }
 
     public void SetPasswordResetToken(string tokenHash, DateTimeOffset expiry)
@@ -106,5 +124,12 @@ public sealed class User : BaseAuditableEntity, ISoftDeletable
     {
         PasswordResetTokenHash = null;
         PasswordResetTokenExpiry = null;
+    }
+
+    private void Touch(DateTimeOffset now)
+    {
+        Version++;
+        UpdatedAt = now;
+        ConcurrencyStamp = Guid.NewGuid().ToString("N");
     }
 }

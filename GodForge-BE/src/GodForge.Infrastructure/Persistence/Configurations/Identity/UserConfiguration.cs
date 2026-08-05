@@ -30,6 +30,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.AvatarUrl).HasColumnName("avatar_url").HasConversion<string>().HasMaxLength(500);
         builder.Property(u => u.SecurityStamp).HasColumnName("security_stamp").HasConversion<string>().HasMaxLength(100).IsRequired();
         builder.Property(u => u.ConcurrencyStamp).HasColumnName("concurrency_stamp").HasConversion<string>().HasMaxLength(100).IsRequired().IsConcurrencyToken();
+        builder.Property(u => u.Version).HasColumnName("version").IsRequired().HasDefaultValue(1L);
 
         builder.Property(u => u.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(u => u.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();

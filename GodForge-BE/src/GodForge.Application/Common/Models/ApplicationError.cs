@@ -17,6 +17,9 @@ public sealed record ApplicationError(string Code, string Message, ErrorType Typ
     public static ApplicationError Forbidden(string code, string message)
         => new(code, message, ErrorType.Forbidden);
 
+    public static ApplicationError TooManyRequests(string code, string message, object? details = null)
+        => new(code, message, ErrorType.TooManyRequests, details);
+
     public static ApplicationError Internal(string code, string message)
         => new(code, message, ErrorType.Internal);
 }

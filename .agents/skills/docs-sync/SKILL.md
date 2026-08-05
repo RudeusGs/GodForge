@@ -1,44 +1,43 @@
 ---
 name: docs-sync
-description: Skill for keeping documentation synchronized with code changes.
+description: Synchronize documentation after an approved behavior or architecture change.
 ---
 
-# Documentation Sync
+# Docs Sync
 
-## When to Use
-Use this skill whenever architectural, API, database, or security behavior changes in the codebase.
+## Use when
 
-## Required Reading
+Synchronize documentation after an approved behavior or architecture change.
+
+## Required reading
+
+- `docs/README.md`
 - `docs/SRS/README.md`
-- The relevant functional SRS file.
 - `docs/SRS/10-traceability.md`
-- `docs/SRS/11-testing-acceptance.md`
-- `docs/SRS/04-database.md` if DB changes.
-- `docs/SRS/05-api.md` if API changes.
-- `docs/SRS/06-security.md` if auth/RBAC/security changes.
-- `docs/SRS/12-worker-processing.md` if jobs/workers change.
-- `docs/ERROR_CODES.md` if errors change.
-- `docs/RBAC_MATRIX.md` if permissions change.
+- `docs/IMPLEMENTATION_STATUS.md`
 
 ## Workflow
-1. Identify the impacted subsystems (e.g., API, DB schema).
-2. Open the corresponding `docs/SRS/*` or `docs/*` files.
-3. Update the documentation to reflect the new reality.
-4. Ensure no contradictions exist with other docs.
 
-## Mandatory Checks
-- If an API changes, `05-api.md` and `OPENAPI_CONVENTIONS.md` must be updated.
-- If DB changes, `04-database.md` must be updated.
-- If errors change, `ERROR_CODES.md` must be updated.
-- If permissions change, `RBAC_MATRIX.md` must be updated.
+1. Identify affected product, functional, API, data, security, workflow, tests and operations docs.
+2. Preserve stable IDs.
+3. Update ADR when foundational.
+4. Update traceability and error/RBAC catalogs.
+5. Update implementation status only with evidence.
+6. Run local Markdown link/consistency check.
 
-## Forbidden Actions
-- Do not delete useful historical SRS context unless explicitly deprecated.
-- Do not introduce placeholder documentation (e.g. "TBD").
-- Do not weaken existing SRS constraints.
+## Mandatory checks
 
-## Completion Checklist
+- No contradictory Current/Target statements.
+- Routes/table/permission names consistent.
+- Deferred scope remains explicit.
+- No false compliance or production claim.
 
+## Forbidden
 
-## Output Expectations
-The agent must declare what files were updated and why they were updated to keep them in sync with codebase changes.
+- Do not update one isolated document only when behavior spans multiple contracts.
+- Do not renumber requirements.
+- Do not copy secrets into docs.
+
+## Completion output
+
+List docs changed, behavioral contract, unresolved conflict and implementation-status evidence.

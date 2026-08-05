@@ -1,14 +1,50 @@
-# Architecture Decision Records (ADRs)
+# Architecture Decision Records
 
-This directory contains Architecture Decision Records (ADRs) for the GodForge project.
+ADRs capture decisions that constrain implementation. Accepted ADRs are mandatory until superseded by a later ADR.
 
-An ADR is a short text file in a format similar to Alexandrian patterns that describes a set of architectural decisions. These decisions shape the system's design and ensure a shared understanding of its foundational principles across the team.
+## Status values
 
-GodForge requires strict adherence to these architecture decisions to prevent setup divergence, tech debt, and safety issues. If a new architectural change is needed, a new ADR must be drafted and approved before implementation.
+- Proposed
+- Accepted
+- Superseded
+- Rejected
+- Deprecated
 
 ## Index
 
-1. [ADR 0001: Clean Architecture](0001-clean-architecture.md)
-2. [ADR 0002: PostgreSQL as Source of Truth](0002-postgresql-as-source-of-truth.md)
-3. [ADR 0003: Async Job Processing](0003-async-job-processing.md)
-4. [ADR 0004: Git Workspace Safety](0004-git-workspace-safety.md)
+| ID | Decision | Status |
+|---|---|---|
+| 0001 | Clean Architecture boundaries | Accepted |
+| 0002 | PostgreSQL as durable business-state source of truth | Accepted |
+| 0003 | Durable asynchronous job processing | Accepted |
+| 0004 | Secure isolated Git workspaces | Accepted |
+| 0005 | Forgejo as hosted Git engine | Accepted |
+| 0006 | Deterministic analysis authoritative; AI advisory | Accepted |
+| 0007 | Single deployable worker host with logical workers | Accepted |
+| 0008 | Asset Vault and independent asset visibility | Accepted |
+| 0009 | Incremental analysis with full-analysis fallback | Accepted |
+| 0010 | Analysis versioning and idempotency identity | Accepted |
+| 0011 | Multi-tenant organization/project security boundary | Accepted |
+| 0012 | Outbox and inbox for production message reliability | Accepted |
+| 0013 | No execution of untrusted Godot projects | Accepted |
+
+## ADR template
+
+```markdown
+# ADR NNNN: Title
+
+## Status
+Proposed | Accepted | Superseded by ADR ...
+
+## Context
+
+## Decision
+
+## Consequences
+### Positive
+### Negative
+
+## Constraints enforced on implementation and AI agents
+
+## Validation
+```

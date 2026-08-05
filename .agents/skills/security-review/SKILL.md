@@ -1,36 +1,44 @@
 ---
 name: security-review
-description: Skill for performing security audits on GodForge features.
+description: Review a change against GodForge threat model and security requirements.
 ---
 
 # Security Review
 
-## When to Use
-Use this skill to audit features related to authentication, RBAC, secret storage, Git execution, or input validation.
+## Use when
 
-## Required Reading
+Review a change against GodForge threat model and security requirements.
+
+## Required reading
+
 - `docs/SRS/06-security.md`
-- `docs/RBAC_MATRIX.md`
-- `docs/ADR/0004-git-workspace-safety.md`
+- `docs/THREAT_MODEL.md`
+- `docs/SECURITY_TEST_PLAN.md`
+- `docs/DATA_CLASSIFICATION.md`
 
 ## Workflow
-1. Verify endpoint RBAC attributes.
-2. Check credential handling across logging and API responses.
-3. Ensure Git commands use sanitized inputs and distributed locks.
-4. Validate SQL queries against injection.
 
-## Mandatory Checks
-- Credentials must be encrypted at rest (e.g., AES-256-GCM).
-- JWT access token lifetime must be 15 minutes.
-- Parameterized SQL or EF Core must be used exclusively.
+1. Identify trust boundaries and data classes changed.
+2. Map relevant threats and abuse cases.
+3. Review authentication, authorization, input, output, secrets and logging.
+4. Review provider/workspace/message/object behavior.
+5. Add or update security tests.
+6. Record residual risk and required blockers.
 
-## Forbidden Actions
-- Do not return or log Git PATs, passwords, or tokens.
-- Do not allow path traversal vulnerabilities in artifact retrieval.
-- Do not allow raw shell execution for Git commands.
+## Mandatory checks
 
-## Completion Checklist
+- Cross-tenant checks.
+- SSRF/path/symlink/untrusted execution where relevant.
+- Prompt injection/redaction for AI.
+- Signed URL/upload checks for assets.
+- No Critical/High unresolved at release.
 
+## Forbidden
 
-## Output Expectations
+- Do not say “secure” without controls/tests.
+- Do not suppress a risk because feature is a thesis project.
+- Do not expose exploit secrets/data in report.
 
+## Completion output
+
+Provide findings by severity, evidence, remediation, residual risk and release recommendation.

@@ -8,20 +8,33 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
 {
     private readonly GodForgeDbContext _context;
 
-    public RefreshTokenRepository(GodForgeDbContext context)
+    public RefreshTokenRepository(GodForgeDbContext context) => _context = context;
+
+    public Task<RefreshToken?> GetByHashAsync(string hash, CancellationToken cancellationToken = default)
+        => _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hash, cancellationToken);
+
+    public Task AddAsync(RefreshToken token, CancellationToken cancellationToken = default)
+        => _context.RefreshTokens.AddAsync(token, cancellationToken).AsTask();
+
+    public async Task RevokeAllForSessionAsync(Guid sessionId, string reason, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
-        _context = context;
+        var tokens = await _context.RefreshTokens.Where(x => x.SessionId == sessionId && x.RevokedAt == null).ToListAsync(cancellationToken);
+        foreach (var token in tokens)
+            token.Revoke(now, reason);
     }
 
-    public async Task<RefreshToken?> GetByHashAsync(string hash, CancellationToken cancellationToken = default)
+    public async Task RevokeAllForFamilyAsync(Guid familyId, string reason, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
-        return await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.TokenHash == hash, cancellationToken);
+        var tokens = await _context.RefreshTokens.Where(x => x.FamilyId == familyId && x.RevokedAt == null).ToListAsync(cancellationToken);
+        foreach (var token in tokens)
+            token.Revoke(now, reason);
     }
 
-    public async Task AddAsync(RefreshToken token, CancellationToken cancellationToken = default)
+    public async Task RevokeAllForUserAsync(Guid userId, string reason, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
-        await _context.RefreshTokens.AddAsync(token, cancellationToken);
+        var tokens = await _context.RefreshTokens.Where(x => x.UserId == userId && x.RevokedAt == null).ToListAsync(cancellationToken);
+        foreach (var token in tokens)
+            token.Revoke(now, reason);
     }
 
     public Task DeleteAsync(RefreshToken token, CancellationToken cancellationToken = default)
@@ -32,10 +45,7 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
 
     public async Task DeleteAllForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var tokens = await _context.RefreshTokens
-            .Where(token => token.UserId == userId)
-            .ToListAsync(cancellationToken);
+        var tokens = await _context.RefreshTokens.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         _context.RefreshTokens.RemoveRange(tokens);
     }
 }
-

@@ -17,7 +17,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          global-json-file: GodForge-BE/global.json
       - name: Restore dependencies
         working-directory: GodForge-BE
         run: dotnet restore
@@ -44,13 +44,7 @@ jobs:
           node-version: 22
       - name: Install dependencies
         working-directory: GodForge-FE
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            echo "package-lock.json is missing; using npm install for this build"
-            npm install --no-audit --no-fund
-          fi
+        run: npm install --no-audit --no-fund
       - name: Lint
         working-directory: GodForge-FE
         run: npm run lint

@@ -1,80 +1,93 @@
 using System.Net;
-using System.Security.Cryptography;
-using System.Text;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Features.Auth.DTOs;
+using GodForge.Domain.Entities.Identity;
 using MediatR;
 
 namespace GodForge.Application.Features.Auth.Commands.ForgotPassword;
 
-public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordCommand, Result>
+public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordCommand, Result<ChallengeAcceptedDto>>
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
+    private static readonly TimeSpan Lifetime = TimeSpan.FromHours(1);
+    private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(60);
+    private readonly IUserRepository _users;
+    private readonly IAuthChallengeRepository _challenges;
+    private readonly ISecretHashService _secretHash;
+    private readonly ITokenService _tokens;
+    private readonly IEmailOutbox _emailOutbox;
     private readonly IFrontendUrlBuilder _frontendUrlBuilder;
+    private readonly IAuditWriter _auditWriter;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
     public ForgotPasswordCommandHandler(
-        IUserRepository userRepository,
-        IEmailService emailService,
+        IUserRepository users,
+        IAuthChallengeRepository challenges,
+        ISecretHashService secretHash,
+        ITokenService tokens,
+        IEmailOutbox emailOutbox,
         IFrontendUrlBuilder frontendUrlBuilder,
+        IAuditWriter auditWriter,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
-        _userRepository = userRepository;
-        _emailService = emailService;
+        _users = users;
+        _challenges = challenges;
+        _secretHash = secretHash;
+        _tokens = tokens;
+        _emailOutbox = emailOutbox;
         _frontendUrlBuilder = frontendUrlBuilder;
+        _auditWriter = auditWriter;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
 
-    public async Task<Result> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ChallengeAcceptedDto>> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
+        var user = await _users.GetByEmailAsync(request.Email, cancellationToken);
         if (user is null)
+            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
+
+        var now = _clock.UtcNow;
+        var challenge = await _challenges.GetActiveAsync(user.NormalizedEmail, AuthChallengePurposes.PasswordReset, cancellationToken);
+        if (challenge is not null && challenge.IsInCooldown(now))
         {
-            // Do not reveal that the email doesn't exist
-            return Result.Success();
+            var remaining = Math.Max(1, (int)Math.Ceiling((challenge.ResendAvailableAt - now).TotalSeconds));
+            return new ChallengeAcceptedDto(true, remaining);
         }
 
-        var tokenBytes = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(tokenBytes);
-        var token = Convert.ToBase64String(tokenBytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        var rawToken = _tokens.GenerateRefreshToken();
+        var tokenHash = _secretHash.Hash(rawToken);
+        if (challenge is null)
+        {
+            challenge = AuthChallenge.Create(user.NormalizedEmail, AuthChallengePurposes.PasswordReset, tokenHash, now, Lifetime, Cooldown);
+            await _challenges.AddAsync(challenge, cancellationToken);
+        }
+        else
+        {
+            challenge.ReplaceSecret(tokenHash, now, Lifetime, Cooldown);
+        }
 
-        using var sha256 = SHA256.Create();
-        var tokenHashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
-        var tokenHash = Convert.ToBase64String(tokenHashBytes);
-
-        user.SetPasswordResetToken(tokenHash, _clock.UtcNow.AddHours(1));
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        var resetLink = _frontendUrlBuilder.BuildPasswordResetUrl(user.Email, token);
-        var safeDisplayName = WebUtility.HtmlEncode(user.DisplayName);
-        var safeResetLink = WebUtility.HtmlEncode(resetLink);
-
-        string emailSubject = "GodForge - Password Reset";
-        string emailBody = $@"
-<div style=""font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e4e4e7; border-radius: 8px; background-color: #fafafa;"">
-    <h2 style=""color: #0f172a; margin-bottom: 16px;"">Password Reset Request</h2>
-    <p style=""color: #334155; font-size: 16px; line-height: 24px;"">Hello {safeDisplayName},</p>
-    <p style=""color: #334155; font-size: 16px; line-height: 24px;"">You recently requested to reset your password for your GodForge account. Click the button below to reset it:</p>
-    <div style=""margin: 24px 0; text-align: center;"">
-        <a href=""{safeResetLink}"" style=""background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;"">Reset Password</a>
-    </div>
-    <p style=""color: #64748b; font-size: 14px; line-height: 20px;"">Or copy and paste this link into your browser:</p>
-    <p style=""color: #3b82f6; font-size: 14px; word-break: break-all;"">{safeResetLink}</p>
-    <p style=""color: #64748b; font-size: 14px; line-height: 20px;"">This link will expire in 1 hour. If you did not make this request, you can safely ignore this email.</p>
-    <hr style=""border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;"" />
-    <p style=""color: #94a3b8; font-size: 12px; text-align: center;"">© {DateTime.UtcNow.Year} GodForge. All rights reserved.</p>
-</div>";
-
-        await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody, cancellationToken);
-
-        return Result.Success();
+        var resetLink = _frontendUrlBuilder.BuildPasswordResetUrl(user.Email, rawToken);
+        var body = $"<h2>Password reset</h2><p>Hello {WebUtility.HtmlEncode(user.DisplayName)},</p><p><a href=\"{WebUtility.HtmlEncode(resetLink)}\">Reset your password</a>.</p><p>This link expires in 1 hour.</p>";
+        await _emailOutbox.EnqueueAsync(user.Email, "GodForge - Password reset", body, request.CorrelationId, cancellationToken);
+        await _auditWriter.WriteSecurityAsync(user.Id, "auth.password_reset_requested", "informational", null, cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_auth_challenges_active_scope")
+        {
+            _unitOfWork.ClearTrackedChanges();
+            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            _unitOfWork.ClearTrackedChanges();
+            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
+        }
+        return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
     }
 }
-

@@ -1,43 +1,20 @@
-# Stabilization Report — Blueprint FixPack v2
+# Stabilization Report
 
-Date: 2026-07-15
+## Repository snapshot observations
 
-## Current status
+- Backend uses .NET 9 projects for API, Application, Domain, Infrastructure and Worker.
+- Authentication, projects, repository link/analyze endpoints, job foundation and analysis entities are present.
+- Frontend currently demonstrates authentication foundation; product modules are incomplete.
+- Local Compose provides PostgreSQL, Redis, RabbitMQ, MinIO and optional Forgejo.
+- Many target entities/configurations exist, but presence does not prove complete workflows.
 
-**Structurally stabilized, but not merge-ready until the machine-level quality gates pass.**
+## Documentation stabilization completed
 
-The repository has been aligned to the Blueprint direction: linked Git repository, durable job state, RabbitMQ worker pipeline, deterministic analysis, bounded/redacted AI context, and optional Gemini advisory. The second review removed stale placeholder implementations and corrected critical job, auth, Git-workspace, and AI-cache behavior.
+- Product scope and architecture are internally aligned.
+- ADR index includes Asset Vault, incremental analysis, tenant security, outbox/inbox and no-untrusted-execution decisions.
+- Functional requirements, database model, APIs, security, workflows, testing and operations are synchronized at target-design level.
+- Current-versus-target state is explicit.
 
-## Completed in source
+## Code validation still required
 
-- RabbitMQ publisher and consumer use the same queue/DLQ topology; publisher confirms are enabled.
-- Repository analysis no longer reuses a stale job based on the last synchronized commit.
-- Worker retry/cancellation/terminal-state handling has been corrected.
-- AI failed runs can be retried and only completed runs are reused.
-- Password reset has one persistence model, a working frontend route, session revocation, and JWT security-stamp validation.
-- External Git URLs are HTTPS-only, non-interactive, and private-network targets are denied by default.
-- Parser/context traversal skips reparse points and secret redaction covers common structured formats.
-- Project slug generation is Unicode-aware and consistent with database constraints.
-- CI now requires a committed frontend lockfile instead of silently producing a different dependency graph.
-
-## Mandatory unresolved validation
-
-The current execution environment used for this source review did not contain .NET 9 or Docker and did not have package-registry network access. Therefore this report does **not** claim that build, tests, EF migration, Docker Compose, RabbitMQ, Forgejo, Gemini, or npm installation passed.
-
-Before merge:
-
-1. Generate and commit `GodForge-FE/package-lock.json`.
-2. Generate and review the EF blueprint baseline/forward migration.
-3. Run `dotnet format`, build, tests, coverage, and vulnerability checks.
-4. Run frontend lint, typecheck, unit tests, build, and audit with `npm ci`.
-5. Execute the linked-repository smoke test with PostgreSQL, Redis, RabbitMQ, and MinIO.
-
-## Production blockers still deferred
-
-- Transactional DB outbox dispatcher.
-- Distributed repository lock for multiple worker instances.
-- Private repository credential vault and rotation.
-- Forgejo permission synchronization and signed webhook vertical slice.
-- Production observability, backup/restore, and retention verification.
-
-See `docs/MERGE_READINESS.md`, `docs/MILESTONES.md`, and the FixPack `VALIDATION.md` for the exact exit gates.
+Before implementation status can be advanced, run clean restore/build/test, migration, local dependency health, end-to-end API/worker flow and security regression. This documentation package intentionally does not modify or execute project code.

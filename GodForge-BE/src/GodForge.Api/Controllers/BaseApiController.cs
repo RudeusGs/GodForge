@@ -46,6 +46,7 @@ public abstract class BaseApiController : ControllerBase
             ErrorType.Conflict => Conflict(errorResponse),
             ErrorType.Unauthorized => Unauthorized(errorResponse),
             ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, errorResponse),
+            ErrorType.TooManyRequests => StatusCode(StatusCodes.Status429TooManyRequests, errorResponse),
             _ => StatusCode(StatusCodes.Status500InternalServerError, errorResponse)
         };
     }
@@ -65,6 +66,7 @@ public abstract class BaseApiController : ControllerBase
             ErrorType.Conflict => Conflict(errorResponse),
             ErrorType.Unauthorized => Unauthorized(errorResponse),
             ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, errorResponse),
+            ErrorType.TooManyRequests => StatusCode(StatusCodes.Status429TooManyRequests, errorResponse),
             _ => StatusCode(StatusCodes.Status500InternalServerError, errorResponse)
         };
     }

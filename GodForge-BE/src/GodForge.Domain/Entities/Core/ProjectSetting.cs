@@ -5,30 +5,39 @@ namespace GodForge.Domain.Entities.Core;
 public sealed class ProjectSetting : BaseAuditableEntity
 {
     public Guid ProjectId { get; private set; }
-    public string DefaultRole { get; private set; } = default!;
-    public string Visibility { get; private set; } = default!;
-    public string? FeaturesJson { get; private set; }
+    public string AnalysisProfileKey { get; private set; } = default!;
+    public bool AiAdvisoryEnabled { get; private set; }
+    public string DefaultAssetVisibility { get; private set; } = default!;
+    public int NotificationPolicyVersion { get; private set; }
+    public long Version { get; private set; }
 
-    private ProjectSetting() { } // EF Core
+    private ProjectSetting() { }
 
     public static ProjectSetting Create(Guid projectId, DateTimeOffset now)
-    {
-        return new ProjectSetting
+        => new()
         {
             Id = Guid.NewGuid(),
             ProjectId = projectId,
-            DefaultRole = "viewer",
-            Visibility = "private",
+            AnalysisProfileKey = "current-default-v1",
+            AiAdvisoryEnabled = false,
+            DefaultAssetVisibility = "private",
+            NotificationPolicyVersion = 1,
+            Version = 1,
             CreatedAt = now,
             UpdatedAt = now
         };
-    }
 
-    public void Update(string defaultRole, string visibility, string? featuresJson, DateTimeOffset now)
+    public void Update(string analysisProfileKey, bool aiAdvisoryEnabled, string defaultAssetVisibility, int notificationPolicyVersion, long expectedVersion, DateTimeOffset now)
     {
-        DefaultRole = defaultRole;
-        Visibility = visibility;
-        FeaturesJson = featuresJson;
+        if (Version != expectedVersion)
+            throw new InvalidOperationException("Concurrency version mismatch.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(analysisProfileKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(defaultAssetVisibility);
+        AnalysisProfileKey = analysisProfileKey.Trim();
+        AiAdvisoryEnabled = aiAdvisoryEnabled;
+        DefaultAssetVisibility = defaultAssetVisibility.Trim().ToLowerInvariant();
+        NotificationPolicyVersion = notificationPolicyVersion;
+        Version++;
         UpdatedAt = now;
     }
 }

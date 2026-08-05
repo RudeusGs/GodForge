@@ -1,22 +1,50 @@
-# Scope
+# 1. Scope
 
-## MVP in scope
+## 1.1 Core release — Must
 
-- Authentication, projects, members and project-scoped RBAC.
-- External linked HTTP(S) Git repository.
-- Async clone/fetch, revision snapshot and job monitoring.
-- Branch/commit/file read views with size and content-type limits.
-- Deterministic Godot parser for `project.godot`, `.tscn`, `.tres` and `.gd`.
-- Health rules, dependency graph and revision history.
-- Bounded, redacted context generation.
-- Manual Gemini advisory report with structured output and evidence references.
-- Optional hosted Git through Forgejo after linked-repository pipeline is stable.
+- Identity, secure sessions, organizations, projects, members and RBAC.
+- External linked repository and Forgejo-hosted repository.
+- Clone/push/pull through Git engine; branch, commit, tree and text-blob browsing.
+- Signed webhook and manual synchronization.
+- Durable job system, outbox/inbox, retry, cancellation, timeout, DLQ and repository locks.
+- Godot validation gateway.
+- Deterministic parser and normalized metadata.
+- Scene/asset explorers, dependency graph and health analysis.
+- Incremental analysis with safe full-analysis fallback.
+- Gemini advisory with redaction, limits, evidence and degraded mode.
+- Finding collaboration, activity, notifications and dashboard.
+- Asset Vault with independent visibility and signed download.
+- Revision comparison and report export.
+- Production deployment, observability, backup/restore and security/performance testing.
 
-## Explicit non-goals
+## 1.2 Advanced release — Should
 
-- Implementing Git Smart HTTP/SSH protocol.
-- Full GitHub replacement: Actions, Packages, Wiki, full Issues/PR engine.
-- Web IDE, local uncommitted-file watcher or merge-conflict editor.
-- Running/exporting untrusted games on API/worker hosts.
+- Protected-branch policy based on critical validation/health findings.
+- Godot Editor plugin or CLI for Asset Vault hydration and local validation.
+- Organization policies and quotas.
+- Malware scanning and asset preview generation.
+- Scheduled analysis and retention jobs.
+
+## 1.3 Extensions — Could
+
+- Repository chat over approved context.
+- More advanced GDScript semantic analysis.
+- Multi-provider AI abstraction.
+- Pull-request-like review focused on scene/health changes.
+- Self-hosted AI provider.
+
+## 1.4 Explicit non-goals
+
+- Custom Git Smart HTTP or SSH protocol implementation.
+- Full GitHub clone: Actions, Packages, Wiki, Marketplace and general-purpose issue/PR platform.
+- Web IDE or merge-conflict editor.
+- Running, building or exporting untrusted Godot projects in the standard API/worker environment.
 - Automatic AI code changes or automatic pushes.
-- Using Gemini as the health score source.
+- Claiming absolute security or zero vulnerability.
+
+## 1.5 Constraints
+
+- Initial worker deployment may be one host with logical workers.
+- Production-ready status requires outbox/inbox, permission reconciliation, backups and observability.
+- AI may be disabled per organization and cannot be required for deterministic reports.
+- Asset Vault hydration requires a client integration because Git clone alone cannot retrieve protected objects.

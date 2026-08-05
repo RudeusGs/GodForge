@@ -1,41 +1,41 @@
 ---
 name: code-review
-description: Skill for reviewing GodForge code for adherence to strict architecture and standards.
+description: Review code changes for correctness, architecture, security and maintainability.
 ---
 
 # Code Review
 
-## When to Use
-Use this skill when auditing existing code, or when the user asks you to review a PR or specific module.
+## Use when
 
-## Required Reading
-- `docs/SRS/02-architecture.md`
-- `docs/QUALITY_GATES.md`
+Review code changes for correctness, architecture, security and maintainability.
+
+## Required reading
+
 - `.agents/AGENTS.md`
+- Relevant SRS/ADR
+- `docs/DEFINITION_OF_DONE.md`
 
 ## Workflow
-1. Check architectural boundaries (e.g., Domain must not reference Infrastructure).
-2. Check error handling (no raw exceptions, use `SCREAMING_SNAKE_CASE` codes).
-3. Check RBAC enforcement on API endpoints.
-4. Check Git safety (distributed locks, sanitized input).
 
-## Mandatory Checks
-- Clean Architecture dependency violations.
-- Controller business logic (controllers must orchestrate, not decide).
-- Application/Domain infrastructure leakage.
-- Missing RBAC.
-- Missing tests.
-- Missing docs sync.
-- Secrets/logging issues.
-- Async job misuse (e.g., synchronous long operations in HTTP requests).
-- Migration risks (e.g., editing applied migrations).
-- Frontend permission-only security mistakes.
+1. Understand requirement and diff scope.
+2. Review behavior and failure paths before style.
+3. Check architecture boundaries, tenant authorization and data integrity.
+4. Check async/idempotency/resource cleanup.
+5. Check tests, observability and docs.
+6. Report actionable findings with severity and file/line evidence.
 
-## Forbidden Actions
-- Do not rubber-stamp code without checking documentation alignment.
+## Mandatory checks
 
-## Completion Checklist
+- Focus on defects and risks, not cosmetic churn.
+- Verify current code rather than trusting comments.
+- Distinguish blocker, high, medium and suggestion.
 
+## Forbidden
 
-## Output Expectations
-Provide a detailed review listing issues categorized by the mandatory checks above.
+- Do not approve based only on build success.
+- Do not request broad unrelated refactor.
+- Do not expose sensitive source/details outside review context.
+
+## Completion output
+
+Provide prioritized findings, questions, test gaps and approval/block recommendation.

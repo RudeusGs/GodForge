@@ -20,6 +20,7 @@ public class GodForgeDbContext : DbContext
     public GodForgeDbContext(DbContextOptions<GodForgeDbContext> options) : base(options) { }
 
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<AuthChallenge> AuthChallenges => Set<AuthChallenge>();
     public DbSet<AiAnalysisRun> AiAnalysisRuns => Set<AiAnalysisRun>();
     public DbSet<AiFinding> AiFindings => Set<AiFinding>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
@@ -51,6 +52,7 @@ public class GodForgeDbContext : DbContext
     public DbSet<HealthIssue> HealthIssues => Set<HealthIssue>();
     public DbSet<HealthIssueSuppression> HealthIssueSuppressions => Set<HealthIssueSuppression>();
     public DbSet<HealthReport> HealthReports => Set<HealthReport>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<HealthRule> HealthRules => Set<HealthRule>();
     public DbSet<HealthRuleVersion> HealthRuleVersions => Set<HealthRuleVersion>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
@@ -66,6 +68,8 @@ public class GodForgeDbContext : DbContext
     public DbSet<MigrationRun> MigrationRuns => Set<MigrationRun>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ParserDiagnostic> ParserDiagnostics => Set<ParserDiagnostic>();
     public DbSet<PreviewRequest> PreviewRequests => Set<PreviewRequest>();

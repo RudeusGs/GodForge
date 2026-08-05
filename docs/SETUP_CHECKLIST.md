@@ -1,16 +1,23 @@
-# Setup Checklist — Blueprint
+# Setup Checklist
 
-- [ ] `.env` created from `.env.example`; no secrets committed.
-- [ ] `docker compose config` succeeds.
-- [ ] PostgreSQL, Redis, RabbitMQ and MinIO are healthy.
-- [ ] Frontend `package-lock.json` generated and committed.
-- [ ] `dotnet restore`, build, test and format checks pass with zero warnings.
-- [ ] EF initial/forward migration is generated, reviewed and applied.
-- [ ] API `/health` returns 200.
-- [ ] Worker consumes `repository.pipeline`.
-- [ ] Public fixture repository can be linked and analyzed.
-- [ ] Job reaches `completed`, `retrying` or `dead_lettered` consistently.
-- [ ] `.env`/private-key fixture does not appear in generated AI context.
-- [ ] Gemini disabled mode completes deterministic output.
-- [ ] Removed project member cannot read repository/jobs.
-- [ ] Forgejo profile remains disabled until signed webhook and permission-sync tests pass.
+## Local
+
+- [ ] Copy `.env.example` to `.env` and replace defaults where required.
+- [ ] Start PostgreSQL, Redis, RabbitMQ and MinIO.
+- [ ] Start Forgejo profile only when hosted Git is tested.
+- [ ] Restore backend and frontend dependencies.
+- [ ] Apply migrations or run the documented local initialization path.
+- [ ] Run unit and integration tests.
+- [ ] Verify health endpoints.
+
+## Production preparation
+
+- [ ] Replace every example secret.
+- [ ] Configure TLS and trusted proxy behavior.
+- [ ] Configure object buckets and lifecycle rules.
+- [ ] Configure Forgejo service account, webhook secret and backups.
+- [ ] Configure outbox dispatcher and DLQ monitoring.
+- [ ] Configure OpenTelemetry, dashboards and alerts.
+- [ ] Verify PostgreSQL, MinIO and Forgejo backup/restore.
+- [ ] Run security and load test plans.
+- [ ] Confirm retention and deletion policies.

@@ -3,10 +3,11 @@ using Microsoft.Extensions.Primitives;
 
 namespace GodForge.Api.Middleware;
 
-public class CorrelationIdMiddleware
+public sealed class CorrelationIdMiddleware
 {
-    private readonly RequestDelegate _next;
     private const string CorrelationIdHeaderName = "X-Correlation-Id";
+    private const int MaxCorrelationIdLength = 80;
+    private readonly RequestDelegate _next;
 
     public CorrelationIdMiddleware(RequestDelegate next)
     {
@@ -16,16 +17,13 @@ public class CorrelationIdMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var correlationId = GetCorrelationId(context);
-
         context.Items["CorrelationId"] = correlationId;
 
-        // Add to response header
         context.Response.OnStarting(() =>
         {
             if (!context.Response.Headers.ContainsKey(CorrelationIdHeaderName))
-            {
                 context.Response.Headers.Append(CorrelationIdHeaderName, correlationId);
-            }
+
             return Task.CompletedTask;
         });
 
@@ -34,11 +32,21 @@ public class CorrelationIdMiddleware
 
     private static string GetCorrelationId(HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue(CorrelationIdHeaderName, out StringValues correlationId) && !string.IsNullOrWhiteSpace(correlationId.ToString()))
+        if (!context.Request.Headers.TryGetValue(CorrelationIdHeaderName, out StringValues values) || values.Count != 1)
+            return CreateCorrelationId();
+
+        var candidate = values[0]?.Trim();
+        if (string.IsNullOrWhiteSpace(candidate) || candidate.Length > MaxCorrelationIdLength)
+            return CreateCorrelationId();
+
+        foreach (var character in candidate)
         {
-            return correlationId.ToString();
+            if (!char.IsAsciiLetterOrDigit(character) && character is not '.' and not '_' and not ':' and not '-')
+                return CreateCorrelationId();
         }
 
-        return Guid.NewGuid().ToString("N");
+        return candidate;
     }
+
+    private static string CreateCorrelationId() => Guid.NewGuid().ToString("N");
 }

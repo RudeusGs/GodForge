@@ -1,42 +1,29 @@
 # Scope Alignment Report
 
-## Executive Summary
-This report summarizes the documentation refactoring efforts undertaken to align the GodForge Software Requirements Specification (SRS) with its intended product identity: **a web-based project management and metadata observability platform for Godot projects.**
+## Decision baseline
 
-The alignment explicitly removes any implications that GodForge is a real-time local file watcher, a Git desktop client replacement, or a web-based Godot Editor.
+The documentation is aligned to the agreed direction:
 
-## Key Changes Made
+- GodForge is a specialized Git and intelligence platform for Godot, not a full GitHub clone.
+- Forgejo owns hosted Git protocols and objects.
+- GodForge owns validation, parser, health, graph, AI advisory, Asset Vault and team workflows.
+- Parser/rule-engine output is authoritative; Gemini is advisory.
+- Public source and protected assets are separated through MinIO plus manifest.
+- The graduation-project scope is intentionally broad but organized by milestone and completion gates.
+- Production claims require evidence, not entity/interface presence.
 
-1. **`README.md` & `docs/SRS/00-overview.md` & `docs/SRS/01-scope.md`**
-   - Added explicit **Non-Goals** clarifying that MVP does not include in-browser code/scene editing, running game builds, tracking uncommitted local changes, auto-syncing local files, or auto-resolving Git conflicts.
-   - Reframed Git operations as **"Repository Integration"** for the purpose of creating and analyzing server-side snapshots.
+## Major changes represented in this package
 
-2. **`docs/MILESTONES.md`**
-   - Updated the milestone roadmap to prioritize "Repository integration for analysis snapshots" over "Git UI workflows".
-   - Moved "Local Agent / Desktop Agent for local uncommitted change tracking" explicitly to **Future/Post-MVP Milestones**.
+- Organizations and multi-tenant boundaries added.
+- Hosted Git promoted into Core scope with permission reconciliation and signed webhooks.
+- Godot validation gateway specified.
+- Incremental analysis specified with correctness fallback.
+- Asset Vault and independent visibility specified.
+- Finding collaboration and report export specified.
+- Threat model, data classification, retention, observability, backup and incident runbooks added.
+- Thesis research/evaluation plan added.
+- Agent rules expanded to enforce docs-first and security discipline.
 
-3. **`docs/SRS/03-functional/git.md` (Repository Integration)**
-   - Renamed module conceptually to "Repository Integration".
-   - Removed all Git mutation workflows from the Web UI (e.g., stage, commit, push, pull, merge conflict resolution).
-   - Replaced these with a simplified "Sync Snapshot (Fetch)" workflow that updates server-side analysis snapshots from remote repositories.
+## No code change
 
-4. **`docs/SRS/05-api.md`**
-   - Removed API endpoints for Git mutation (`POST /git/stage`, `POST /git/commit`, `POST /git/push`, `POST /git/pull`, `POST /git/merge`).
-   - Rebranded the `### Git` section to `### Repositories` and exposed read-only snapshot/metadata APIs (`GET /repository/branches`, `GET /repository/commits`).
-
-5. **`docs/SRS/08-workflows.md`**
-   - Removed "Git Commit And Push" and "Pull With Conflict" workflows.
-   - Introduced "Sync Snapshot (Fetch)" workflow.
-   - Added MVP decision confirming manual conflict resolution occurs in user's local Git client, outside the GodForge Web UI.
-
-6. **`docs/SRS/09-ui-ux.md`**
-   - Replaced "Git UI" screen and capabilities with "Snapshot History" views.
-   - Removed dangerous Git operations (Push, Pull/Merge, Delete branch) from the confirmation dialogs list, substituting them with "Sync Snapshot" warnings.
-
-7. **Other Functional Documents (`parser.md`, `notification-activity.md`)**
-   - Adjusted activity log events from `git.commit`, `git.push`, etc., to `repo.sync`.
-   - Ensured the parser documentation correctly reflects that it triggers off snapshot syncs, not local file changes or Web UI commits.
-
-## Conclusion
-The GodForge documentation is now strictly aligned with the MVP scope. The development team can proceed with implementing the pagination rules and other features knowing the system boundaries are cleanly defined around remote snapshot analysis.
-
+This package changes documentation and `.agents` instructions only. `IMPLEMENTATION_STATUS.md` remains conservative and must be updated as code is implemented and verified.

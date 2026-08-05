@@ -1,41 +1,55 @@
-# 10. Traceability
+# 10. Traceability Matrix
 
-## Purpose
+This matrix maps stable requirements to acceptance criteria, API contracts, permissions, primary data and automated test families. Detailed endpoint/table definitions remain in module documents.
 
-Traceability mapping ensures that each requirement has corresponding API, database, UI, and test case representations. When requirements are added or modified, update this table and `11-testing-acceptance.md`.
+## 10.1 M1 implementation-ready traceability
 
-| Requirement ID | Module | API | Database | UI Screen | Test Case |
-| --- | --- | --- | --- | --- | --- |
-| FR-01 | Auth | `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout` | `users`, `refresh_tokens`, `activities` | Login | TC-AUTH-001 |
-| FR-02 | User/RBAC | `/api/v1/users`, `/api/v1/projects/{projectId}/members` | `users`, `project_members`, `activities` | Admin/User Management, Project Members | TC-AUTH-002 |
-| FR-03 | Project | `/api/v1/projects` | `projects`, `project_members`, `project_settings`, `activities` | Project List, Project Detail | TC-PROJ-001 |
-| FR-03.1 | Project Membership | `GET/POST/PUT/DELETE /api/v1/projects/{projectId}/members` | `project_members`, `users`, `activities` | Project Members | TC-PROJ-MEMBER-001 |
-| FR-04 | Repository | `POST /api/v1/projects/{projectId}/repository` | `repositories`, `jobs`, `activities` | Repository Settings | TC-REPO-001 |
-| FR-05 | Repository Sync | `POST /api/v1/projects/{projectId}/repository/sync` | `repositories`, `jobs`, `activities` | Snapshot History | TC-GIT-001 |
-| FR-06 | Commit History | `GET /api/v1/projects/{projectId}/repository/commits` | `repositories` | Snapshot History | TC-GIT-002 |
-| FR-07 | Branch Management | `GET /api/v1/projects/{projectId}/repository/branches` | `repositories`, `activities` | Snapshot History | TC-GIT-003 |
-| FR-08 | Parser | `POST /api/v1/projects/{projectId}/parse` | `jobs`, `scenes`, `scene_nodes`, `assets`, `scripts`, `resources`, `dependencies` | Jobs, Scene Explorer, Asset Explorer | TC-PARSE-001 |
-| FR-09 | Scene Explorer | `/api/v1/projects/{projectId}/scenes` | `scenes`, `scene_nodes`, `scripts`, `dependencies` | Scene Explorer | TC-SCENE-001 |
-| FR-10 | Asset Explorer | `/api/v1/projects/{projectId}/assets` | `assets`, `dependencies`, `health_issues` | Asset Explorer | TC-ASSET-001 |
-| FR-11 | Dependency Graph | `GET /api/v1/projects/{projectId}/dependencies` | `dependencies`, metadata tables, `health_issues` | Dependency Graph | TC-GRAPH-001 |
-| FR-12 | Project Health | `POST /api/v1/projects/{projectId}/analyze`, health endpoints | `health_reports`, `health_issues`, `jobs` | Health Report, Dashboard | TC-HEALTH-001 |
-| FR-13 | Scene Diff | `POST /api/v1/projects/{projectId}/diff/scene`, `GET /diff/{diffId}` | `jobs`, `scenes`, MinIO `diff-artifacts` | Scene Diff Viewer | TC-DIFF-001 |
-| FR-14 | Dashboard | `GET /api/v1/projects/{projectId}/dashboard` | `projects`, `repositories`, `jobs`, `activities`, health/metadata tables, Redis | Dashboard | TC-DASH-001 |
-| FR-15 | Search | `GET /api/v1/search` | `projects`, `project_members`, metadata tables | Global Search | TC-SEARCH-001 |
-| FR-16 | Notification | `/api/v1/notifications` | `notifications`, `jobs`, `project_members`, settings | Notification Center | TC-NOTIF-001 |
-| FR-17 | Settings | project/user settings endpoints | `project_settings`, `user_settings`, `activities` | Project Settings, User Menu | TC-SETTINGS-001 |
-| FR-17.1 | Project Settings | `GET/PUT /api/v1/projects/{projectId}/settings` | `project_settings`, `activities` | Project Settings | TC-SETTINGS-001 |
-| FR-17.2 | User Settings | `GET/PUT /api/v1/users/me/settings` | `user_settings` | User Menu | TC-SETTINGS-002 |
-| FR-18 | Activity Log | `/api/v1/projects/{projectId}/activities`, `/api/v1/activities` | `activities` | Activity Log, Admin Activity | TC-ACTIVITY-001 |
-| FR-19 | Jobs (`03-functional/jobs.md`) | `GET /api/v1/projects/{projectId}/jobs`<br>`GET /api/v1/projects/{projectId}/jobs/{jobId}`<br>`POST /api/v1/projects/{projectId}/jobs/{jobId}/cancel` | `ops.jobs` (see `12-worker-processing.md`) | Job list, Dashboard job widget, Job detail | TC-JOB-002, TC-JOB-003, TC-JOB-004, TC-JOB-005, TC-JOB-006, TC-JOB-007 (Project scoped RBAC) |
-| NFR-01..NFR-11 | Performance | API/worker metrics | Redis, PostgreSQL, RabbitMQ metrics | Dashboard, Jobs | TC-PERF-001 |
-| NFR-19..NFR-25 | Reliability | Job APIs, worker queues | `jobs`, RabbitMQ DLQ | Jobs, Operations | TC-RELIABILITY-001 |
-| NFR-23 | Worker Retry/DLQ | Job status APIs, worker queue consumers | `jobs.status`, RabbitMQ DLQ | Jobs, Operations | TC-JOB-001 |
-| NFR-41..NFR-46 | Security | Auth, project-scoped APIs | `users`, `refresh_tokens`, `activities` | All protected screens | TC-SEC-001 |
+| Requirement | Acceptance criteria | API contract | Primary permission | Primary data | Primary tests |
+|---|---|---|---|---|---|
+| `FR-01.1` | `AC-FR-01.1-01`, `AC-FR-01.1-02` | `05-api-contracts/auth.md`: registration OTP/register | anonymous with rate limit | users, auth_challenges, security/audit, outbox | `TC-AUTH-REG-*` |
+| `FR-01.2` | `AC-FR-01.2-01`, `AC-FR-01.2-02` | login | anonymous with abuse controls | users, sessions, login_events | `TC-AUTH-LOGIN-*` |
+| `FR-01.3` | `AC-FR-01.3-01`, `AC-FR-01.3-02` | refresh | active user/session/token family | refresh_tokens, sessions, security_events | `TC-AUTH-REFRESH-*` |
+| `FR-01.4` | `AC-FR-01.4-01`, `AC-FR-01.4-02` | logout/session list/revoke | own active session | sessions, refresh_tokens, audit | `TC-AUTH-SESSION-*` |
+| `FR-01.5` | `AC-FR-01.5-01`, `AC-FR-01.5-02` | forgot/reset password | valid challenge | auth_challenges, users, sessions, security_events | `TC-AUTH-RESET-*` |
+| `FR-01.6` | `AC-FR-01.6-01` | future MFA extension in auth contract | privileged account policy | future MFA tables | `TC-AUTH-MFA-*` |
+| `FR-27` | `AC-FR-27-01`, `AC-FR-27-02` | `05-api-contracts/organizations.md` | organization membership/role | organizations, organization_members, invitations | `TC-ORG-*`, `TC-TENANT-*` |
+| `FR-27.1` | `AC-FR-27.1-01`, `AC-FR-27.1-02` | project member add/update | `projectMembers.add/updateRole` | project_members composite tenant FKs | `TC-RBAC-MEMBERSHIP-*` |
+| `FR-27.2` | `AC-FR-27.2-01`, `AC-FR-27.2-02` | organization member suspend/remove | `organizationMembers.remove/updateRole` | organization_members, project_members, audit, outbox | `TC-ORG-MEMBER-REMOVE-*` |
+| `FR-27.3` | `AC-FR-27.3-01`, `AC-FR-27.3-02` | all organization/project routes | effective-permission evaluator | memberships/settings/policies | `TC-RBAC-*`, cross-tenant tests |
+| `FR-03` | `AC-FR-03-01` to `AC-FR-03-04` | `05-api-contracts/projects.md`: project CRUD/archive/restore | organization create/admin plus project role | projects, project_settings, project_members, audit/outbox | `TC-PROJ-*` |
+| `FR-03.1` | `AC-FR-03.1-01` to `AC-FR-03.1-03` | project membership/ownership | project membership permissions | project_members, audit, outbox | `TC-PROJ-MEMBER-*`, `TC-PROJ-OWNER-*` |
+| `FR-17` | `AC-FR-17-01` and `AC-FR-17.*` | project settings route; settings module | settings permission by scope | user/org/project settings | `TC-SET-*` |
 
-## Maintenance Rules
+M1 physical schema: `04-database-m1-physical.md`.
 
-- New requirements must have at least one API or workflow if they are user-facing.
-- Data-related requirements must update tables/schemas in `04-database.md`.
-- UI-related requirements must have screens or states in `09-ui-ux.md`.
-- `Must` requirements must have high-priority test cases in `11-testing-acceptance.md`.
+## 10.2 Remaining module traceability
+
+| Requirement | Module | Primary API group | Primary data | Primary tests |
+|---|---|---|---|---|
+| `FR-04` to `FR-07`, `FR-21` | Repository/Git | repository, branches, commits, webhooks | repo tables, Forgejo | `TC-REPO-*`, `TC-WEBHOOK-*` |
+| `FR-20.*` | Validation | revision validation | validation runs/findings | `TC-VALID-*` |
+| `FR-08.*` | Parser | analysis pipeline/read models | metadata tables | `TC-PARSER-*` |
+| `FR-09.*` | Scene Explorer | revision scenes | scene metadata | `TC-SCENE-*` |
+| `FR-10.*` | Asset Explorer | revision assets | asset metadata | `TC-ASSET-EXP-*` |
+| `FR-11.*` | Dependency Graph | revision graph/impact | graph tables | `TC-GRAPH-*` |
+| `FR-12.*`, `FR-26` | Health/Incremental | health, analysis | analysis tables | `TC-HEALTH-*`, `TC-INCR-*` |
+| `FR-22.*` | AI Advisory | AI trigger/report | AI run/finding | `TC-AI-*` |
+| `FR-23.*` | Asset Vault | project assets/manifest/download | storage asset tables, MinIO | `TC-VAULT-*` |
+| `FR-24.*` | Finding Collaboration | finding state/comments | collaboration tables | `TC-FIND-*` |
+| `FR-13.*` | Diff | comparison endpoints | scene diff/artifact | `TC-DIFF-*` |
+| `FR-19.*` | Jobs | jobs/cancel/retry | ops tables, RabbitMQ | `TC-JOB-*` |
+| `FR-16`, `FR-18.*` | Notifications/Activity/Audit | notifications/activity/admin audit | collab/audit tables | `TC-NOTIF-*`, `TC-AUDIT-*` |
+| `FR-14.*` | Dashboard | dashboard | read models/cache | `TC-DASH-*` |
+| `FR-15.*` | Search | search | search tables | `TC-SEARCH-*` |
+| `FR-25.*` | Report Export | reports | report/artifact | `TC-REPORT-*` |
+| `FR-17.*` | Settings/Policies | settings/policies | settings/profile tables | `TC-SET-*` |
+| `SEC-01` to `SEC-34` | Security | all | all | `TC-SEC-*` |
+| `NFR-01` to `NFR-08` | Performance | read/analysis endpoints | query/metrics | `TC-PERF-*` |
+| `NFR-20` to `NFR-26` | Reliability | worker/jobs/providers | ops/outbox/inbox | `TC-REL-*` |
+
+## 10.3 Maintenance rules
+
+- Every new Must requirement has at least one objective `AC-*` and one automated `TC-*` mapping before implementation.
+- Every new endpoint/table maps to a functional requirement and permission.
+- A feature is not Complete in `../IMPLEMENTATION_STATUS.md` if traceability is incomplete.
+- Existing IDs are not reused. See `../REQUIREMENT_REGISTRY.md`.

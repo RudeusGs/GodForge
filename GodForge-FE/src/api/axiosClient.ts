@@ -8,6 +8,7 @@ const axiosClient = axios.create({
         'Content-Type': 'application/json',
     },
     timeout: 30000,
+    withCredentials: true,
 });
 
 function getStoredToken(key: string): string | null {
@@ -17,9 +18,12 @@ function getStoredToken(key: string): string | null {
 function clearStoredAuth(): void {
     for (const storage of [localStorage, sessionStorage]) {
         storage.removeItem('access_token');
-        storage.removeItem('refresh_token');
         storage.removeItem('auth_user');
     }
+}
+
+function getActiveStorage(): Storage {
+    return localStorage.getItem('access_token') ? localStorage : sessionStorage;
 }
 
 function redirectToLogin(): void {
@@ -63,17 +67,10 @@ axiosClient.interceptors.response.use(
     (response: AxiosResponse) => response.data,
     async (error: AxiosError) => {
         const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+        const isRefreshRequest = originalRequest?.url?.endsWith('/auth/refresh') ?? false;
 
-        if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+        if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isRefreshRequest) {
             originalRequest._retry = true;
-
-            const localRefreshToken = localStorage.getItem('refresh_token');
-            const refreshToken = localRefreshToken || sessionStorage.getItem('refresh_token');
-            if (!refreshToken) {
-                clearStoredAuth();
-                redirectToLogin();
-                return Promise.reject(error);
-            }
 
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
@@ -89,13 +86,15 @@ axiosClient.interceptors.response.use(
 
             isRefreshing = true;
             try {
-                const response = await axios.post(`${baseURL}/auth/refresh`, { refreshToken }, { timeout: 30000 });
+                const response = await axios.post(
+                    `${baseURL}/auth/refresh`,
+                    undefined,
+                    { timeout: 30000, withCredentials: true }
+                );
                 const newAccessToken = response.data.data.accessToken as string;
-                const newRefreshToken = response.data.data.refreshToken as string;
-                const storage = localRefreshToken ? localStorage : sessionStorage;
+                const storage = getActiveStorage();
 
                 storage.setItem('access_token', newAccessToken);
-                storage.setItem('refresh_token', newRefreshToken);
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                 resolveRefreshSubscribers(newAccessToken);
                 return axiosClient(originalRequest);

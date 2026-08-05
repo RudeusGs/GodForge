@@ -1,27 +1,22 @@
 # ADR 0005: Use Forgejo as the hosted Git engine
 
 ## Status
-
-Accepted.
+Accepted
 
 ## Context
-
-GodForge cần cho phép người dùng clone, push và pull repository nhưng mục tiêu sản phẩm là phân tích dự án Godot, không phải tự xây Git server. Việc tự triển khai Git Smart HTTP/SSH, object storage, refs, hooks và permission model tạo scope lớn và rủi ro bảo mật cao.
+Implementing Git Smart HTTP, SSH, pack negotiation, refs, hooks and object storage is high-risk and not the Godot-specific contribution.
 
 ## Decision
-
-- External linked repository tiếp tục dùng clone/fetch chuẩn.
-- Internal hosted repository được provision qua Forgejo API.
-- Forgejo chịu trách nhiệm Git protocol, object database, refs, SSH/HTTP authentication và webhook.
-- GodForge chịu trách nhiệm project/member mapping, analysis pipeline, metadata, report và product UI.
-- Application phụ thuộc vào `IHostedGitService`; Forgejo adapter nằm trong Infrastructure.
-
-## Rejected alternative
-
-Tự viết Git protocol server trong ASP.NET Core. Phương án này bị từ chối vì không tạo lợi thế sản phẩm và vượt scope MVP.
+Use Forgejo for hosted repository creation, clone, push, pull, branches, commits and Git authentication. GodForge provisions repositories, synchronizes permissions, validates signed webhooks and owns analysis/business workflows. External linked repositories remain supported through HTTPS adapters.
 
 ## Consequences
+### Positive
+- Standards-compliant Git behavior and reduced security surface.
 
-- Thêm một dependency triển khai nhưng giảm mạnh lượng code bảo mật nhạy cảm.
-- Cần outbox/permission synchronization trước khi bật hosted repository cho production.
-- Linked repository pipeline phải hoạt động độc lập với Forgejo.
+### Negative
+- Additional service, database, backups and provider reconciliation.
+
+## Constraints enforced on implementation and AI agents
+- Do not implement a custom Git protocol server.
+- Do not expose Forgejo admin tokens to clients.
+- Hosted Git is not production-ready until permission sync and webhook verification pass.

@@ -16,4 +16,7 @@ public class JwtSettings
 
     [Range(1, 100000, ErrorMessage = "JWT ExpiryMinutes must be greater than 0.")]
     public int ExpiryMinutes { get; set; } = 15;
+
+    [Range(1, 365, ErrorMessage = "JWT RefreshTokenDays must be between 1 and 365.")]
+    public int RefreshTokenDays { get; set; } = 30;
 }

@@ -6,9 +6,10 @@ public static class RolePermissions
 {
     public static IReadOnlySet<string> GetPermissionsForRole(ProjectRole role)
     {
-        var commonRead = new[]
+        var commonRead = new HashSet<string>(StringComparer.Ordinal)
         {
             Permissions.ProjectsRead,
+            Permissions.ProjectMembersRead,
             Permissions.RepositoryRead,
             Permissions.RevisionsRead,
             Permissions.AnalysisRead,
@@ -16,40 +17,35 @@ public static class RolePermissions
             Permissions.ActivityRead
         };
 
-        return role switch
+        switch (role)
         {
-            ProjectRole.Viewer => new HashSet<string>(commonRead),
-            ProjectRole.Reviewer => new HashSet<string>(commonRead),
-            ProjectRole.Developer => new HashSet<string>(commonRead)
-            {
-                Permissions.RepositorySync,
-                Permissions.AnalysisTrigger,
-                Permissions.JobsCancel
-            },
-            ProjectRole.ProjectAdmin => new HashSet<string>(commonRead)
-            {
-                Permissions.ProjectsUpdate,
-                Permissions.ProjectsMembersManage,
-                Permissions.RepositoryManage,
-                Permissions.RepositorySync,
-                Permissions.AnalysisTrigger,
-                Permissions.AnalysisManage,
-                Permissions.JobsCancel,
-                Permissions.SettingsUpdate
-            },
-            ProjectRole.ProjectOwner => new HashSet<string>(commonRead)
-            {
-                Permissions.ProjectsUpdate,
-                Permissions.ProjectsDelete,
-                Permissions.ProjectsMembersManage,
-                Permissions.RepositoryManage,
-                Permissions.RepositorySync,
-                Permissions.AnalysisTrigger,
-                Permissions.AnalysisManage,
-                Permissions.JobsCancel,
-                Permissions.SettingsUpdate
-            },
-            _ => new HashSet<string>()
-        };
+            case ProjectRole.Viewer:
+            case ProjectRole.Reviewer:
+                return commonRead;
+            case ProjectRole.Developer:
+                commonRead.UnionWith(new[] { Permissions.RepositoryPush, Permissions.RepositorySync, Permissions.AnalysisTrigger, Permissions.JobsCancel });
+                return commonRead;
+            case ProjectRole.Maintainer:
+                commonRead.UnionWith(new[]
+                {
+                    Permissions.ProjectsUpdate, Permissions.ProjectsArchive, Permissions.ProjectsRestore,
+                    Permissions.ProjectMembersAdd, Permissions.ProjectMembersUpdateRole, Permissions.ProjectMembersRemove,
+                    Permissions.RepositoryManage, Permissions.RepositoryPush, Permissions.RepositorySync,
+                    Permissions.AnalysisTrigger, Permissions.AnalysisManage, Permissions.JobsCancel, Permissions.SettingsUpdate
+                });
+                return commonRead;
+            case ProjectRole.ProjectOwner:
+                commonRead.UnionWith(new[]
+                {
+                    Permissions.ProjectsUpdate, Permissions.ProjectsArchive, Permissions.ProjectsRestore, Permissions.ProjectsDelete,
+                    Permissions.ProjectMembersAdd, Permissions.ProjectMembersUpdateRole, Permissions.ProjectMembersRemove,
+                    Permissions.ProjectMembersTransferOwnership, Permissions.RepositoryManage, Permissions.RepositoryPush,
+                    Permissions.RepositorySync, Permissions.AnalysisTrigger, Permissions.AnalysisManage,
+                    Permissions.JobsCancel, Permissions.SettingsUpdate
+                });
+                return commonRead;
+            default:
+                return new HashSet<string>(StringComparer.Ordinal);
+        }
     }
 }

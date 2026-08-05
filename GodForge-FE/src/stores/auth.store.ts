@@ -4,18 +4,13 @@ import { authApi } from '../api/auth/auth.api';
 import type { LoginPayload, RegisterPayload, UserDto } from '../api/auth/auth.models';
 
 const ACCESS_TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'auth_user';
 
-function getStoredValue(key: string): string | null {
-    return localStorage.getItem(key) || sessionStorage.getItem(key);
-}
-
 function getActiveStorage(): Storage | null {
-    if (localStorage.getItem(REFRESH_TOKEN_KEY)) {
+    if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
         return localStorage;
     }
-    if (sessionStorage.getItem(REFRESH_TOKEN_KEY)) {
+    if (sessionStorage.getItem(ACCESS_TOKEN_KEY)) {
         return sessionStorage;
     }
     return null;
@@ -37,7 +32,6 @@ function readStoredUser(storage: Storage | null): UserDto | null {
 function clearStoredAuth(): void {
     for (const storage of [localStorage, sessionStorage]) {
         storage.removeItem(ACCESS_TOKEN_KEY);
-        storage.removeItem(REFRESH_TOKEN_KEY);
         storage.removeItem(USER_KEY);
     }
 }
@@ -45,11 +39,10 @@ function clearStoredAuth(): void {
 export const useAuthStore = defineStore('auth', () => {
     const activeStorage = getActiveStorage();
     const initialAccessToken = activeStorage?.getItem(ACCESS_TOKEN_KEY) ?? null;
-    const initialRefreshToken = activeStorage?.getItem(REFRESH_TOKEN_KEY) ?? null;
 
     const user = ref<UserDto | null>(readStoredUser(activeStorage));
     const accessToken = ref<string | null>(initialAccessToken);
-    const isAuthenticated = ref<boolean>(Boolean(initialAccessToken && initialRefreshToken && user.value));
+    const isAuthenticated = ref<boolean>(Boolean(initialAccessToken && user.value));
 
     if (!isAuthenticated.value) {
         clearStoredAuth();
@@ -59,14 +52,12 @@ export const useAuthStore = defineStore('auth', () => {
 
     const setAuthData = (
         token: string,
-        refreshToken: string,
         userData: UserDto,
         rememberMe: boolean = true
     ) => {
         clearStoredAuth();
         const storage = rememberMe ? localStorage : sessionStorage;
         storage.setItem(ACCESS_TOKEN_KEY, token);
-        storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
         storage.setItem(USER_KEY, JSON.stringify(userData));
 
         accessToken.value = token;
@@ -76,14 +67,17 @@ export const useAuthStore = defineStore('auth', () => {
 
     const login = async (payload: LoginPayload, rememberMe: boolean = true) => {
         const response = await authApi.login(payload);
-        const { accessToken: token, refreshToken, user: userData } = response.data;
-        setAuthData(token, refreshToken, userData, rememberMe);
+        const { accessToken: token, user: userData } = response.data;
+        setAuthData(token, userData, rememberMe);
     };
 
     const register = async (payload: RegisterPayload) => {
-        const response = await authApi.register(payload);
-        const { accessToken: token, refreshToken, user: userData } = response.data;
-        setAuthData(token, refreshToken, userData, true);
+        await authApi.register(payload);
+        await login({
+            email: payload.email,
+            password: payload.password,
+            deviceName: 'GodForge Web',
+        }, true);
     };
 
     const clearAuthData = () => {
@@ -94,9 +88,8 @@ export const useAuthStore = defineStore('auth', () => {
     };
 
     const logout = async () => {
-        const refreshToken = getStoredValue(REFRESH_TOKEN_KEY);
         try {
-            await authApi.logout({ refreshToken });
+            await authApi.logout();
         } finally {
             clearAuthData();
         }

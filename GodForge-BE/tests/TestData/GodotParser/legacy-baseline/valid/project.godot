@@ -1,0 +1,6 @@
+; Legacy baseline project marker only. The current analyzer does not parse it.
+config_version=5
+
+[application]
+config/name="Legacy Baseline"
+run/main_scene="res://main.tscn"

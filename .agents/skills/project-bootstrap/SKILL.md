@@ -1,39 +1,43 @@
 ---
 name: project-bootstrap
-description: Skill for initializing and validating the structural integrity of the GodForge workspace and build pipeline.
+description: Prepare a clean GodForge development environment.
 ---
 
 # Project Bootstrap
 
-## When to Use
-Use this skill when initializing the repository, validating the environment setup, or modifying CI/CD build scripts.
+## Use when
 
-## Required Reading
-- `docs/SETUP_CHECKLIST.md`
-- `docs/QUALITY_GATES.md`
+Prepare a clean GodForge development environment.
+
+## Required reading
+
+- `docs/LOCAL_DEVELOPMENT.md`
 - `docs/ENVIRONMENT.md`
+- `docs/SETUP_CHECKLIST.md`
 
 ## Workflow
-1. Verify the existence of `.editorconfig`, `global.json`, `Directory.Build.props`, and `.env.example`.
-2. Validate Docker Compose configuration for backing services.
-3. Verify `dotnet build` and `npm run build` scripts.
-4. Establish CI/CD pipelines.
 
-## Mandatory Checks
-- Root files (`.editorconfig`, `global.json`, `Directory.Build.props`) must be present and correctly configured.
-- `.env.example` must contain keys for PostgreSQL, Redis, RabbitMQ, and MinIO but WITHOUT real secrets.
-- `docker-compose.yml` must start correctly.
-- Solution/project creation for backend (`GodForge-BE`) and frontend (`GodForge-FE`) Vite setup must be valid.
-- Backend test projects must be linked properly.
-- API Health checks must be implemented.
-- CI workflow and quality gates must be validated.
+1. Verify SDK/runtime/tool prerequisites.
+2. Copy environment template without committing secrets.
+3. Start required Compose services.
+4. Restore/build backend and frontend.
+5. Apply/test database initialization.
+6. Run health checks and smoke tests.
+7. Document platform-specific issues.
 
-## Forbidden Actions
-- Do not commit real secrets or passwords to Git.
-- Do not bypass linter errors.
+## Mandatory checks
 
-## Completion Checklist
+- Example secrets are local only.
+- Forgejo/Gemini remain disabled unless needed/configured.
+- Workspaces use safe local path.
+- No company/private repository used as test data.
 
+## Forbidden
 
-## Output Expectations
-The agent must report the result of the initialization, including which root files were verified and whether the CI workflow and quality gates passed successfully.
+- Do not commit `.env`.
+- Do not weaken security globally to fix a local setup problem.
+- Do not call environment ready if build/health fails.
+
+## Completion output
+
+Report versions, services, commands, health result and remaining setup issue.

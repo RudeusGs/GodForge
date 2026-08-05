@@ -24,4 +24,24 @@ public sealed class RolePermissionsBlueprintTests
         Assert.Contains(Permissions.AnalysisTrigger, permissions);
         Assert.DoesNotContain(Permissions.RepositoryManage, permissions);
     }
+
+    [Fact]
+    public void Maintainer_CannotTransferProjectOwnership()
+    {
+        var permissions = RolePermissions.GetPermissionsForRole(ProjectRole.Maintainer);
+
+        Assert.Contains(Permissions.ProjectMembersAdd, permissions);
+        Assert.DoesNotContain(Permissions.ProjectMembersTransferOwnership, permissions);
+        Assert.DoesNotContain(Permissions.ProjectsDelete, permissions);
+    }
+
+    [Fact]
+    public void OrganizationAdmin_CannotDeleteOrTransferOrganization()
+    {
+        var permissions = OrganizationRolePermissions.GetPermissionsForRole(OrganizationRole.OrganizationAdmin);
+
+        Assert.Contains(Permissions.OrganizationProjectsCreate, permissions);
+        Assert.DoesNotContain(Permissions.OrganizationsDelete, permissions);
+        Assert.DoesNotContain(Permissions.OrganizationsTransferOwnership, permissions);
+    }
 }

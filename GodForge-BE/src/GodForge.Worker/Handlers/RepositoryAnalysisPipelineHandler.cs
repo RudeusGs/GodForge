@@ -173,7 +173,7 @@ public sealed class RepositoryAnalysisPipelineHandler
                 analysisRun.Id,
                 sync.WorkspacePath,
                 cancellationToken);
-            
+
             await _graphs.AddSnapshotAsync(graphResult.Snapshot, cancellationToken);
             await _graphs.AddNodesAsync(graphResult.Nodes, cancellationToken);
             await _graphs.AddEdgesAsync(graphResult.Edges, cancellationToken);

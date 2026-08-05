@@ -1,695 +1,234 @@
-# GodForge — Agent Rules
+# GodForge Agent Rules
 
-> Mandatory rules for any AI coding agent working on the GodForge codebase. These rules are intentionally strict. If a user request conflicts with this document, follow this document unless the user explicitly updates the project conventions.
+These rules are mandatory for any AI coding agent working in this repository. The folder name is `.agents`.
 
----
+## 1. Operating principle
 
-## 1. Source of Truth and Required Reading
+GodForge is a production-oriented graduation project. Agents must optimize for correctness, security, traceability and complete end-to-end behavior, not for the fastest code generation or the largest number of superficial features.
 
-Before implementing, debugging, refactoring, migrating, or generating tests, read the relevant SRS sections under `docs/SRS/`.
+Do not claim a target feature is implemented because entities, interfaces or documentation exist. Verify executable behavior and tests, then update `docs/IMPLEMENTATION_STATUS.md`.
 
-Use this reading order:
+## 2. Required reading order
 
-1. Identify the feature or bug scope and map it to the relevant `FR-*`, `NFR-*`, workflow, database table, API endpoint, and acceptance criteria.
-2. Read `docs/SRS/02-architecture.md` for architectural boundaries and async-processing expectations.
-3. Read `docs/SRS/03-functional/` for the target module requirements.
-4. Read `docs/SRS/04-database.md` before changing entities, EF configurations, indexes, or migrations.
-5. Read `docs/SRS/05-api.md` before creating or changing endpoints, request/response contracts, error codes, pagination, or status codes.
-6. Read `docs/SRS/06-security.md` before implementing authentication, authorization, RBAC, secrets, tokens, Git credentials, or project-scoped access.
-7. Read `docs/SRS/07-non-functional.md` for performance, observability, logging, testing, and operational constraints.
-8. Read `docs/SRS/08-workflows.md` for end-to-end behavior.
-9. Read `docs/SRS/10-traceability.md` and `docs/SRS/11-testing-acceptance.md` when planning tests.
-10. Read `docs/SRS/12-worker-processing.md` before implementing clone, fetch, parse, analyze, diff, preview, notification dispatch, retry, DLQ, timeout, or cancellation logic.
-11. Read `docs/SRS/13-deployment-operations.md` before changing Docker, environment variables, deployment, observability, or production configuration.
+Before changing code:
 
-Do not invent behavior that is not supported by the SRS. If the SRS is unclear, implement the smallest safe behavior and leave a short TODO or ask for clarification.
+1. `docs/PRODUCT_VISION.md`.
+2. `docs/SRS/01-scope.md`.
+3. `docs/SRS/02-architecture.md`.
+4. Relevant `docs/SRS/03-functional/*.md`.
+5. `docs/SRS/04-database.md` for data changes.
+6. `docs/SRS/05-api.md` and `docs/ERROR_CODES.md` for APIs.
+7. `docs/SRS/06-security.md`, `docs/THREAT_MODEL.md` and `docs/RBAC_MATRIX.md`.
+8. `docs/SRS/07-non-functional.md`.
+9. `docs/SRS/08-workflows.md`.
+10. `docs/SRS/11-testing-acceptance.md`.
+11. `docs/SRS/12-worker-processing.md` for asynchronous work.
+12. `docs/SRS/13-deployment-operations.md` and `docs/SRS/15-observability.md` for runtime changes.
+13. Relevant ADRs.
 
----
+If requirements are missing or contradictory, update/request documentation before implementation. Do not silently invent product behavior.
 
-## 2. Monorepo Layout
+## 3. Definition of Ready
 
-```text
-GodForge/
-├── GodForge-BE/                         # Backend — ASP.NET Core .NET 9
-│   ├── src/
-│   │   ├── GodForge.Api/                # API controllers, middleware, filters, DI
-│   │   ├── GodForge.Application/        # CQRS use cases, DTOs, interfaces, validators
-│   │   ├── GodForge.Domain/             # Entities, value objects, domain events, enums
-│   │   ├── GodForge.Infrastructure/     # EF Core, PostgreSQL, Redis, RabbitMQ, MinIO, Git implementations
-│   │   └── GodForge.Worker/             # Background worker host and logical workers
-│   └── tests/
-│       └── GodForge.UnitTests/          # xUnit tests
-├── GodForge-FE/                         # Frontend — Vue 3
-└── docs/
-    └── SRS/                             # Software Requirements Specification
-```
+Do not implement until `docs/DEFINITION_OF_READY.md` is satisfied. At minimum identify:
 
-Do not change this layout unless the user explicitly requests an architecture change and the corresponding documentation is updated.
+- Requirement and acceptance IDs.
+- Actor and permission.
+- API and data impact.
+- Sync versus async behavior.
+- Idempotency/concurrency behavior.
+- Threats and data classification.
+- Tests and observability.
 
----
-
-## 3. Clean Architecture Dependency Rules
-
-These dependency rules are mandatory:
+## 4. Architecture boundaries
 
 ```text
 GodForge.Domain         -> no project dependency
-GodForge.Application    -> GodForge.Domain only
-GodForge.Infrastructure -> GodForge.Application and GodForge.Domain indirectly
+GodForge.Application    -> GodForge.Domain
+GodForge.Infrastructure -> GodForge.Application + GodForge.Domain
 GodForge.Api            -> GodForge.Application + GodForge.Infrastructure
 GodForge.Worker         -> GodForge.Application + GodForge.Infrastructure
 ```
 
-Never add a reference from `GodForge.Domain` or `GodForge.Application` to `GodForge.Infrastructure`, `GodForge.Api`, or `GodForge.Worker`.
-
-Never import EF Core, Redis, RabbitMQ, MinIO, Git libraries, HTTP clients, file-system implementations, or other infrastructure-specific packages in `GodForge.Domain` or `GodForge.Application`.
-
-Declare abstractions in `GodForge.Application/Common/Interfaces` or the relevant feature module. Implement those abstractions in `GodForge.Infrastructure`.
-
-Keep business rules in Domain/Application. Controllers, workers, infrastructure adapters, and `Program.cs` must orchestrate only; they must not own business decisions.
-
----
-
-## 4. Backend Layer Responsibilities
-
 ### Domain
 
-Use `GodForge.Domain` for enterprise rules and state transitions.
-
-Allowed:
-
-- Entities with private setters and domain methods.
-- Value objects.
-- Domain enums.
-- Domain events.
-- Domain-specific exceptions or error primitives.
-
-Forbidden:
-
-- EF Core attributes or configuration.
-- Persistence logic.
-- Redis, RabbitMQ, MinIO, Git, logging, HTTP, or configuration access.
-- Direct clock access when testability requires an injected clock at the application boundary.
+Own entities, value objects, invariants, state transitions and domain events. No EF Core, HTTP, Git, queue, cache, storage, AI, filesystem or configuration dependency.
 
 ### Application
 
-Use `GodForge.Application` for CQRS use cases, validation, authorization decisions, transaction boundaries, DTO mapping, and orchestration.
-
-Allowed:
-
-- Commands and queries.
-- MediatR handlers.
-- FluentValidation validators.
-- DTOs.
-- Repository and service interfaces.
-- Result pattern and error mapping primitives.
-- RBAC checks using application-level authorization abstractions.
-- Activity-log intent creation for write operations.
-
-Forbidden:
-
-- EF Core queries directly in handlers.
-- Direct calls to Redis, RabbitMQ, MinIO, Git libraries, or file system.
-- Returning domain entities to API callers.
-- Long-running work in request handlers when it should become a job.
+Own commands, queries, DTOs, validators, permission decisions, interfaces and orchestration. Do not directly use EF Core/provider clients/filesystem.
 
 ### Infrastructure
 
-Use `GodForge.Infrastructure` for implementation details.
-
-Allowed:
-
-- EF Core `DbContext`, entity configurations, migrations, repositories.
-- PostgreSQL, Redis, RabbitMQ, MinIO, Git implementations.
-- External service adapters.
-- Encryption implementation for Git credentials and secrets.
-
-Forbidden:
-
-- Business rules that belong in Domain/Application.
-- Permission bypasses.
-- Logging secrets, raw tokens, or full sensitive payloads.
+Implement PostgreSQL, Redis, RabbitMQ, MinIO, Git/Forgejo, email, Gemini, encryption and observability adapters. Do not place business policy here.
 
 ### API
 
-Use `GodForge.Api` for HTTP concerns only.
-
-Allowed:
-
-- Controllers.
-- Request contracts.
-- Middleware.
-- Filters.
-- Authentication and authorization middleware registration.
-- Correlation ID middleware.
-- Response and error formatting.
-
-Forbidden:
-
-- Business logic in controllers.
-- Direct database access.
-- Direct Git, Redis, RabbitMQ, MinIO, or file-system logic.
-- `try-catch` blocks for general exception handling in controllers.
-- Returning entities directly.
-- Running long tasks inside HTTP requests.
+HTTP only: bind, authenticate, call Application and map response. No business logic, direct database, Git operations or long work.
 
 ### Worker
 
-Use `GodForge.Worker` for background job execution.
+Consume durable jobs, orchestrate safe stages, report progress and enforce retry/timeout/cancellation/cleanup. Business authorization to create a job remains in Application; workers revalidate stale state before publishing output.
+
+## 5. Product invariants
+
+- Forgejo/external provider is Git-object/ref source of truth.
+- PostgreSQL is GodForge business/job/analysis source of truth.
+- Redis is cache/lock, not business truth.
+- RabbitMQ is transport, not job state.
+- MinIO stores bytes; PostgreSQL stores metadata and authorization references.
+- Parser/rule engine is authoritative; Gemini is advisory.
+- Analysis is bound to immutable commit SHA and version identity.
+- No untrusted repository code is executed.
+- Private assets are not made private by hiding paths in a public Git repository; use Asset Vault.
+
+## 6. CQRS and use cases
+
+- One user intent per command/query.
+- Commands change state and return typed results.
+- Queries return DTO projections and never domain entities.
+- Validators handle boundary shape; domain/application handle business invariants.
+- All project queries/mutations enforce current actor scope in Application.
+- Write use cases define activity/audit intent and transaction boundary.
+- Heavy use cases create durable jobs and return quickly.
+
+## 7. API rules
+
+- Use `/api/v1` and standard envelopes.
+- Use stable errors from `docs/ERROR_CODES.md`.
+- No stack trace, SQL, credential, signed URL, provider payload or workspace path in client errors.
+- Request DTOs expose only allowed fields.
+- Paginate lists; cap page size and validate sort/filter allow-lists.
+- Use 202 for durable async work.
+- Project-level authorization is never implemented only with controller attributes.
+- Webhooks use provider signature, replay and repository identity checks, not user JWT.
+
+## 8. Database and migration rules
+
+- Read `docs/SRS/04-database.md` and `docs/DATABASE_CHANGE_CHECKLIST.md`.
+- Every tenant-owned row has an explicit scope path.
+- Add database constraints for business uniqueness and idempotency.
+- Add indexes for documented high-volume queries.
+- Avoid deep `Include`; use projections and bounded queries.
+- Do not store large source/binary objects in PostgreSQL.
+- Migrations are forward-only and tested on clean and prior schema.
+- Never delete production migrations or use destructive reset as a migration strategy.
+- Data backfill must be bounded, resumable and observable.
+
+## 9. Worker and messaging rules
+
+- Durable job row and outbox event are created atomically for production paths.
+- Messages include schemaVersion, messageId, jobId, organizationId, projectId, correlationId, attemptCount and inputHash.
+- Messages contain identifiers/references, not credentials or large payloads.
+- Consumers deduplicate through inbox/idempotency identity.
+- Classify errors before retry.
+- Use bounded exponential backoff and DLQ.
+- Cancellation tokens and timeouts propagate through all I/O.
+- Progress is monotonic and heartbeat is periodic.
+- Completion is emitted only after output commit.
+- Temporary workspace and locks are released on all terminal paths.
+
+## 10. Repository and workspace security
+
+- Treat repository content as hostile.
+- Allow only configured remote schemes/hosts and apply SSRF checks.
+- Use safe process argument invocation, never shell string concatenation.
+- Never embed credentials in remote URL or logs.
+- Canonicalize paths and reject traversal/symlink escape.
+- Enforce repository/file/depth/timeout/disk quotas.
+- Run workers non-root and without Docker socket.
+- Do not run Godot Editor, scripts, plugins, native extensions, builds or exports.
+
+## 11. Godot parser and analysis rules
+
+- Parser output must be deterministic and canonically ordered.
+- Keep parser, rule-set and profile versions explicit.
+- Missing/malformed individual files should become diagnostics/findings when safe rather than destroying unrelated output.
+- Health score is a documented deterministic calculation.
+- Incremental analysis must preserve equivalence and safely fall back to full analysis.
+- Historical output is immutable by version; do not overwrite under a different engine version.
+
+## 12. AI rules
+
+- Gemini is optional and server-side only.
+- Build context from approved deterministic metadata/findings and bounded excerpts.
+- Exclude/scan/redact secrets before provider calls.
+- Treat repository content as untrusted prompt data.
+- Validate JSON/schema; invalid result is degraded, not authoritative.
+- Record provider, model, prompt version, input hash, usage and latency.
+- AI cannot mutate code, Git, users, permissions, assets, jobs or health score.
+- Do not claim AI output is correct without evidence references.
+
+## 13. Asset Vault rules
+
+- Object bytes live in private MinIO storage unless explicitly public.
+- Manifest contains logical path, asset/version ID and checksum.
+- Authorization is checked before signed URL issuance.
+- Signed URL TTL is short; never expose bucket credentials.
+- Validate size, MIME/magic and quarantine status.
+- Audit protected downloads and policy changes.
+- Never claim secrecy for bytes already committed to public Git history.
+
+## 14. Frontend rules
 
-Allowed:
+- Vue 3 + TypeScript strict.
+- Typed API modules; no ad-hoc untyped response access.
+- Server state remains re-fetchable; SignalR is not source of truth.
+- Implement loading, empty, error, degraded and permission states.
+- Escape/sanitize repository content, Markdown, comments and filenames.
+- Paginate/virtualize large trees/tables and bound graphs.
+- UI hiding is not authorization.
 
-- Queue consumers.
-- Job handlers.
-- Progress reporting.
-- Retry, timeout, cancellation, heartbeat, and DLQ handling.
-- Calling Application services and Infrastructure implementations.
-
-Forbidden:
+## 15. Observability and privacy
 
-- Business rules directly inside the generic host or `Program.cs`.
-- One giant worker class that handles multiple unrelated queues.
-- Running two conflicting jobs on the same repository without a distributed lock.
-- Non-idempotent side effects.
+Use structured logs with safe IDs, correlation, job and error code. Never log Restricted data. Add metrics for latency, job lifecycle, queue lag, provider calls, analysis stages and cleanup failures. Add traces without raw sensitive payloads.
 
----
+## 16. Testing requirements
 
-## 5. Worker Architecture
+At minimum for changed behavior:
 
-`src/GodForge.Worker` is a shared worker host for MVP deployment, but it must be structured internally as multiple logical workers so they can be split into independent processes later.
+- Unit tests for business rules.
+- Integration tests for API/persistence/authorization.
+- Cross-tenant tests for every project resource.
+- Worker duplicate/retry/timeout/cancellation tests for async features.
+- Security regression for affected threat-model entries.
+- Performance/query tests for high-volume paths.
+- Migration test when schema changes.
 
-Create one queue, one consumer, and one handler/service abstraction per logical job type:
+## 17. Documentation synchronization
 
-- Repository Clone Worker.
-- Repository Sync/Git Worker.
-- Metadata Parser Worker.
-- Metadata Analyzer Worker.
-- Scene Diff Worker.
-- Asset Preview Worker.
-- Notification Dispatch Worker, if enabled for the current milestone.
+Behavior changes update all affected:
 
-Required worker rules:
+- Functional SRS.
+- Database/API/security/NFR/workflows.
+- RBAC/error codes.
+- Traceability and tests.
+- ADR when foundational.
+- Implementation status only after evidence.
 
-- API creates a durable job record and publishes a RabbitMQ message. The API must return a lightweight response, usually `202 Accepted` with a `jobId`, for long-running work.
-- PostgreSQL is the source of truth for job state. RabbitMQ is transport, not job state storage.
-- Every job message must include `schemaVersion`, `messageId`, `jobId`, `projectId`, `correlationId`, `createdAt`, `attemptCount`, and enough input references to reproduce the job safely.
-- Use `inputHash` or an equivalent idempotency key when repeated work could duplicate outputs.
-- Each job must update status, progress, heartbeat, attempts, timestamps, and error information where applicable.
-- Each job must be idempotent. Retrying a job must not duplicate metadata, activity logs, notifications, artifacts, or Git side effects.
-- Use retry with backoff for transient failures. Use DLQ for poison messages, schema errors, non-retryable errors, and retry exhaustion.
-- Use cancellation tokens throughout.
-- Apply timeouts to long-running jobs and mark timed-out jobs clearly.
-- Publish completion events only after the database and artifact outputs have been committed.
-- For Git operations, acquire a Redis repository lock with an owner token and TTL, release only if the owner token matches, and renew long-running locks safely.
-
-Never implement worker business logic directly in `Program.cs` or a shared host class. Place logic under clear `Consumers`, `Handlers`, and feature-specific services.
+## 18. Prohibited shortcuts
 
----
+- Do not bypass authorization for convenience.
+- Do not return entities directly.
+- Do not perform heavy work synchronously.
+- Do not use `Task.Run` as a job system.
+- Do not use Redis as durable state.
+- Do not swallow exceptions or retry every error.
+- Do not log secrets or raw repository/provider output.
+- Do not weaken security minimums through project settings.
+- Do not create a custom Git server.
+- Do not execute untrusted Godot projects.
+- Do not mark work complete without running applicable gates.
 
-## 6. CQRS Rules
+## 19. Completion report
 
-Each use case must be represented as exactly one command or query.
+When finishing a task, report:
 
-Commands:
+- Requirement IDs implemented.
+- Files changed.
+- Security/data/async decisions.
+- Tests and exact commands run.
+- Known limitations and deferred work.
+- Documentation synchronized.
 
-- Change state.
-- Return `Result` or `Result<T>`.
-- Use validators for input rules.
-- Execute authorization and project-scope checks before state changes.
-- Record activity-log intent for important write operations.
-- Produce jobs/events when work is long-running.
-
-Queries:
-
-- Read state only.
-- Return DTOs or paged DTOs.
-- Never return domain entities.
-- Apply RBAC and project scope before returning data.
-- Enforce pagination, query length limits, and timeouts for search and metadata queries.
-
-Folder convention:
-
-```text
-GodForge.Application/Features/{Module}/
-├── Commands/
-│   └── {Action}{Entity}/
-│       ├── {Action}{Entity}Command.cs
-│       ├── {Action}{Entity}CommandHandler.cs
-│       └── {Action}{Entity}CommandValidator.cs
-├── Queries/
-│   └── {Get}{Entity}/
-│       ├── {Get}{Entity}Query.cs
-│       └── {Get}{Entity}QueryHandler.cs
-└── DTOs/
-    └── {Entity}Dto.cs
-```
-
----
-
-## 7. API Rules
-
-All API endpoints must follow `docs/SRS/05-api.md`.
-
-Required:
-
-- Use `/api/v1` routes.
-- Require authentication unless the SRS explicitly marks the endpoint as public.
-- Apply RBAC before processing.
-- Validate request contracts before creating commands or queries.
-- Include correlation ID in logs and error responses.
-- Return `data` and optional `meta` for successful responses.
-- Return standardized error responses with `code`, `message`, `correlationId`, and safe `details` only.
-- Use pagination for list endpoints.
-- Cap `pageSize`, normally at 100 unless the SRS says otherwise.
-- Return `202 Accepted` and `jobId` for long-running tasks.
-
-Forbidden:
-
-- Returning stack traces or internal exception details in production.
-- Returning domain entities directly.
-- Running clone, parse, analyze, diff, preview, or large Git operations inside the HTTP request.
-- Using controller-level `try-catch` to hide errors.
-
----
-
-## 8. Error Handling Rules
-
-Do not throw raw `Exception` for expected business failures.
-
-Use one of the following:
-
-- Domain exceptions for invalid domain state transitions.
-- `Result` or `Result<T>` for expected application-level errors.
-- Typed infrastructure exceptions mapped to application error codes.
-
-Error codes must be `SCREAMING_SNAKE_CASE` and should use a domain prefix:
-
-- `AUTH_*`
-- `USER_*`
-- `PROJECT_*`
-- `REPOSITORY_*`
-- `GIT_*`
-- `METADATA_*`
-- `SCENE_*`
-- `ASSET_*`
-- `DEPENDENCY_*`
-- `HEALTH_*`
-- `DIFF_*`
-- `DASHBOARD_*`
-- `NOTIFICATION_*`
-- `ACTIVITY_*`
-- `JOB_*`
-- `SECURITY_*`
-
-Do not swallow exceptions. Empty `catch { }` blocks are forbidden. When catching exceptions, log with structured fields and either map to a safe error result or rethrow for global middleware/worker supervisor handling.
-
----
-
-## 9. Observability and Logging Rules
-
-Every request and job must carry a `correlationId` across API, Application, Infrastructure, Worker, logs, activities, and notifications where applicable.
-
-Use structured logs. Include relevant fields such as:
-
-- `correlationId`
-- `userId` or `actorId`, when available
-- `projectId`, when available
-- `repositoryId`, when available
-- `jobId`, when available
-- `jobType`, when available
-- `operation`
-- `durationMs`
-- `status`
-- `errorCode`
-
-Never log:
-
-- Passwords.
-- JWT access tokens.
-- Refresh tokens.
-- Git PATs or credentials.
-- Connection strings.
-- Full repository URLs containing credentials.
-- Full file contents.
-- Sensitive raw payloads.
-
-For Git errors, log sanitized stderr/stdout summaries only, plus correlation ID and error code.
-
----
-
-## 10. Entity and Domain Model Rules
-
-Required entity conventions:
-
-- `Id` is `Guid`.
-- `CreatedAt` and `UpdatedAt` are `DateTimeOffset` in UTC.
-- Soft-deletable entities use nullable `DeletedAt`.
-- Important properties must not have public setters.
-- State changes must go through domain methods.
-- Constructors used only by EF Core should be private or protected.
-- Enforce valid state transitions in Domain or Application services, not in controllers.
-
-Do not create anemic update flows that set arbitrary properties from requests.
-
----
-
-## 11. Database and EF Core Rules
-
-Use PostgreSQL with EF Core migrations. Do not use `EnsureCreated()`.
-
-Required:
-
-- Use code-first migrations.
-- Keep table and column names in `snake_case`.
-- Configure entities with Fluent API in `GodForge.Infrastructure/Persistence/Configurations/`.
-- Declare indexes explicitly.
-- Use global query filters for soft-delete when appropriate.
-- Configure delete behavior intentionally.
-- Use PostgreSQL-native types where applicable: `uuid`, `varchar(n)`, `text`, `integer`, `bigint`, `boolean`, `timestamptz`, `jsonb`.
-- Store core business data and metadata data according to the SRS separation.
-- Store only credential references or encrypted secrets, never plain text credentials.
-
-Do not edit a migration that has already been applied to a shared database. Create a new corrective migration.
-
----
-
-## 12. Redis Rules
-
-Redis is allowed for:
-
-- Dashboard cache.
-- Short-lived job state cache when useful.
-- Distributed locks.
-- Rate limiting.
-- Session/token metadata where specified.
-
-Redis is not a primary database.
-
-Key pattern:
-
-```text
-{purpose}:{entity_id}
-```
-
-Examples:
-
-```text
-dashboard:{project_id}
-lock:repo:{repository_id}
-rate:user:{user_id}
-job:{job_id}:progress
-```
-
-Use TTLs. Repository locks should have a clear TTL and owner token.
-
----
-
-## 13. RabbitMQ Rules
-
-RabbitMQ is used for async jobs such as clone, fetch, parse, analyze, diff, preview, and notification dispatch.
-
-Required:
-
-- One queue per job type.
-- Dedicated consumer per queue.
-- Retry policy with backoff.
-- Dead-letter queue for failed poison messages or retry exhaustion.
-- Message schema versioning.
-- Message validation before processing.
-- Idempotency by `jobId` and input reference/hash.
-- Correlation ID propagation.
-
-Do not use RabbitMQ as the only place where job state exists. Persist job state in PostgreSQL.
-
----
-
-## 14. MinIO Rules
-
-Use MinIO only for artifact-like objects, such as:
-
-- Diff artifacts.
-- Thumbnails.
-- Reports.
-- Repository archives.
-- Snapshots or previews.
-
-Approved buckets:
-
-- `diff-artifacts`
-- `thumbnails`
-- `reports`
-- `archives`
-
-Store metadata for objects where needed: `projectId`, `jobId`, `contentType`, `checksum`, `createdAt`, and retention policy.
-
-Do not use MinIO as a replacement for PostgreSQL business data.
-
----
-
-## 15. Git Operation Rules
-
-Git operations are high-risk because they touch repository state and credentials.
-
-Required:
-
-- Validate RBAC before any Git operation.
-- Acquire repository lock for operations that can conflict: clone, fetch, pull, push, commit, merge, branch deletion, and analyze working tree.
-- Do not automatically resolve conflicts.
-- Do not pass raw user input into shell commands.
-- Prefer library APIs or sanitized argument arrays over shell command strings.
-- Sanitize remote URLs and stderr/stdout before logging.
-- Store Git PATs encrypted with AES-256-GCM or through an approved secret-management mechanism.
-- Never store or log credentials in plain text.
-- Require explicit user confirmation for destructive or remote-changing operations when specified by the SRS.
-
----
-
-## 16. Security Rules
-
-Never violate these rules:
-
-- Do not hardcode secrets, connection strings, API keys, or credentials in source code.
-- Use `appsettings.json`, environment variables, user secrets, or the approved secret provider.
-- Do not log passwords, tokens, credentials, or full sensitive payloads.
-- Do not return stack traces to clients in production.
-- Do not trust frontend permission checks. Enforce RBAC server-side.
-- Scope every project, metadata, search, activity, notification, and artifact query by the authenticated actor's permissions.
-- Use parameterized SQL or EF query parameters.
-- Validate paths and Git arguments to prevent path traversal or command injection.
-- Apply rate limiting where the SRS requires it.
-- JWT access token lifetime is 15 minutes unless the SRS changes it.
-- Refresh token lifetime is 7 days unless the SRS changes it.
-- Use refresh token rotation when implementing token refresh.
-- Password hashing must use bcrypt with cost factor at least 12.
-
----
-
-## 17. Coding Conventions
-
-### Framework
-
-- .NET 9.
-- C# 13.
-- EF Core 9.
-- Nullable reference types enabled.
-- Warnings as errors enabled.
-
-### Style
-
-- Use file-scoped namespaces.
-- Use 4 spaces for indentation.
-- Use UTF-8 and LF line endings.
-- Sort `System.*` usings first.
-- Do not use `#nullable disable`.
-- Do not suppress warnings unless there is a documented, narrow reason.
-
-### Naming
-
-- `PascalCase` for public types, methods, and properties.
-- `_camelCase` for private fields.
-- `camelCase` for local variables and parameters.
-- `SCREAMING_SNAKE_CASE` for constants and error codes.
-- Interfaces start with `I`.
-
-### `var` usage
-
-Use `var` only when the type is obvious from the right-hand side. Prefer explicit types when readability improves.
-
-Good:
-
-```csharp
-var project = Project.Create(name, description, actorId);
-var cancellationTokenSource = new CancellationTokenSource(timeout);
-```
-
-Avoid:
-
-```csharp
-var result = await service.ExecuteAsync(request, cancellationToken);
-```
-
-Use the explicit type when the result type matters for understanding the code.
-
----
-
-## 18. Testing Rules
-
-Use xUnit and Moq for unit tests.
-
-Test naming convention:
-
-```text
-MethodName_StateUnderTest_ExpectedBehavior
-```
-
-Required tests:
-
-- Domain state transitions and invariants.
-- Application command/query handlers.
-- Validators for meaningful validation rules.
-- Error mapping for important failures.
-- RBAC/project-scope denial cases.
-- Worker idempotency, retry, cancellation, timeout, and DLQ behavior.
-- Regression tests for every bug fix.
-
-Forbidden:
-
-- Tests that require external services, databases, brokers, object storage, or the file system unless explicitly written as integration tests in the correct test project.
-- Tests for trivial getters/setters or auto-generated behavior.
-- Changing tests only to make broken code pass.
-
-When fixing a bug, write or update the failing regression test first when feasible, then fix the implementation.
-
----
-
-## 19. Documentation Rules
-
-Update documentation when changing:
-
-- Feature behavior.
-- API contracts.
-- Database schema.
-- RBAC policy.
-- Worker lifecycle.
-- Queue/message contracts.
-- Deployment configuration.
-- Operational behavior.
-
-Preserve existing comments and docstrings unless they are wrong or stale. If a comment is stale, update it in the same change that updates the behavior.
-
----
-
-## 20. Git and Commit Rules
-
-Use Conventional Commits.
-
-Format:
-
-```text
-type(scope): subject
-```
-
-Allowed types:
-
-```text
-feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
-```
-
-Allowed scopes:
-
-```text
-auth, user, project, repository, git, scene, asset, dependency, health, diff, dashboard, notification, activity, job, worker, queue, cache, storage, database, api, config, security, infra, test
-```
-
-Rules:
-
-- Subject starts lowercase.
-- Subject does not end with a period.
-- Header is at most 100 characters.
-
-Example:
-
-```text
-feat(auth): add jwt refresh token rotation
-```
-
-Branching:
-
-Each branch must represent exactly one task.
-
-- `feat/*`
-- `fix/*`
-- `refactor/*`
-- `docs/*`
-- `test/*`
-- `chore/*`
-- `ci/*`
-- `build/*`
-- `perf/*`
-- `release/*`
-- `hotfix/*`
-
-Keep Conventional Commit types aligned with branch types.
-
----
-
-## 21. Absolute Prohibitions
-
-Do not:
-
-1. Create God classes.
-2. Put business logic in controllers, workers, infrastructure adapters, or `Program.cs`.
-3. Add project references that violate Clean Architecture.
-4. Import infrastructure packages into Domain or Application.
-5. Access the database directly from controllers.
-6. Return entities directly from API responses.
-7. Run long clone, parse, analyze, diff, preview, or large Git operations inside HTTP requests.
-8. Use empty catch blocks or swallow exceptions.
-9. Add broad `try-catch` blocks just to hide failures.
-10. Use `Thread.Sleep` or synchronous blocking in async code.
-11. Commit code with compiler warnings.
-12. Disable nullable reference types.
-13. Suppress warnings without a narrow documented reason.
-14. Modify `.editorconfig`, `Directory.Build.props`, `global.json`, or `commitlint.config.cjs` unless explicitly asked.
-15. Add NuGet packages without explaining why they are necessary.
-16. Store or log secrets in plain text.
-17. Trust frontend authorization as the only permission check.
-18. Auto-resolve Git conflicts without an explicit approved policy.
-19. Use Redis or RabbitMQ as the primary source of truth for durable business data.
-20. Publish job completion before durable outputs are committed.
-
----
-
-## 22. Pre-Completion Checklist
-
-Before saying a task is complete, verify:
-
-- Relevant SRS sections were checked.
-- Architecture boundaries are respected.
-- Domain/Application do not depend on Infrastructure.
-- Controllers contain no business logic.
-- Long-running work is handled by jobs.
-- RBAC and project-scope checks are enforced server-side.
-- Correlation ID flows through request/job/log/error/activity paths.
-- Error codes follow the project convention.
-- Secrets and credentials are never logged or returned.
-- Database names and indexes match PostgreSQL conventions.
-- Job state, retry, timeout, heartbeat, and DLQ rules are respected when workers are involved.
-- Unit or regression tests cover the behavior changed.
-- `dotnet build` passes with zero warnings.
-- `dotnet test` passes.
-- Documentation is updated when behavior, API, DB, worker, or security contracts changed.
-
----
-
-## 23. Hardened AI Agent Rules
-
-1. **Definition of Ready**: You must explicitly verify the `docs/DEFINITION_OF_READY.md` checklist is satisfied before beginning any coding task. Do not write code if the requirements are ambiguous or missing.
-2. **Skill Usage**: You must use the correct specialized skill for the task at hand.
-3. **Docs-Sync Check**: You must use the `docs-sync` skill to update documentation (`docs/SRS/*`) after changing backend behavior, architecture, or database rules.
-4. **ADR Update**: You must proactively draft or update Architecture Decision Records (`docs/ADR/*`) when changing the architecture, using the `architecture-decision` skill.
-5. **Frontend Rules**: You must use the `frontend-feature` skill when touching `GodForge-FE`. No business authorization should be enforced only in the UI.
-6. **Security Review**: You must use the `security-review` skill when auditing or modifying auth, RBAC, secrets, Git operations, path handling, or input validation.
-7. **Test Quality**: You must use the `test-quality` skill when implementing tests.
-8. **CI Quality Gate**: You must use the `ci-quality-gate` skill before reporting completion to the user.
-9. **Prohibition on Missing Requirements**: Do not code against missing SRS, API, DB, or security requirements. If `04-database.md`, an API contract, RBAC rules, or Acceptance Criteria are missing, implementation is strictly blocked until the documentation is written and approved.
+Follow `docs/DEFINITION_OF_DONE.md` and invoke the `ci-quality-gate` skill before declaring completion.

@@ -1,27 +1,22 @@
 # ADR 0006: Deterministic analysis is authoritative; AI is advisory
 
 ## Status
-
-Accepted.
+Accepted
 
 ## Context
-
-Gemini có thể giải thích code và đưa ra khuyến nghị nhưng output không ổn định, có thể hallucinate và có chi phí/provider risk. GodForge cần kết quả trace được về commit, file, scene và rule.
+Generative models may hallucinate, vary across runs, exceed token budgets and receive prompt injection from repository content.
 
 ## Decision
-
-- Parser và health rule engine tạo dữ liệu đo được và health score.
-- Gemini chỉ nhận context đã chọn lọc, giới hạn và redacted.
-- AI findings được lưu riêng, có provider/model/prompt version/input hash/confidence/evidence.
-- AI failure làm pipeline ở trạng thái degraded, không xóa deterministic report.
-- Không gửi binary, `.env`, private key, token hoặc repository credential.
-- Gemini chỉ được gọi từ worker qua `IAiAnalysisProvider`.
-
-## Rejected alternative
-
-Gửi toàn bộ repository TXT trực tiếp từ API và dùng Gemini làm health score. Phương án này bị từ chối vì không kiểm soát kích thước, secrets, chi phí và tính tái lập.
+Parser and versioned rule engine produce authoritative metadata, findings and health score. Gemini receives bounded, redacted structured context and returns schema-validated recommendations with evidence references. AI failure produces degraded status, not analysis failure.
 
 ## Consequences
+### Positive
+- Reproducible core results and safer provider use.
 
-- Cần context builder, secret redactor, quota và schema validation.
-- UI phải phân biệt measured finding và AI-generated recommendation.
+### Negative
+- Requires both deterministic engines and AI integration.
+
+## Constraints enforced on implementation and AI agents
+- AI must never invent repository facts not present in supplied context.
+- AI cannot directly alter health score, code, permissions or repository state.
+- Prompt/model/input versions and token usage must be recorded.

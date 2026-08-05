@@ -6,7 +6,9 @@ public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByHashAsync(string hash, CancellationToken cancellationToken = default);
     Task AddAsync(RefreshToken token, CancellationToken cancellationToken = default);
+    Task RevokeAllForSessionAsync(Guid sessionId, string reason, DateTimeOffset now, CancellationToken cancellationToken = default);
+    Task RevokeAllForFamilyAsync(Guid familyId, string reason, DateTimeOffset now, CancellationToken cancellationToken = default);
+    Task RevokeAllForUserAsync(Guid userId, string reason, DateTimeOffset now, CancellationToken cancellationToken = default);
     Task DeleteAsync(RefreshToken token, CancellationToken cancellationToken = default);
     Task DeleteAllForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }
-

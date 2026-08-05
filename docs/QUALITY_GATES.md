@@ -1,56 +1,67 @@
-# CI/CD Quality Gates
+# Quality Gates
 
-A feature is complete only after the commands below pass from a clean checkout.
+## Documentation gate
 
-## Backend
+- Markdown links resolve.
+- Requirement IDs are unique.
+- New features update SRS, API, database, security, traceability and tests.
+- Current status is not confused with target design.
+
+## Backend gate
 
 ```bash
 cd GodForge-BE
 dotnet restore
-dotnet build --no-restore
-dotnet test --no-build --collect:"XPlat Code Coverage"
 dotnet format --verify-no-changes
-dotnet list package --vulnerable --include-transitive
+dotnet build --no-restore
+dotnet test --no-build
 ```
 
-Requirements: zero build warnings, all tests pass, no known vulnerable direct/transitive package accepted without documented exception.
+Additional gates:
 
-## Frontend
+- Clean Architecture dependency test.
+- Migration applies to a clean PostgreSQL database.
+- OpenAPI document generation succeeds.
+- No high-severity dependency or secret scan finding.
+- The SDK is resolved from `GodForge-BE/global.json`; CI and local builds use the same version.
 
-For the first migration run, create and commit a lockfile:
+## Frontend gate
+
+The current snapshot does not contain an npm lockfile. Direct dependency versions are pinned in `package.json`; use the command below until a lockfile is generated and committed from a network-enabled environment.
+
 
 ```bash
 cd GodForge-FE
-npm install
-```
-
-After `package-lock.json` exists, the canonical gate is:
-
-```bash
-npm ci
+npm install --no-audit --no-fund
 npm run lint
 npm run typecheck
 npm run test:unit
 npm run build
-npm audit --audit-level=critical
 ```
 
-## Infrastructure
+## Security gate
 
-```bash
-cp .env.example .env
-docker compose config
-docker compose up -d
-docker compose ps
-dotnet run --project GodForge-BE/src/GodForge.Api --no-build
-```
+- Cross-tenant authorization tests.
+- SSRF, path traversal and symlink tests.
+- File and repository quota tests.
+- Webhook signature/replay tests.
+- AI redaction and prompt-injection tests.
+- Asset signed-URL authorization tests.
+- No Critical or High unresolved finding.
 
-The API and worker must start with RabbitMQ enabled, and one fixture repository analysis must reach a terminal job state.
+## Worker gate
 
-## Blueprint-specific security gate
+- Duplicate delivery test.
+- Retry and backoff test.
+- Timeout/cancellation cleanup test.
+- DLQ test.
+- Lock owner-token test.
+- Outbox/inbox reliability test.
 
-- Context fixture containing `.env`, bearer token and private key produces no secret in output.
-- Gemini disabled mode still completes deterministic analysis.
-- Invalid AI JSON produces degraded status, not worker crash.
-- Duplicate repository/commit/input hash does not duplicate snapshot or AI run.
-- Removed project member cannot read repository or jobs.
+## Release gate
+
+- Backup and restore drill passed.
+- Observability dashboard and alerts verified.
+- Production configuration contains no defaults.
+- Performance targets in `SRS/07-non-functional.md` met.
+- `MERGE_READINESS.md` and `RELEASE_CHECKLIST.md` completed.

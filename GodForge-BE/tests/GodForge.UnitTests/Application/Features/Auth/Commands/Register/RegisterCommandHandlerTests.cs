@@ -1,9 +1,8 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Application.Common.Models;
+using GodForge.Application.Features.Auth;
 using GodForge.Application.Features.Auth.Commands.Register;
 using GodForge.Domain.Entities.Identity;
-using GodForge.Domain.Enums;
 using Moq;
 using Xunit;
 
@@ -11,134 +10,140 @@ namespace GodForge.UnitTests.Application.Features.Auth.Commands.Register;
 
 public class RegisterCommandHandlerTests
 {
-    private readonly Mock<IUserRepository> _mockUserRepository;
-    private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepository;
-    private readonly Mock<IPasswordHasher> _mockPasswordHasher;
-    private readonly Mock<ITokenService> _mockTokenService;
-    private readonly Mock<IClock> _mockClock;
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
-    private readonly Mock<ICacheService> _mockCacheService;
+    private readonly Mock<IUserRepository> _users = new();
+    private readonly Mock<IAuthChallengeRepository> _challenges = new();
+    private readonly Mock<ISecretHashService> _secretHash = new();
+    private readonly Mock<IPasswordHasher> _passwordHasher = new();
+    private readonly Mock<IAuditWriter> _auditWriter = new();
+    private readonly Mock<IClock> _clock = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
     {
-        _mockUserRepository = new Mock<IUserRepository>();
-        _mockRefreshTokenRepository = new Mock<IRefreshTokenRepository>();
-        _mockPasswordHasher = new Mock<IPasswordHasher>();
-        _mockTokenService = new Mock<ITokenService>();
-        _mockClock = new Mock<IClock>();
-        _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _mockCacheService = new Mock<ICacheService>();
-
         _handler = new RegisterCommandHandler(
-            _mockUserRepository.Object,
-            _mockRefreshTokenRepository.Object,
-            _mockPasswordHasher.Object,
-            _mockTokenService.Object,
-            _mockClock.Object,
-            _mockUnitOfWork.Object,
-            _mockCacheService.Object);
+            _users.Object,
+            _challenges.Object,
+            _secretHash.Object,
+            _passwordHasher.Object,
+            _auditWriter.Object,
+            _clock.Object,
+            _unitOfWork.Object);
     }
 
     [Fact]
-    public async Task Handle_GivenValidDataAndValidOtp_CreatesUserAndReturnsTokens()
+    public async Task Handle_GivenValidDataAndOtp_CreatesVerifiedUserAndConsumesChallenge()
     {
-        // Arrange
-        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
         var now = DateTimeOffset.UtcNow;
-        _mockClock.Setup(c => c.UtcNow).Returns(now);
+        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
+        var challenge = ActiveChallenge(command.Email, now);
 
-        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync("123456");
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _challenges.Setup(x => x.GetActiveAsync(User.NormalizeEmail(command.Email), AuthChallengePurposes.Registration, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(challenge);
+        _secretHash.Setup(x => x.Verify(command.Otp, challenge.SecretHash)).Returns(true);
+        _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        _passwordHasher.Setup(x => x.HashPassword(command.Password)).Returns("hashed_password");
 
-        _mockUserRepository.Setup(x => x.GetByEmailAsync("newuser@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
-
-        _mockPasswordHasher.Setup(x => x.HashPassword("password123"))
-            .Returns("hashed_password");
-
-        _mockTokenService.Setup(x => x.GenerateAccessToken(It.IsAny<User>())).Returns("access_token");
-        _mockTokenService.Setup(x => x.GenerateRefreshToken()).Returns("refresh_token");
-        _mockTokenService.Setup(x => x.HashRefreshToken("refresh_token")).Returns("hashed_refresh");
-
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Value);
-        Assert.Equal("access_token", result.Value!.AccessToken);
-        Assert.Equal("refresh_token", result.Value.RefreshToken);
-        Assert.Equal("newuser@example.com", result.Value.User.Email);
-
-        _mockUserRepository.Verify(x => x.AddAsync(It.Is<User>(u => u.Email == "newuser@example.com" && u.PasswordHash == "hashed_password"), It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _mockCacheService.Verify(c => c.RemoveAsync("otp:register:newuser@example.com", It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(command.Email, result.Value?.Email);
+        Assert.NotNull(result.Value?.EmailVerifiedAt);
+        Assert.NotNull(challenge.ConsumedAt);
+        _users.Verify(x => x.AddAsync(
+            It.Is<User>(u => u.Email == command.Email && u.PasswordHash == "hashed_password"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_GivenExpiredOtp_ReturnsValidationError()
+    public async Task Handle_GivenMissingChallenge_ReturnsOtpExpired()
     {
-        // Arrange
-        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
-
-        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.False(result.IsSuccess);
-        Assert.NotNull(result.Error);
-        Assert.Equal("AUTH_OTP_EXPIRED", result.Error.Code);
-        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_GivenInvalidOtp_ReturnsValidationError()
-    {
-        // Arrange
-        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
-
-        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:newuser@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync("654321"); // Mismatch
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.False(result.IsSuccess);
-        Assert.NotNull(result.Error);
-        Assert.Equal("AUTH_OTP_INVALID", result.Error.Code);
-        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_GivenExistingEmail_ReturnsConflictError()
-    {
-        // Arrange
-        var command = new RegisterCommand("existing@example.com", "Existing User", "password123", "123456");
         var now = DateTimeOffset.UtcNow;
-        _mockClock.Setup(c => c.UtcNow).Returns(now);
+        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _challenges.Setup(x => x.GetActiveAsync(User.NormalizeEmail(command.Email), AuthChallengePurposes.Registration, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AuthChallenge?)null);
 
-        _mockCacheService.Setup(c => c.GetAsync<string>("otp:register:existing@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync("123456");
-
-        var existingUser = User.Create("existing@example.com", "Existing User", "hash", now);
-
-        _mockUserRepository.Setup(x => x.GetByEmailAsync("existing@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingUser);
-
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         Assert.False(result.IsSuccess);
-        Assert.NotNull(result.Error);
-        Assert.Equal("AUTH_EMAIL_EXISTS", result.Error.Code);
-
-        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal("AUTH_OTP_EXPIRED", result.Error?.Code);
+        _users.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_GivenInvalidOtp_RecordsAttemptAndReturnsValidationError()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
+        var challenge = ActiveChallenge(command.Email, now);
+
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _challenges.Setup(x => x.GetActiveAsync(User.NormalizeEmail(command.Email), AuthChallengePurposes.Registration, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(challenge);
+        _secretHash.Setup(x => x.Verify(command.Otp, challenge.SecretHash)).Returns(false);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("AUTH_OTP_INVALID", result.Error?.Code);
+        Assert.Equal(1, challenge.FailedAttempts);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_GivenExistingEmail_ReturnsConflict()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new RegisterCommand("existing@example.com", "Existing User", "password123", "123456");
+        var challenge = ActiveChallenge(command.Email, now);
+        var existing = User.Create(command.Email, command.DisplayName, "hash", now);
+
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _challenges.Setup(x => x.GetActiveAsync(User.NormalizeEmail(command.Email), AuthChallengePurposes.Registration, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(challenge);
+        _secretHash.Setup(x => x.Verify(command.Otp, challenge.SecretHash)).Returns(true);
+        _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("AUTH_EMAIL_EXISTS", result.Error?.Code);
+        _users.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenUniqueEmailConstraintWinsRace_ReturnsConflict()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new RegisterCommand("race@example.com", "Race User", "password123", "123456");
+        var challenge = ActiveChallenge(command.Email, now);
+
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _challenges.Setup(x => x.GetActiveAsync(User.NormalizeEmail(command.Email), AuthChallengePurposes.Registration, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(challenge);
+        _secretHash.Setup(x => x.Verify(command.Otp, challenge.SecretHash)).Returns(true);
+        _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        _passwordHasher.Setup(x => x.HashPassword(command.Password)).Returns("hashed_password");
+        _unitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new GodForge.Application.Common.Models.UniqueConstraintConflictException(
+                "duplicate email",
+                "ux_users_normalized_email"));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("AUTH_EMAIL_EXISTS", result.Error?.Code);
+    }
+
+    private static AuthChallenge ActiveChallenge(string email, DateTimeOffset now)
+        => AuthChallenge.Create(
+            User.NormalizeEmail(email),
+            AuthChallengePurposes.Registration,
+            "otp_hash",
+            now,
+            TimeSpan.FromMinutes(5),
+            TimeSpan.Zero);
 }

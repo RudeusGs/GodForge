@@ -14,6 +14,8 @@ public enum ProjectStatus
     Analyzing,
     /// <summary>Đang hoạt động</summary>
     Active,
+    /// <summary>Deletion workflow is in progress</summary>
+    Deleting,
     /// <summary>Đã được lưu trữ/đóng băng (Archive)</summary>
     Archived,
     /// <summary>Đã bị xóa (Soft delete)</summary>

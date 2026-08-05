@@ -2,78 +2,61 @@
 
 ## Purpose
 
-The Scene Explorer displays Godot scene structures as interactive node trees, helping users understand scenes without opening the Godot Editor.
+Allow authorized users to inspect scene structure, node properties, attached scripts, signals and references for an immutable revision.
 
 ## Actors
 
-- Developer
-- Reviewer/QA
-- Viewer
+Viewer and higher project roles.
 
-## Scope
+## Requirements
 
-- List of parsed scenes.
-- Tree view of nodes in a scene.
-- Node detail panel showing properties, scripts, signals, and groups.
-- Search/filter nodes by name and type.
-- Breadcrumbs from the root to the selected node.
-- Direct editing of scenes is out of scope.
+| ID | Requirement | Priority |
+|---|---|---|
+| FR-09 | Browse parsed scenes and node tree | Must |
+| FR-09.1 | Filter/search nodes and inspect references | Must |
+| FR-09.2 | Navigate from scene elements to source/dependency context | Should |
 
-## Functional Requirements
+## Main flow
 
-| ID | Requirement Name | Description | Priority | Actor |
-| --- | --- | --- | --- | --- |
-| FR-09 | Scene Explorer | Display scene trees and node details from parsed metadata. | Must | Viewer+ |
-| BR-45 | No Realtime Parse | Scene Explorer reads from the Metadata Schema; it does not parse files on UI request. | Must | System |
-| BR-46 | Unparsed Scenes | Scenes without metadata display an empty state and a trigger parse button if authorized. | Must | Viewer+, Developer |
+1. User selects revision and scene.
+2. API returns bounded scene summary and paginated/lazy node tree.
+3. UI displays node type, path, properties, script and reference links.
+4. User navigates to dependency graph or text blob when authorized.
 
-## Main Workflow
+## Error and edge cases
 
-1. User opens the project's scene list.
-2. Frontend calls the scenes API with pagination/filters.
-3. User selects a scene.
-4. API returns scene details and the node tree from `scenes`/`scene_nodes`.
-5. User clicks a node to view properties, scripts, signals, groups, and children count.
-6. User searches/filters nodes; UI highlights results and retains tree context.
+- Revision or parser output absent.
+- Scene malformed/partial.
+- Extremely large scene requires lazy loading.
+- Source blob unavailable due to type/size policy.
 
-## Exceptions / Errors
+## Authorization and security
 
-| Situation | HTTP Status | Error Code | Behavior |
-| --- | --- | --- | --- |
-| Project not parsed | 409 / 200 empty | `METADATA_NOT_READY` | Display empty state and parse action if authorized. |
-| Scene not found | 404 | `SCENE_NOT_FOUND` | Do not return internal paths. |
-| User lacks permission | 403 | `FORBIDDEN` | Do not return metadata. |
-| Node tree too large | 200 | `PARTIAL_NODE_TREE` | Paginate/lazy load child nodes if necessary. |
+- Project read permission required.
+- Render repository text as escaped content.
+- Do not expose protected asset URL unless separately authorized.
 
-## Acceptance Criteria
+## Async processing and idempotency
 
-- AC-57: Opening the scene viewer displays the node tree in the correct structure.
-- AC-58: Clicking a node displays its properties, scripts, and signals.
-- AC-59: Searching for `Button` highlights matching node types/names.
-- AC-60: Unparsed scenes display a message and a trigger parse button for Developer+.
+- No module-specific durable job is created by read operations.
+- Writes, where present, use normal transaction/concurrency rules and do not perform hidden heavy work.
+
+## Acceptance criteria
+
+- `AC-FR-09-01`: Scene with thousands of nodes remains usable through limits/lazy loading.
+- `AC-FR-09-02`: Node paths and references match normalized parser output.
+- `AC-FR-09-03`: Unauthorized users cannot infer scene names through error differences.
 
 ## Related API
 
-| Method | Path | Permission | Main Request | Main Response | Main Errors |
-| --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/projects/{projectId}/scenes` | `viewer+` | pagination, search | Scene list | `METADATA_NOT_READY` |
-| GET | `/api/v1/projects/{projectId}/scenes/{sceneId}` | `viewer+` | scene id | Scene detail + summary | `SCENE_NOT_FOUND` |
-| GET | `/api/v1/projects/{projectId}/scenes/{sceneId}/nodes` | `viewer+` | tree/flat, search, type | Node tree/list | `SCENE_NOT_FOUND` |
-| POST | `/api/v1/projects/{projectId}/parse` | `developer+` | options | Parse job | `REPO_NOT_READY` |
+- `GET /projects/{projectId}/revisions/{sha}/scenes`, scene detail/node endpoints
 
-## Related Database Tables
+## Related data
 
-| Table | Role |
-| --- | --- |
-| `scenes` | Scene metadata, path, name, node count, file hash. |
-| `scene_nodes` | Node tree, node type, parent path, properties, script path, groups. |
-| `scripts` | Script details when a node attaches `.gd`. |
-| `dependencies` | Resource/script references associated with the scene. |
-| `jobs` | Parse job states for empty/loading UI states. |
+- `metadata.scenes`, `metadata.scene_nodes`, `metadata.scene_node_properties`, `metadata.scene_connections`, `metadata.scene_node_references`
 
-## Security / Authorization Notes
+## Tests and observability
 
-- Scene paths returned are repository-relative paths.
-- Users without project membership must not know if a scene exists.
-- Properties may contain sensitive paths/resource names depending on the project; these must be filtered by RBAC.
-- The Scene Explorer does not provide edit operations.
+- Test suite: `TC-SCENE-*`, including large-scene paging, malformed partial scene and masked access.
+- Metrics: scene/node query latency, node count, page count and source-blob rejection.
+- Query-count tests prevent N+1 property/reference loading.
