@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Analysis;
 
@@ -13,7 +14,7 @@ public sealed class AiFinding : BaseEntity
     public decimal? Confidence { get; private set; }
     public string EvidenceRefsJson { get; private set; } = "[]";
     public string Fingerprint { get; private set; } = default!;
-    public string Status { get; private set; } = "open";
+    public FindingStatus Status { get; private set; } = FindingStatus.Open;
     public DateTimeOffset CreatedAt { get; private set; }
 
     private AiFinding() { }

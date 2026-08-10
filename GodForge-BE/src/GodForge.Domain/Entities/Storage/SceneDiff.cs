@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Storage;
 
@@ -9,7 +10,7 @@ public sealed class SceneDiff : BaseEntity
     public string HeadCommit { get; private set; } = default!;
     public string ScenePath { get; private set; } = default!;
     public string? DiffJsonPath { get; private set; }
-    public string Status { get; private set; } = default!;
+    public ProcessingStatus Status { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
     private SceneDiff() { } // EF Core
@@ -23,7 +24,7 @@ public sealed class SceneDiff : BaseEntity
             BaseCommit = baseCommit,
             HeadCommit = headCommit,
             ScenePath = scenePath,
-            Status = "processing",
+            Status = ProcessingStatus.Processing,
             CreatedAt = now
         };
     }
@@ -31,11 +32,11 @@ public sealed class SceneDiff : BaseEntity
     public void MarkAsReady(string diffJsonPath)
     {
         DiffJsonPath = diffJsonPath;
-        Status = "ready";
+        Status = ProcessingStatus.Ready;
     }
 
     public void MarkAsFailed()
     {
-        Status = "failed";
+        Status = ProcessingStatus.Failed;
     }
 }

@@ -36,6 +36,7 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(j => j.CancelledAt).HasColumnName("cancelled_at").HasColumnType("timestamptz");
         builder.Property(j => j.TimeoutAt).HasColumnName("timeout_at").HasColumnType("timestamptz");
         builder.Property(j => j.LastHeartbeatAt).HasColumnName("last_heartbeat_at").HasColumnType("timestamptz");
+        builder.Property(j => j.ClaimToken).HasColumnName("claim_token").HasColumnType("uuid").IsConcurrencyToken();
         builder.Property(j => j.CancellationRequestedAt).HasColumnName("cancellation_requested_at").HasColumnType("timestamptz");
 
         builder.Property(j => j.ErrorCode).HasColumnName("error_code").HasMaxLength(100);

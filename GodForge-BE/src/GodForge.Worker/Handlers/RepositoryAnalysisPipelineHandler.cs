@@ -1,70 +1,201 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using GodForge.Application.Common.Constants;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Models.Messages;
-using GodForge.Domain.Entities.Analysis;
+using GodForge.Application.Common.Text;
+using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Repo;
 using GodForge.Domain.Enums;
+using GodForge.Worker.Handlers.Stages;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GodForge.Worker.Handlers;
 
 public sealed class RepositoryAnalysisPipelineHandler
 {
-    private const string PromptVersion = "health-overview-v1";
+    private static readonly TimeSpan ClaimStaleAfter = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan ClaimHeartbeatInterval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ShutdownRetryDelay = TimeSpan.FromSeconds(5);
+
     private readonly IJobRepository _jobs;
     private readonly IGitRepositoryRepository _repositories;
-    private readonly IRepositorySnapshotRepository _snapshots;
-    private readonly IAiAnalysisRepository _aiRepository;
-    private readonly IHealthReportRepository _healthReports;
-    private readonly IDependencyGraphSnapshotRepository _graphs;
-    private readonly IAnalysisRunRepository _runs;
-    private readonly IRepositoryWorkspaceService _workspaceService;
-    private readonly IDeterministicProjectAnalyzer _deterministicAnalyzer;
-    private readonly IDependencyGraphBuilder _graphBuilder;
-    private readonly IRepositoryContextBuilder _contextBuilder;
-    private readonly IAiAnalysisProvider _aiProvider;
+    private readonly IOutboxWriter _outbox;
+    private readonly RepositoryDeterministicAnalysisStage _deterministicStage;
+    private readonly RepositoryAnalysisPersistenceStage _persistenceStage;
+    private readonly RepositoryAiAnalysisStage _aiStage;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
     private readonly ILogger<RepositoryAnalysisPipelineHandler> _logger;
 
     public RepositoryAnalysisPipelineHandler(
         IJobRepository jobs,
         IGitRepositoryRepository repositories,
-        IRepositorySnapshotRepository snapshots,
-        IAiAnalysisRepository aiRepository,
-        IHealthReportRepository healthReports,
-        IDependencyGraphSnapshotRepository graphs,
-        IAnalysisRunRepository runs,
-        IRepositoryWorkspaceService workspaceService,
-        IDeterministicProjectAnalyzer deterministicAnalyzer,
-        IDependencyGraphBuilder graphBuilder,
-        IRepositoryContextBuilder contextBuilder,
-        IAiAnalysisProvider aiProvider,
+        IOutboxWriter outbox,
+        RepositoryDeterministicAnalysisStage deterministicStage,
+        RepositoryAnalysisPersistenceStage persistenceStage,
+        RepositoryAiAnalysisStage aiStage,
         IUnitOfWork unitOfWork,
+        IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<RepositoryAnalysisPipelineHandler> logger)
     {
         _jobs = jobs;
         _repositories = repositories;
-        _snapshots = snapshots;
-        _aiRepository = aiRepository;
-        _healthReports = healthReports;
-        _graphs = graphs;
-        _runs = runs;
-        _workspaceService = workspaceService;
-        _deterministicAnalyzer = deterministicAnalyzer;
-        _graphBuilder = graphBuilder;
-        _contextBuilder = contextBuilder;
-        _aiProvider = aiProvider;
+        _outbox = outbox;
+        _deterministicStage = deterministicStage;
+        _persistenceStage = persistenceStage;
+        _aiStage = aiStage;
         _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _clock = clock;
         _logger = logger;
     }
 
     public async Task<JobExecutionResult> HandleAsync(
         RepositoryAnalysisJobMessage message,
+        CancellationToken cancellationToken)
+    {
+        var now = _clock.UtcNow;
+        var job = await _jobs.TryClaimAsync(message.JobId, now, ClaimStaleAfter, cancellationToken);
+        if (job is null)
+            return await HandleUnclaimedMessageAsync(message, now, cancellationToken);
+
+        var claimToken = job.ClaimToken
+            ?? throw new InvalidOperationException($"Claimed job '{job.Id}' does not have a claim token.");
+        var claimedAttempt = job.AttemptCount;
+        GitRepository? repository = null;
+
+        using var executionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var heartbeatTask = MaintainClaimHeartbeatAsync(
+            job.Id,
+            claimToken,
+            executionCancellation,
+            executionCancellation.Token);
+
+        try
+        {
+            var executionToken = executionCancellation.Token;
+            if (await _jobs.IsCancellationRequestedAsync(job.Id, executionToken))
+                throw new JobCancellationRequestedException();
+
+            if (message.RepositoryId is null)
+            {
+                job.MarkDeadLettered("WORKER_MESSAGE_INVALID", "RepositoryId is required.", _clock.UtcNow);
+                await _unitOfWork.SaveChangesAsync(executionToken);
+                return JobExecutionResult.DeadLetter();
+            }
+
+            repository = await _repositories.GetByIdAsync(message.RepositoryId.Value, executionToken);
+            if (repository is null || repository.ProjectId != message.ProjectId)
+            {
+                job.MarkDeadLettered(
+                    "REPOSITORY_NOT_CONNECTED",
+                    "Repository was not found for this project.",
+                    _clock.UtcNow);
+                await _unitOfWork.SaveChangesAsync(executionToken);
+                return JobExecutionResult.DeadLetter();
+            }
+
+            repository.MarkSyncStarted(repository.Id.ToString("N"), _clock.UtcNow);
+            await _unitOfWork.SaveChangesAsync(executionToken);
+
+            var deterministicResult = await _deterministicStage.ExecuteAsync(
+                repository,
+                message,
+                (progress, token) => ReportProgressAsync(job, progress, token),
+                executionToken);
+
+            var analysisRun = await _persistenceStage.StageAsync(
+                message,
+                job,
+                repository,
+                deterministicResult,
+                executionToken);
+
+            await ReportProgressAsync(job, 85, executionToken);
+            var aiResult = await _aiStage.StageAsync(
+                message,
+                repository,
+                deterministicResult,
+                executionToken);
+            await ReportProgressAsync(job, 95, executionToken);
+
+            repository.MarkSynchronized(
+                deterministicResult.Sync.CommitSha,
+                deterministicResult.Sync.RepositorySizeBytes,
+                _clock.UtcNow);
+
+            var result = JsonSerializer.Serialize(new
+            {
+                repositoryId = repository.Id,
+                deterministicResult.Sync.CommitSha,
+                deterministicResult.Sync.Branch,
+                deterministic = deterministicResult.Deterministic,
+                context = new
+                {
+                    deterministicResult.Context.InputHash,
+                    deterministicResult.Context.IncludedFileCount,
+                    deterministicResult.Context.SkippedFileCount,
+                    deterministicResult.Context.WasTruncated,
+                    deterministicResult.Context.Warnings
+                },
+                ai = new
+                {
+                    status = EnumText.ToSnakeCase(aiResult.Status),
+                    summary = aiResult.Summary,
+                    findingCount = aiResult.FindingCount,
+                    errorCode = aiResult.ErrorCode
+                }
+            });
+
+            analysisRun.MarkAsCompleted(_clock.UtcNow);
+            job.MarkCompleted(result, _clock.UtcNow);
+            await _unitOfWork.SaveChangesAsync(executionToken);
+            return JobExecutionResult.Completed();
+        }
+        catch (JobCancellationRequestedException)
+        {
+            job.Cancel(_clock.UtcNow);
+            try
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (ConcurrencyConflictException)
+            {
+                // A stale execution must not overwrite a newer worker claim.
+                _unitOfWork.ClearTrackedChanges();
+            }
+
+            return JobExecutionResult.Completed();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await ScheduleRetryAfterShutdownAsync(message, claimToken, claimedAttempt);
+            return JobExecutionResult.Completed();
+        }
+        catch (Exception exception)
+        {
+            return await HandleExecutionFailureAsync(
+                message,
+                repository?.Id,
+                claimToken,
+                claimedAttempt,
+                exception,
+                cancellationToken);
+        }
+        finally
+        {
+            await executionCancellation.CancelAsync();
+            await heartbeatTask;
+        }
+    }
+
+    private async Task<JobExecutionResult> HandleUnclaimedMessageAsync(
+        RepositoryAnalysisJobMessage message,
+        DateTimeOffset now,
         CancellationToken cancellationToken)
     {
         var job = await _jobs.GetByIdAsync(message.JobId, cancellationToken);
@@ -74,338 +205,225 @@ public sealed class RepositoryAnalysisPipelineHandler
             return JobExecutionResult.DeadLetter();
         }
 
-        if (job.Status is JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed or JobStatus.Timeout or JobStatus.DeadLettered)
-        {
+        if (IsTerminal(job.Status))
             return JobExecutionResult.Completed();
-        }
 
         if (job.CancellationRequestedAt is not null)
         {
-            job.Cancel(_clock.UtcNow);
+            job.Cancel(now);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return JobExecutionResult.Completed();
         }
 
-        if (job.Status == JobStatus.Retrying && job.AvailableAt > _clock.UtcNow)
+        if (job.Status == JobStatus.Running)
         {
-            return JobExecutionResult.Retry(job.AvailableAt - _clock.UtcNow);
-        }
+            // RabbitMQ may redeliver after the original worker dies while the database
+            // claim is still fresh. Persist a watchdog delivery for the stale boundary
+            // before acknowledging this copy, otherwise the job could remain Running
+            // forever with no message left to reclaim it.
+            var heartbeatAt = job.LastHeartbeatAt ?? job.StartedAt ?? now;
+            var recoveryAt = heartbeatAt.Add(ClaimStaleAfter);
+            if (recoveryAt <= now)
+                recoveryAt = now.AddSeconds(1);
 
-        if (message.RepositoryId is null)
-        {
-            job.MarkDeadLettered("WORKER_MESSAGE_INVALID", "RepositoryId is required.", _clock.UtcNow);
+            await EnqueueRetryAsync(job, message, recoveryAt, now, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return JobExecutionResult.DeadLetter();
+
+            _logger.LogInformation(
+                "Scheduled claim recovery for running job {JobId} at {RecoveryAt}",
+                job.Id,
+                recoveryAt);
         }
 
-        var repository = await _repositories.GetByIdAsync(message.RepositoryId.Value, cancellationToken);
-        if (repository is null || repository.ProjectId != message.ProjectId)
+        // Retrying jobs already have a durable outbox row committed atomically with
+        // their state. Queued jobs retain their original delivery. This message is a
+        // duplicate and can be acknowledged safely.
+        return JobExecutionResult.Completed();
+    }
+
+    private async Task ReportProgressAsync(Job job, int progress, CancellationToken cancellationToken)
+    {
+        job.UpdateProgress(progress, _clock.UtcNow);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (await _jobs.IsCancellationRequestedAsync(job.Id, cancellationToken))
+            throw new JobCancellationRequestedException();
+    }
+
+    private async Task<JobExecutionResult> HandleExecutionFailureAsync(
+        RepositoryAnalysisJobMessage message,
+        Guid? repositoryId,
+        Guid claimToken,
+        int claimedAttempt,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogError(
+            exception,
+            "Repository analysis job {JobId} failed at attempt {AttemptCount}",
+            message.JobId,
+            claimedAttempt);
+
+        // SaveChanges failures leave pending inserts and stale concurrency snapshots in
+        // the context. Clear them before writing retry/dead-letter state.
+        _unitOfWork.ClearTrackedChanges();
+
+        var failedJob = await _jobs.GetByIdAsync(message.JobId, cancellationToken);
+        if (failedJob is null)
+            return JobExecutionResult.DeadLetter();
+
+        // A different worker reclaimed the stale lease, or already completed the job.
+        // This delivery must not overwrite the newer execution state.
+        if (IsTerminal(failedJob.Status) ||
+            failedJob.Status != JobStatus.Running ||
+            failedJob.ClaimToken != claimToken ||
+            failedJob.AttemptCount != claimedAttempt)
         {
-            job.MarkDeadLettered("REPOSITORY_NOT_CONNECTED", "Repository was not found for this project.", _clock.UtcNow);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return JobExecutionResult.DeadLetter();
+            return JobExecutionResult.Completed();
         }
 
-        try
+        GitRepository? failedRepository = null;
+        if (repositoryId is not null)
+            failedRepository = await _repositories.GetByIdAsync(repositoryId.Value, cancellationToken);
+
+        failedRepository?.MarkError("REPOSITORY_ANALYSIS_FAILED", _clock.UtcNow);
+
+        if (failedJob.AttemptCount < failedJob.MaxAttempts && IsRetryable(exception))
         {
             var now = _clock.UtcNow;
-            job.MarkRunning(now);
-            repository.MarkSyncStarted(repository.Id.ToString("N"), now);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var delay = CalculateRetryDelay(failedJob.AttemptCount);
+            var availableAt = now.Add(delay);
+            failedJob.MarkRetrying(
+                "JOB_TRANSIENT_FAILURE",
+                "A transient dependency failed. The job will be retried.",
+                availableAt,
+                now);
 
-            var sync = await _workspaceService.SyncAsync(
-                repository.Id,
-                repository.RemoteUrl,
-                message.Branch,
-                cancellationToken);
-            job.UpdateProgress(30, _clock.UtcNow);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            if (job.CancellationRequestedAt is not null)
-            {
-                job.Cancel(_clock.UtcNow);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                return JobExecutionResult.Completed();
-            }
-
-            var deterministic = await _deterministicAnalyzer.AnalyzeAsync(sync.WorkspacePath, cancellationToken);
-            job.UpdateProgress(55, _clock.UtcNow);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            if (job.CancellationRequestedAt is not null)
-            {
-                job.Cancel(_clock.UtcNow);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                return JobExecutionResult.Completed();
-            }
-
-            var context = await _contextBuilder.BuildAsync(sync.WorkspacePath, cancellationToken);
-            job.UpdateProgress(75, _clock.UtcNow);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            if (job.CancellationRequestedAt is not null)
-            {
-                job.Cancel(_clock.UtcNow);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                return JobExecutionResult.Completed();
-            }
-
-            var snapshot = await _snapshots.GetByCommitAsync(repository.Id, sync.CommitSha, cancellationToken);
-            if (snapshot is null)
-            {
-                snapshot = RepositorySnapshot.Create(repository.Id, sync.CommitSha, sync.Branch, _clock.UtcNow);
-                await _snapshots.AddAsync(snapshot, cancellationToken);
-            }
-
-            var analysisRun = AnalysisRun.Create(
-                message.ProjectId,
-                repository.Id,
-                snapshot.Id,
-                null,
-                job.Id,
-                _clock.UtcNow);
-            await _runs.AddAsync(analysisRun, cancellationToken);
-
-            var graphResult = await _graphBuilder.BuildAsync(
-                message.ProjectId,
-                repository.Id,
-                snapshot.Id,
-                analysisRun.Id,
-                sync.WorkspacePath,
-                cancellationToken);
-
-            await _graphs.AddSnapshotAsync(graphResult.Snapshot, cancellationToken);
-            await _graphs.AddNodesAsync(graphResult.Nodes, cancellationToken);
-            await _graphs.AddEdgesAsync(graphResult.Edges, cancellationToken);
-
-            int criticals = deterministic.Findings.Count(f => f.Severity == "critical");
-            int warnings = deterministic.Findings.Count(f => f.Severity == "warning");
-            int infos = deterministic.Findings.Count(f => f.Severity == "info");
-            int score = 100 - (criticals * 10) - (warnings * 2);
-            if (score < 0) score = 0;
-
-            var healthReport = HealthReport.Create(
-                message.ProjectId,
-                repository.Id,
-                snapshot.Id,
-                analysisRun.Id,
-                job.Id,
-                score,
-                deterministic.Findings.Count,
-                criticals,
-                warnings,
-                infos,
-                JsonSerializer.Serialize(deterministic),
-                _clock.UtcNow);
-            await _healthReports.AddReportAsync(healthReport, cancellationToken);
-
-            var issues = deterministic.Findings.Select(f => HealthIssue.Create(
-                healthReport.Id,
-                null,
-                f.Code,
-                f.Severity,
-                f.FilePath,
-                null,
-                f.Message,
-                null,
-                false,
-                _clock.UtcNow)).ToList();
-            await _healthReports.AddIssuesAsync(issues, cancellationToken);
-
-            snapshot.MarkAsReady(JsonSerializer.Serialize(new
-            {
-                deterministic,
-                context = new
-                {
-                    context.InputHash,
-                    context.IncludedFileCount,
-                    context.SkippedFileCount,
-                    context.WasTruncated,
-                    context.Warnings
-                }
-            }));
-
-            repository.MarkSynchronized(sync.CommitSha, sync.RepositorySizeBytes, _clock.UtcNow);
-
-            string aiStatus = "not_requested";
-            string? aiSummary = null;
-            int aiFindingCount = 0;
-            string? aiErrorCode = null;
-
-            if (message.IncludeAi)
-            {
-                var cachedRun = await _aiRepository.GetCompletedAsync(
-                    repository.Id,
-                    sync.CommitSha,
-                    message.AnalysisProfile,
-                    _aiProvider.ProviderName,
-                    _aiProvider.ModelName,
-                    PromptVersion,
-                    context.InputHash,
-                    cancellationToken);
-
-                if (cachedRun is not null)
-                {
-                    aiStatus = "cached";
-                    aiSummary = cachedRun.Summary;
-                }
-                else
-                {
-                    var aiResult = await _aiProvider.AnalyzeAsync(new(
-                        message.ProjectId,
-                        repository.Id,
-                        sync.CommitSha,
-                        message.AnalysisProfile,
-                        PromptVersion,
-                        context,
-                        deterministic), cancellationToken);
-
-                    if (!aiResult.IsEnabled)
-                    {
-                        aiStatus = "disabled";
-                    }
-                    else
-                    {
-                        var run = AiAnalysisRun.Create(
-                            message.ProjectId,
-                            repository.Id,
-                            sync.CommitSha,
-                            message.AnalysisProfile,
-                            _aiProvider.ProviderName,
-                            _aiProvider.ModelName,
-                            PromptVersion,
-                            context.InputHash,
-                            _clock.UtcNow);
-                        await _aiRepository.AddRunAsync(run, cancellationToken);
-
-                        if (aiResult.IsSuccess)
-                        {
-                            run.MarkCompleted(
-                                aiResult.Summary ?? string.Empty,
-                                aiResult.InputTokenCount,
-                                aiResult.OutputTokenCount,
-                                null,
-                                null,
-                                _clock.UtcNow);
-
-                            var fingerprints = new HashSet<string>(StringComparer.Ordinal);
-                            foreach (var finding in aiResult.Findings)
-                            {
-                                var evidenceJson = JsonSerializer.Serialize(finding.EvidenceRefs);
-                                var fingerprint = CreateFingerprint(finding.Title, evidenceJson);
-                                if (!fingerprints.Add(fingerprint))
-                                {
-                                    continue;
-                                }
-
-                                await _aiRepository.AddFindingAsync(AiFinding.Create(
-                                    run.Id,
-                                    finding.Category,
-                                    finding.Severity,
-                                    finding.Title,
-                                    finding.Description,
-                                    finding.Recommendation,
-                                    finding.Confidence,
-                                    evidenceJson,
-                                    fingerprint,
-                                    _clock.UtcNow), cancellationToken);
-                            }
-
-                            aiStatus = "completed";
-                            aiSummary = aiResult.Summary;
-                            aiFindingCount = fingerprints.Count;
-                        }
-                        else
-                        {
-                            aiErrorCode = aiResult.ErrorCode ?? "AI_ANALYSIS_FAILED";
-                            run.MarkFailed(aiErrorCode, _clock.UtcNow);
-                            aiStatus = "failed";
-                        }
-                    }
-                }
-            }
-
-            var result = JsonSerializer.Serialize(new
-            {
-                repositoryId = repository.Id,
-                sync.CommitSha,
-                sync.Branch,
-                deterministic,
-                context = new
-                {
-                    context.InputHash,
-                    context.IncludedFileCount,
-                    context.SkippedFileCount,
-                    context.WasTruncated,
-                    context.Warnings
-                },
-                ai = new
-                {
-                    status = aiStatus,
-                    summary = aiSummary,
-                    findingCount = aiFindingCount,
-                    errorCode = aiErrorCode
-                }
-            });
-
-            analysisRun.MarkAsCompleted(_clock.UtcNow);
-            job.MarkCompleted(result, _clock.UtcNow);
+            await EnqueueRetryAsync(failedJob, message, availableAt, now, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return JobExecutionResult.Completed();
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+
+        failedJob.MarkDeadLettered(
+            "REPOSITORY_ANALYSIS_FAILED",
+            "Repository analysis failed after the allowed attempts.",
+            _clock.UtcNow);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return JobExecutionResult.DeadLetter();
+    }
+
+    private async Task ScheduleRetryAfterShutdownAsync(
+        RepositoryAnalysisJobMessage message,
+        Guid claimToken,
+        int claimedAttempt)
+    {
+        _unitOfWork.ClearTrackedChanges();
+        var job = await _jobs.GetByIdAsync(message.JobId, CancellationToken.None);
+        if (job is null ||
+            job.Status != JobStatus.Running ||
+            job.ClaimToken != claimToken ||
+            job.AttemptCount != claimedAttempt)
         {
-            throw;
+            return;
         }
-        catch (Exception exception)
+
+        var now = _clock.UtcNow;
+        var availableAt = now.Add(ShutdownRetryDelay);
+        job.MarkRetrying(
+            "WORKER_SHUTDOWN",
+            "The worker stopped before the job completed.",
+            availableAt,
+            now);
+        await EnqueueRetryAsync(job, message, availableAt, now, CancellationToken.None);
+        await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+    }
+
+    private Task EnqueueRetryAsync(
+        Job job,
+        RepositoryAnalysisJobMessage message,
+        DateTimeOffset availableAt,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var retryMessage = message with
         {
-            _logger.LogError(
-                exception,
-                "Repository analysis job {JobId} failed at attempt {AttemptCount}",
-                job.Id,
-                job.AttemptCount);
+            MessageId = Guid.NewGuid(),
+            AttemptCount = job.AttemptCount,
+            CreatedAt = now
+        };
 
-            // A failed SaveChanges leaves Added/Modified entities in the EF change tracker.
-            // Clear them before persisting the terminal/retry state, otherwise the same bad
-            // inserts can be replayed while handling the original exception.
-            _unitOfWork.ClearTrackedChanges();
+        return _outbox.EnqueueScheduledAsync(
+            string.IsNullOrWhiteSpace(job.QueueName)
+                ? WorkerQueueNames.RepositoryPipeline
+                : job.QueueName,
+            retryMessage,
+            availableAt,
+            cancellationToken);
+    }
 
-            var failedJob = await _jobs.GetByIdAsync(message.JobId, cancellationToken);
-            var failedRepository = await _repositories.GetByIdAsync(repository.Id, cancellationToken);
-            if (failedJob is null || failedRepository is null)
+    private async Task MaintainClaimHeartbeatAsync(
+        Guid jobId,
+        Guid claimToken,
+        CancellationTokenSource executionCancellation,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
             {
-                return JobExecutionResult.DeadLetter();
+                await Task.Delay(ClaimHeartbeatInterval, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
             }
 
-            failedRepository.MarkError("REPOSITORY_ANALYSIS_FAILED", _clock.UtcNow);
-            if (failedJob.AttemptCount < failedJob.MaxAttempts && IsRetryable(exception))
+            try
             {
-                var delay = TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, failedJob.AttemptCount) * 5));
-                failedJob.MarkRetrying(
-                    "JOB_TRANSIENT_FAILURE",
-                    "A transient dependency failed. The job will be retried.",
-                    _clock.UtcNow.Add(delay),
-                    _clock.UtcNow);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                return JobExecutionResult.Retry(delay);
-            }
+                using var scope = _scopeFactory.CreateScope();
+                var jobs = scope.ServiceProvider.GetRequiredService<IJobRepository>();
+                var renewed = await jobs.TryHeartbeatAsync(
+                    jobId,
+                    claimToken,
+                    _clock.UtcNow,
+                    cancellationToken);
 
-            failedJob.MarkDeadLettered(
-                "REPOSITORY_ANALYSIS_FAILED",
-                "Repository analysis failed after the allowed attempts.",
-                _clock.UtcNow);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return JobExecutionResult.DeadLetter();
+                if (renewed)
+                    continue;
+
+                _logger.LogWarning(
+                    "Repository analysis job {JobId} lost claim {ClaimToken}; cancelling the stale execution",
+                    jobId,
+                    claimToken);
+                executionCancellation.Cancel();
+                return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Repository analysis job {JobId} could not renew claim {ClaimToken}; cancelling the execution",
+                    jobId,
+                    claimToken);
+                executionCancellation.Cancel();
+                return;
+            }
         }
     }
+
+    private static TimeSpan CalculateRetryDelay(int attemptCount)
+        => TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, attemptCount) * 5));
+
+    private static bool IsTerminal(JobStatus status)
+        => status is JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed or JobStatus.Timeout or JobStatus.DeadLettered;
 
     private static bool IsRetryable(Exception exception)
-        => exception is IOException or HttpRequestException or TimeoutException or TaskCanceledException or OperationCanceledException ||
+        => exception is IOException or HttpRequestException or TimeoutException or TaskCanceledException or OperationCanceledException or ConcurrencyConflictException ||
            exception.InnerException is IOException or HttpRequestException;
 
-    private static string CreateFingerprint(string title, string evidenceJson)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(title + "\n" + evidenceJson));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
-    }
+    private sealed class JobCancellationRequestedException : Exception { }
 }

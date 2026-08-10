@@ -1,6 +1,7 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Enums;
 using MediatR;
@@ -27,27 +28,23 @@ public sealed class ListOrganizationMembersQueryHandler : OrganizationQueryHandl
         var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationMembersRead, cancellationToken);
         if (access.Error is not null) return access.Error;
 
-        OrganizationRole? parsedRole = null;
-        if (!string.IsNullOrWhiteSpace(request.Role))
+        if (!string.IsNullOrWhiteSpace(request.Role) &&
+            !EnumText.TryParseDefined<OrganizationRole>(request.Role, out _))
         {
-            if (!Enum.TryParse<OrganizationRole>(request.Role, true, out var r))
-                return ApplicationError.Validation("VALIDATION_ERROR", "Role is invalid.");
-            parsedRole = r;
+            return ApplicationError.Validation("VALIDATION_ERROR", "Role is invalid.");
         }
 
-        MembershipStatus? parsedStatus = null;
-        if (!string.IsNullOrWhiteSpace(request.Status))
+        if (!string.IsNullOrWhiteSpace(request.Status) &&
+            !EnumText.TryParseDefined<MembershipStatus>(request.Status, out _))
         {
-            if (!Enum.TryParse<MembershipStatus>(request.Status, true, out var s))
-                return ApplicationError.Validation("VALIDATION_ERROR", "Status is invalid.");
-            parsedStatus = s;
+            return ApplicationError.Validation("VALIDATION_ERROR", "Status is invalid.");
         }
 
         var memberships = await _members.GetForOrganizationAsync(request.OrganizationId, request.Page, request.PageSize, request.Role, request.Status, request.Search, cancellationToken);
         var userIds = memberships.Items.Select(m => m.UserId).ToArray();
         var users = await _users.GetByIdsAsync(userIds, cancellationToken);
         var userById = users.ToDictionary(u => u.Id);
-        
+
         var items = memberships.Items
             .Where(m => userById.ContainsKey(m.UserId))
             .Select(m => OrganizationMemberDto.From(m, userById[m.UserId]))

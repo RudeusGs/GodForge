@@ -1,74 +1,59 @@
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 import { authApi } from '../api/auth/auth.api';
+import {
+    clearAccessToken,
+    clearLegacyStoredAuth,
+    inMemoryAccessToken,
+    setAccessToken,
+} from '../api/auth/authSession';
 import type { LoginPayload, RegisterPayload, UserDto } from '../api/auth/auth.models';
 
-const ACCESS_TOKEN_KEY = 'access_token';
-const USER_KEY = 'auth_user';
-
-function getActiveStorage(): Storage | null {
-    if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
-        return localStorage;
-    }
-    if (sessionStorage.getItem(ACCESS_TOKEN_KEY)) {
-        return sessionStorage;
-    }
-    return null;
-}
-
-function readStoredUser(storage: Storage | null): UserDto | null {
-    const raw = storage?.getItem(USER_KEY) ?? null;
-    if (!raw) {
-        return null;
-    }
-
-    try {
-        return JSON.parse(raw) as UserDto;
-    } catch {
-        return null;
-    }
-}
-
-function clearStoredAuth(): void {
-    for (const storage of [localStorage, sessionStorage]) {
-        storage.removeItem(ACCESS_TOKEN_KEY);
-        storage.removeItem(USER_KEY);
-    }
-}
-
 export const useAuthStore = defineStore('auth', () => {
-    const activeStorage = getActiveStorage();
-    const initialAccessToken = activeStorage?.getItem(ACCESS_TOKEN_KEY) ?? null;
+    clearLegacyStoredAuth();
+    const user = ref<UserDto | null>(null);
+    const accessToken = inMemoryAccessToken;
+    const initialized = ref(false);
+    const isAuthenticated = computed(() => Boolean(accessToken.value && user.value));
+    let initializationPromise: Promise<void> | null = null;
 
-    const user = ref<UserDto | null>(readStoredUser(activeStorage));
-    const accessToken = ref<string | null>(initialAccessToken);
-    const isAuthenticated = ref<boolean>(Boolean(initialAccessToken && user.value));
-
-    if (!isAuthenticated.value) {
-        clearStoredAuth();
-        user.value = null;
-        accessToken.value = null;
-    }
-
-    const setAuthData = (
-        token: string,
-        userData: UserDto,
-        rememberMe: boolean = true
-    ) => {
-        clearStoredAuth();
-        const storage = rememberMe ? localStorage : sessionStorage;
-        storage.setItem(ACCESS_TOKEN_KEY, token);
-        storage.setItem(USER_KEY, JSON.stringify(userData));
-
-        accessToken.value = token;
+    const setAuthData = (token: string, userData: UserDto) => {
+        setAccessToken(token);
         user.value = userData;
-        isAuthenticated.value = true;
+        initialized.value = true;
     };
 
-    const login = async (payload: LoginPayload, rememberMe: boolean = true) => {
+    const clearAuthData = () => {
+        clearAccessToken();
+        user.value = null;
+    };
+
+    const initialize = async (): Promise<void> => {
+        if (initialized.value) {
+            return;
+        }
+        if (initializationPromise) {
+            return initializationPromise;
+        }
+
+        initializationPromise = (async () => {
+            try {
+                const response = await authApi.refresh();
+                setAuthData(response.data.accessToken, response.data.user);
+            } catch {
+                clearAuthData();
+            } finally {
+                initialized.value = true;
+                initializationPromise = null;
+            }
+        })();
+
+        return initializationPromise;
+    };
+
+    const login = async (payload: LoginPayload) => {
         const response = await authApi.login(payload);
-        const { accessToken: token, user: userData } = response.data;
-        setAuthData(token, userData, rememberMe);
+        setAuthData(response.data.accessToken, response.data.user);
     };
 
     const register = async (payload: RegisterPayload) => {
@@ -77,14 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
             email: payload.email,
             password: payload.password,
             deviceName: 'GodForge Web',
-        }, true);
-    };
-
-    const clearAuthData = () => {
-        clearStoredAuth();
-        user.value = null;
-        accessToken.value = null;
-        isAuthenticated.value = false;
+        });
     };
 
     const logout = async () => {
@@ -92,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
             await authApi.logout();
         } finally {
             clearAuthData();
+            initialized.value = true;
         }
     };
 
@@ -102,7 +81,9 @@ export const useAuthStore = defineStore('auth', () => {
     return {
         user,
         accessToken,
+        initialized,
         isAuthenticated,
+        initialize,
         login,
         register,
         logout,

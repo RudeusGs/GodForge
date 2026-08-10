@@ -45,4 +45,20 @@ public class ProjectEntityTests
         Assert.Equal(deleteTime, project.DeletedAt);
         Assert.Equal(ProjectStatus.Deleted, project.Status);
     }
+
+    [Fact]
+    public void Create_SlugExceedsDomainLimit_ThrowsArgumentException()
+    {
+        var slug = new string('a', Project.MaxSlugLength + 1);
+
+        Assert.Throws<ArgumentException>(() => Project.Create(
+            Guid.NewGuid(),
+            "Test Project",
+            slug,
+            null,
+            "4.3",
+            ProjectVisibility.Private,
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow));
+    }
 }

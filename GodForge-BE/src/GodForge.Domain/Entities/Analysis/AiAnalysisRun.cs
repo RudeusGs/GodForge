@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Analysis;
 
@@ -12,7 +13,7 @@ public sealed class AiAnalysisRun : BaseEntity
     public string Model { get; private set; } = default!;
     public string PromptVersion { get; private set; } = default!;
     public string InputHash { get; private set; } = default!;
-    public string Status { get; private set; } = default!;
+    public RunStatus Status { get; private set; }
     public string? Summary { get; private set; }
     public string? RawArtifactKey { get; private set; }
     public int? InputTokenCount { get; private set; }
@@ -46,7 +47,7 @@ public sealed class AiAnalysisRun : BaseEntity
             Model = model,
             PromptVersion = promptVersion,
             InputHash = inputHash,
-            Status = "running",
+            Status = RunStatus.Running,
             StartedAt = now
         };
     }
@@ -59,7 +60,7 @@ public sealed class AiAnalysisRun : BaseEntity
         string? rawArtifactKey,
         DateTimeOffset now)
     {
-        Status = "completed";
+        Status = RunStatus.Completed;
         Summary = summary;
         InputTokenCount = inputTokenCount;
         OutputTokenCount = outputTokenCount;
@@ -71,7 +72,7 @@ public sealed class AiAnalysisRun : BaseEntity
 
     public void MarkFailed(string errorCode, DateTimeOffset now)
     {
-        Status = "failed";
+        Status = RunStatus.Failed;
         ErrorCode = errorCode;
         CompletedAt = now;
     }

@@ -22,7 +22,7 @@ const handleForgotPassword = async () => {
         errorMsg.value = '';
         successMsg.value = '';
         await authStore.forgotPassword(email.value);
-        successMsg.value = 'If the email exists, a new password has been sent to it.';
+        successMsg.value = 'If the email exists, a password reset link has been sent to it.';
     } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: { message?: string } } } };
         errorMsg.value = err.response?.data?.error?.message || 'ERR: Failed to process request.';
@@ -116,4 +116,3 @@ const handleForgotPassword = async () => {
         </form>
     </div>
 </template>
-

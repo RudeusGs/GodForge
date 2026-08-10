@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Analysis;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -20,7 +21,7 @@ public sealed class AiFindingConfiguration : IEntityTypeConfiguration<AiFinding>
         builder.Property(x => x.Confidence).HasColumnName("confidence").HasPrecision(5, 4);
         builder.Property(x => x.EvidenceRefsJson).HasColumnName("evidence_refs").HasColumnType("jsonb").IsRequired();
         builder.Property(x => x.Fingerprint).HasColumnName("fingerprint").HasMaxLength(128).IsRequired();
-        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(x => x.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasOne<AiAnalysisRun>()

@@ -1,102 +1,114 @@
-import { setActivePinia, createPinia } from 'pinia';
-import { useAuthStore } from './auth.store';
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authApi } from '../api/auth/auth.api';
+import { clearAccessToken } from '../api/auth/authSession';
+import { useAuthStore } from './auth.store';
 
 vi.mock('../api/auth/auth.api', () => ({
-  authApi: {
-    login: vi.fn(),
-    logout: vi.fn(),
-  }
+    authApi: {
+        login: vi.fn(),
+        logout: vi.fn(),
+        refresh: vi.fn(),
+        register: vi.fn(),
+        forgotPassword: vi.fn(),
+    },
 }));
 
-describe('Auth Store', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-    localStorage.clear();
-    sessionStorage.clear();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('initializes with default values', () => {
-    const store = useAuthStore();
-    expect(store.isAuthenticated).toBe(false);
-    expect(store.user).toBeNull();
-    expect(store.accessToken).toBeNull();
-  });
-
-  it('updates state upon successful login with rememberMe=true', async () => {
-    const store = useAuthStore();
-
-    // Mock the API response
-    const mockResponse = {
-      data: {
+const authResponse = {
+    data: {
         accessToken: 'mock-token',
-        user: { id: '1', email: 'test@example.com', displayName: 'Test User', status: 'active', emailVerifiedAt: '2026-08-05T00:00:00Z', createdAt: '2026-08-05T00:00:00Z', version: 1 },
-        session: { id: 'session-1', deviceName: 'test', createdAt: '2026-08-05T00:00:00Z', lastSeenAt: '2026-08-05T00:00:00Z', expiresAt: '2026-09-04T00:00:00Z', current: true, revokedAt: null },
+        user: {
+            id: '1',
+            email: 'test@example.com',
+            displayName: 'Test User',
+            status: 'active',
+            emailVerifiedAt: '2026-08-05T00:00:00Z',
+            createdAt: '2026-08-05T00:00:00Z',
+            version: 1,
+        },
+        session: {
+            id: 'session-1',
+            deviceName: 'test',
+            createdAt: '2026-08-05T00:00:00Z',
+            lastSeenAt: '2026-08-05T00:00:00Z',
+            expiresAt: '2026-09-04T00:00:00Z',
+            current: true,
+            revokedAt: null,
+        },
         accessTokenExpiresAt: '2026-08-05T00:15:00Z',
-        refreshTokenExpiresAt: '2026-09-04T00:00:00Z'
-      },
-      meta: { correlationId: '123' }
-    };
+        refreshTokenExpiresAt: '2026-09-04T00:00:00Z',
+    },
+    meta: { correlationId: '123' },
+};
 
-    // @ts-expect-error - mocking axios response
-    vi.mocked(authApi.login).mockResolvedValueOnce(mockResponse);
+describe('Auth Store', () => {
+    beforeEach(() => {
+        setActivePinia(createPinia());
+        clearAccessToken();
+        localStorage.clear();
+        sessionStorage.clear();
+    });
 
-    await store.login({ email: 'test@example.com', password: 'password123' }, true);
+    afterEach(() => {
+        vi.clearAllMocks();
+    });
 
-    expect(store.isAuthenticated).toBe(true);
-    expect(store.accessToken).toBe('mock-token');
-    expect(store.user?.email).toBe('test@example.com');
-    expect(localStorage.getItem('access_token')).toBe('mock-token');
-    expect(sessionStorage.getItem('access_token')).toBeNull();
-    expect(localStorage.getItem('refresh_token')).toBeNull();
-    expect(sessionStorage.getItem('refresh_token')).toBeNull();
-  });
+    it('initializes with no browser-readable credentials', () => {
+        const store = useAuthStore();
 
-  it('updates state upon successful login with rememberMe=false', async () => {
-    const store = useAuthStore();
+        expect(store.isAuthenticated).toBe(false);
+        expect(store.user).toBeNull();
+        expect(store.accessToken).toBeNull();
+        expect(localStorage.length).toBe(0);
+        expect(sessionStorage.length).toBe(0);
+    });
 
-    // Mock the API response
-    const mockResponse = {
-      data: {
-        accessToken: 'mock-token-session',
-        user: { id: '1', email: 'session@example.com', displayName: 'Session User', status: 'active', emailVerifiedAt: '2026-08-05T00:00:00Z', createdAt: '2026-08-05T00:00:00Z', version: 1 },
-        session: { id: 'session-2', deviceName: 'test', createdAt: '2026-08-05T00:00:00Z', lastSeenAt: '2026-08-05T00:00:00Z', expiresAt: '2026-09-04T00:00:00Z', current: true, revokedAt: null },
-        accessTokenExpiresAt: '2026-08-05T00:15:00Z',
-        refreshTokenExpiresAt: '2026-09-04T00:00:00Z'
-      },
-      meta: { correlationId: '123' }
-    };
+    it('keeps the access token in memory after login', async () => {
+        const store = useAuthStore();
+        vi.mocked(authApi.login).mockResolvedValueOnce(authResponse);
 
-    // @ts-expect-error - mocking axios response
-    vi.mocked(authApi.login).mockResolvedValueOnce(mockResponse);
+        await store.login({ email: 'test@example.com', password: 'password123' });
 
-    await store.login({ email: 'session@example.com', password: 'password123' }, false);
+        expect(store.isAuthenticated).toBe(true);
+        expect(store.accessToken).toBe('mock-token');
+        expect(store.user?.email).toBe('test@example.com');
+        expect(localStorage.length).toBe(0);
+        expect(sessionStorage.length).toBe(0);
+    });
 
-    expect(store.isAuthenticated).toBe(true);
-    expect(store.accessToken).toBe('mock-token-session');
-    expect(localStorage.getItem('access_token')).toBeNull();
-    expect(sessionStorage.getItem('access_token')).toBe('mock-token-session');
-    expect(localStorage.getItem('refresh_token')).toBeNull();
-    expect(sessionStorage.getItem('refresh_token')).toBeNull();
-  });
+    it('restores the in-memory session through the HttpOnly refresh cookie', async () => {
+        const store = useAuthStore();
+        vi.mocked(authApi.refresh).mockResolvedValueOnce(authResponse);
 
-  it('clears state on logout', async () => {
-    const store = useAuthStore();
+        await store.initialize();
 
-    // Setup initial state
-    localStorage.setItem('access_token', 'token');
-    sessionStorage.setItem('access_token', 'session_token');
-    await store.logout();
+        expect(store.initialized).toBe(true);
+        expect(store.isAuthenticated).toBe(true);
+        expect(store.accessToken).toBe('mock-token');
+        expect(authApi.refresh).toHaveBeenCalledTimes(1);
+    });
 
-    expect(store.isAuthenticated).toBe(false);
-    expect(store.accessToken).toBeNull();
-    expect(store.user).toBeNull();
-    expect(localStorage.getItem('access_token')).toBeNull();
-    expect(sessionStorage.getItem('access_token')).toBeNull();
-  });
+    it('remains unauthenticated when refresh fails', async () => {
+        const store = useAuthStore();
+        vi.mocked(authApi.refresh).mockRejectedValueOnce(new Error('unauthorized'));
+
+        await store.initialize();
+
+        expect(store.initialized).toBe(true);
+        expect(store.isAuthenticated).toBe(false);
+        expect(store.accessToken).toBeNull();
+    });
+
+    it('clears in-memory state on logout', async () => {
+        const store = useAuthStore();
+        vi.mocked(authApi.login).mockResolvedValueOnce(authResponse);
+        vi.mocked(authApi.logout).mockResolvedValueOnce(undefined);
+        await store.login({ email: 'test@example.com', password: 'password123' });
+
+        await store.logout();
+
+        expect(store.isAuthenticated).toBe(false);
+        expect(store.accessToken).toBeNull();
+        expect(store.user).toBeNull();
+    });
 });

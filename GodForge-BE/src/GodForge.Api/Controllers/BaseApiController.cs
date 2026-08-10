@@ -1,3 +1,5 @@
+using GodForge.Api.Services;
+using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,59 +9,60 @@ namespace GodForge.Api.Controllers;
 [Route("api/v1/[controller]")]
 public abstract class BaseApiController : ControllerBase
 {
-    protected string CorrelationId => HttpContext.Items["CorrelationId"]?.ToString() ?? Guid.NewGuid().ToString("N");
+    protected string CorrelationId => ApiErrorResponseFactory.GetCorrelationId(HttpContext);
+
+    protected static Guid RequireActorId(ICurrentUser currentUser)
+        => currentUser.Id ?? throw new UnauthorizedAccessException("Authenticated user identifier is missing.");
 
     protected ActionResult HandleResult<T>(Result<T> result)
     {
-        if (result.IsSuccess)
+        if (!result.IsSuccess)
+            return MapError(result.Error!);
+
+        if (result.Value is null)
+            return Ok(new ApiResponse<object> { Meta = new ApiMeta { CorrelationId = CorrelationId } });
+
+        if (result.Value is IPagedResult pagedResult)
         {
-            if (result.Value is null)
-                return Ok(new ApiResponse<object> { Meta = new ApiMeta { CorrelationId = CorrelationId } });
-
-            if (result.Value is IPagedResult pagedResult)
+            return Ok(new ApiPagedResponse<object>
             {
-                return Ok(new ApiPagedResponse<object>
+                Data = pagedResult.ItemsObject,
+                Meta = new ApiPagedMeta
                 {
-                    Data = pagedResult.ItemsObject,
-                    Meta = new ApiPagedMeta
-                    {
-                        CorrelationId = CorrelationId,
-                        Page = pagedResult.Page,
-                        PageSize = pagedResult.PageSize,
-                        TotalCount = pagedResult.TotalItems
-                    }
-                });
-            }
-
-            return Ok(new ApiResponse<T>
-            {
-                Data = result.Value,
-                Meta = new ApiMeta { CorrelationId = CorrelationId }
+                    CorrelationId = CorrelationId,
+                    Page = pagedResult.Page,
+                    PageSize = pagedResult.PageSize,
+                    TotalCount = pagedResult.TotalItems
+                }
             });
         }
 
-        var errorResponse = CreateErrorResponse(result.Error!);
-        return result.Error!.Type switch
+        return Ok(new ApiResponse<T>
         {
-            ErrorType.NotFound => NotFound(errorResponse),
-            ErrorType.Validation => BadRequest(errorResponse),
-            ErrorType.Conflict => Conflict(errorResponse),
-            ErrorType.Unauthorized => Unauthorized(errorResponse),
-            ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, errorResponse),
-            ErrorType.TooManyRequests => StatusCode(StatusCodes.Status429TooManyRequests, errorResponse),
-            _ => StatusCode(StatusCodes.Status500InternalServerError, errorResponse)
-        };
+            Data = result.Value,
+            Meta = new ApiMeta { CorrelationId = CorrelationId }
+        });
     }
 
     protected ActionResult HandleResult(Result result)
-    {
-        if (result.IsSuccess)
-        {
-            return Ok(new ApiResponse<object> { Meta = new ApiMeta { CorrelationId = CorrelationId } });
-        }
+        => result.IsSuccess
+            ? Ok(new ApiResponse<object> { Meta = new ApiMeta { CorrelationId = CorrelationId } })
+            : MapError(result.Error!);
 
-        var errorResponse = CreateErrorResponse(result.Error!);
-        return result.Error!.Type switch
+    protected ActionResult UnauthorizedError(
+        string code = "UNAUTHORIZED",
+        string message = "Authentication is required.")
+        => Unauthorized(ApiErrorResponseFactory.Create(HttpContext, code, message));
+
+    private ActionResult MapError(ApplicationError error)
+    {
+        var errorResponse = ApiErrorResponseFactory.Create(
+            HttpContext,
+            error.Code,
+            error.Message,
+            error.Details);
+
+        return error.Type switch
         {
             ErrorType.NotFound => NotFound(errorResponse),
             ErrorType.Validation => BadRequest(errorResponse),
@@ -68,20 +71,6 @@ public abstract class BaseApiController : ControllerBase
             ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, errorResponse),
             ErrorType.TooManyRequests => StatusCode(StatusCodes.Status429TooManyRequests, errorResponse),
             _ => StatusCode(StatusCodes.Status500InternalServerError, errorResponse)
-        };
-    }
-
-    private ApiErrorResponse CreateErrorResponse(ApplicationError error)
-    {
-        return new ApiErrorResponse
-        {
-            Error = new ApiErrorDetail
-            {
-                Code = error.Code,
-                Message = error.Message,
-                CorrelationId = CorrelationId,
-                Details = error.Details
-            }
         };
     }
 }

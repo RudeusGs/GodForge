@@ -34,7 +34,7 @@ public sealed class RemoveOrganizationMemberCommandHandler : OrganizationCommand
             var organization = await _organizations.GetByIdAsync(request.OrganizationId, cancellationToken);
             var actorMembership = await _members.GetAsync(request.OrganizationId, request.ActorId, cancellationToken);
             var target = await _members.GetAsync(request.OrganizationId, request.UserId, cancellationToken);
-            
+
             if (organization is null || organization.Status != OrganizationStatus.Active ||
                 actorMembership is not { Status: MembershipStatus.Active } || target is null || target.Status == MembershipStatus.Removed)
             {
@@ -70,11 +70,11 @@ public sealed class RemoveOrganizationMemberCommandHandler : OrganizationCommand
             var now = _clock.UtcNow;
             target.Change(target.Role, MembershipStatus.Removed, request.ActorId, target.Version, now);
             await _projectMembers.RemoveAllForOrganizationUserAsync(request.OrganizationId, request.UserId, now, cancellationToken);
-            
+
             await _auditWriter.WriteAuditAsync(
                 request.ActorId, null, "organization.member_removed", "organization-member", target.Id, "succeeded",
                 new { organizationId = request.OrganizationId, userId = request.UserId, target.Version }, cancellationToken);
-                
+
             var save = await SaveAsync(cancellationToken);
             if (save is not null)
                 return await RollbackAsync(save, cancellationToken);

@@ -19,6 +19,7 @@
 | `Forgejo__` | Server-side API token, base URL and webhook secret. |
 | `Email__` | SMTP provider. |
 | `Jwt__` | API issuer, audience, expiry and signing secret. |
+| `SecretHashing__` | HMAC key for OTP, invitation and password-reset challenge tokens. |
 | `OutboxEncryption__` | Encryption key for protected outbox payloads; shared by API and Worker. |
 | `M1Quotas__` | Current M1 limits for organizations, projects and pending invitations. |
 | `Frontend__` | Trusted frontend URL. |
@@ -29,14 +30,15 @@
 
 - `.env` is local only and never committed.
 - Production secrets come from a secret manager or protected deployment environment.
-- JWT signing secret, outbox encryption key, Forgejo token, webhook secret, SMTP password, MinIO credentials and Gemini API key must be independently rotatable.
+- JWT signing secret, challenge-token hashing key, outbox encryption key, Forgejo token, webhook secret, SMTP password, MinIO credentials and Gemini API key must be independently rotatable.
+- `SecretHashing__Key` must be at least 32 characters and must not equal `Jwt__Secret`. During rollout, `SecretHashing__LegacyKey` may temporarily contain the previous JWT secret so outstanding OTP, invitation and password-reset tokens remain verifiable; remove it after their maximum lifetime.
 - Do not embed credentials in Git remote URLs.
 - Do not place secrets in RabbitMQ messages, activity records, traces or client responses.
 - Use separate credentials per environment and least-privilege service accounts.
 
 ## Production validation
 
-Startup must fail safely when a mandatory production secret is missing, default, too short or obviously copied from examples. Gemini and Forgejo may be disabled explicitly; silent partial configuration is not allowed.
+Startup must fail safely when a mandatory production secret is missing, default, too short or obviously copied from examples. Gemini and Forgejo may be disabled explicitly; silent partial configuration is not allowed. Enabled Forgejo endpoints must use HTTPS, except loopback HTTP endpoints used for local development. SMTP configuration must be omitted completely or provide a valid host and sender identity.
 ## Outbox encryption key migration
 
 - Configure the same `OutboxEncryption__Key` value for API and Worker.

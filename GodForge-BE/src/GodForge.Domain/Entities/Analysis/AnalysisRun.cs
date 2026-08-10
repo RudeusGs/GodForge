@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Analysis;
 
@@ -9,7 +10,7 @@ public sealed class AnalysisRun : BaseEntity
     public Guid SnapshotId { get; private set; }
     public Guid? MetadataRunId { get; private set; }
     public Guid? JobId { get; private set; }
-    public string Status { get; private set; } = default!;
+    public RunStatus Status { get; private set; }
     public DateTimeOffset StartedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
 
@@ -27,20 +28,20 @@ public sealed class AnalysisRun : BaseEntity
             SnapshotId = snapshotId,
             MetadataRunId = metadataRunId,
             JobId = jobId,
-            Status = "running",
+            Status = RunStatus.Running,
             StartedAt = now
         };
     }
 
     public void MarkAsCompleted(DateTimeOffset now)
     {
-        Status = "completed";
+        Status = RunStatus.Completed;
         CompletedAt = now;
     }
 
     public void MarkAsFailed(DateTimeOffset now)
     {
-        Status = "failed";
+        Status = RunStatus.Failed;
         CompletedAt = now;
     }
 }

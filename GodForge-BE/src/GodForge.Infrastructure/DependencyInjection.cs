@@ -51,7 +51,6 @@ public static class DependencyInjection
         services.AddSingleton<IM1QuotaPolicy, M1QuotaPolicy>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IActivityWriter, ActivityWriter>();
-        services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddSingleton<IFrontendUrlBuilder, FrontendUrlBuilder>();
         services.AddSingleton<IJobPublisher, RabbitMqJobPublisher>();
@@ -65,7 +64,24 @@ public static class DependencyInjection
                 settings => !string.Equals(settings.Key, configuration["Jwt:Secret"], StringComparison.Ordinal),
                 "Outbox encryption key must be different from the JWT signing secret.")
             .ValidateOnStart();
-        services.Configure<EmailSettings>(configuration.GetSection("Email"));
+        services.AddOptions<OutboxDispatcherSettings>()
+            .Bind(configuration.GetSection(OutboxDispatcherSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddOptions<EmailSettings>()
+            .Bind(configuration.GetSection("Email"))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings => settings.Smtp.IsUnconfigured ||
+                            (!string.IsNullOrWhiteSpace(settings.Smtp.Host) &&
+                             !string.IsNullOrWhiteSpace(settings.Smtp.FromEmail) &&
+                             !string.IsNullOrWhiteSpace(settings.Smtp.FromName)),
+                "SMTP configuration must be either omitted or include Host, FromEmail, and FromName.")
+            .Validate(
+                settings => settings.Smtp.IsUnconfigured ||
+                            System.Net.Mail.MailAddress.TryCreate(settings.Smtp.FromEmail, out _),
+                "SMTP FromEmail must be a valid email address.")
+            .ValidateOnStart();
         services
             .AddOptions<RabbitMqSettings>()
             .Bind(configuration.GetSection(RabbitMqSettings.SectionName))
@@ -109,8 +125,32 @@ public static class DependencyInjection
             .Bind(configuration.GetSection("RepositoryProcessing"))
             .ValidateDataAnnotations()
             .ValidateOnStart();
-        services.Configure<GeminiSettings>(configuration.GetSection("Gemini"));
-        services.Configure<ForgejoSettings>(configuration.GetSection("Forgejo"));
+        services.AddOptions<GeminiSettings>()
+            .Bind(configuration.GetSection("Gemini"))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings => Uri.TryCreate(settings.Endpoint, UriKind.Absolute, out var endpoint) &&
+                            endpoint.Scheme == Uri.UriSchemeHttps,
+                "Gemini Endpoint must be an absolute HTTPS URL.")
+            .Validate(
+                settings => !settings.Enabled ||
+                            (!string.IsNullOrWhiteSpace(settings.ApiKey) && !string.IsNullOrWhiteSpace(settings.Model)),
+                "Gemini ApiKey and Model are required when Gemini is enabled.")
+            .ValidateOnStart();
+        services.AddOptions<ForgejoSettings>()
+            .Bind(configuration.GetSection("Forgejo"))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings => Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out _),
+                "Forgejo BaseUrl must be an absolute URL.")
+            .Validate(
+                settings => !settings.Enabled ||
+                            (Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri) &&
+                             (baseUri.Scheme == Uri.UriSchemeHttps ||
+                              (baseUri.Scheme == Uri.UriSchemeHttp && baseUri.IsLoopback)) &&
+                             !string.IsNullOrWhiteSpace(settings.ApiToken)),
+                "Forgejo requires a non-empty ApiToken and an HTTPS BaseUrl; HTTP is allowed only for loopback development endpoints.")
+            .ValidateOnStart();
         services.AddOptions<M1QuotaSettings>()
             .Bind(configuration.GetSection(M1QuotaSettings.SectionName))
             .ValidateDataAnnotations()
@@ -166,11 +206,26 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddSingleton<ISecretHashService, SecretHashService>();
         services.AddOptions<JwtSettings>()
             .Bind(configuration.GetSection("Jwt"))
             .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddOptions<SecretHashSettings>()
+            .Bind(configuration.GetSection(SecretHashSettings.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings => !string.Equals(settings.Key, configuration["Jwt:Secret"], StringComparison.Ordinal),
+                "SecretHashing key must be different from the JWT signing secret.")
+            .Validate(
+                settings => string.IsNullOrWhiteSpace(settings.LegacyKey) || settings.LegacyKey.Length >= 32,
+                "SecretHashing legacy key must be empty or at least 32 characters.")
+            .Validate(
+                settings => string.IsNullOrWhiteSpace(settings.LegacyKey) ||
+                            !string.Equals(settings.Key, settings.LegacyKey, StringComparison.Ordinal),
+                "SecretHashing legacy key must differ from the active key.")
             .ValidateOnStart();
         return services;
     }

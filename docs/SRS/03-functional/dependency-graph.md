@@ -20,7 +20,7 @@ Viewer and higher roles; Worker generates graph.
 ## Main flow
 
 1. Parser emits normalized entities/references.
-2. Graph builder creates typed nodes and edges.
+2. Graph builder creates typed nodes for scenes, resources, assets, GDScript and Godot C# scripts, then preserves script edge semantics (`extends`, `preload`, `load`).
 3. API returns a bounded subgraph based on root/filter/depth.
 4. UI supports zoom, pan, search and detail navigation.
 5. Incremental analysis uses reverse graph to expand affected scope.

@@ -1,6 +1,12 @@
 namespace GodForge.Application.Common.Models;
 
-public class Result
+public interface IFailureResult<TSelf>
+    where TSelf : IFailureResult<TSelf>
+{
+    static abstract TSelf Failure(ApplicationError error);
+}
+
+public class Result : IFailureResult<Result>
 {
     public bool IsSuccess { get; }
     public bool IsError => !IsSuccess;
@@ -27,7 +33,7 @@ public class Result
     }
 }
 
-public sealed class Result<TValue> : Result
+public sealed class Result<TValue> : Result, IFailureResult<Result<TValue>>
 {
     private readonly TValue? _value;
 

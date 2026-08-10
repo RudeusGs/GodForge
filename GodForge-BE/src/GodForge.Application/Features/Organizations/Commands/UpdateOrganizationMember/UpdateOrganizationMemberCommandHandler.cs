@@ -2,6 +2,7 @@ using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
@@ -31,8 +32,8 @@ public sealed class UpdateOrganizationMemberCommandHandler : OrganizationCommand
 
     public async Task<Result<OrganizationMemberDto>> Handle(UpdateOrganizationMemberCommand request, CancellationToken cancellationToken)
     {
-        if (!Enum.TryParse<OrganizationRole>(request.Role, true, out var newRole) ||
-            !Enum.TryParse<MembershipStatus>(request.Status, true, out var newStatus) ||
+        if (!EnumText.TryParseDefined<OrganizationRole>(request.Role, out var newRole) ||
+            !EnumText.TryParseDefined<MembershipStatus>(request.Status, out var newStatus) ||
             newStatus == MembershipStatus.Removed)
         {
             return ApplicationError.Validation("VALIDATION_ERROR", "Membership role or status is invalid.");
@@ -83,14 +84,14 @@ public sealed class UpdateOrganizationMemberCommandHandler : OrganizationCommand
 
             var now = _clock.UtcNow;
             target.Change(newRole, newStatus, request.ActorId, request.Version, now);
-            
+
             if (newStatus == MembershipStatus.Suspended)
                 await _projectMembers.SuspendAllForOrganizationUserAsync(request.OrganizationId, request.UserId, now, cancellationToken);
-            
+
             await _auditWriter.WriteAuditAsync(
                 request.ActorId, null, "organization.member_updated", "organization-member", target.Id, "succeeded",
                 new { organizationId = request.OrganizationId, userId = request.UserId, Role = newRole.ToString(), Status = newStatus.ToString(), target.Version }, cancellationToken);
-                
+
             var save = await SaveAsync(cancellationToken);
             if (save is not null)
                 return await RollbackAsync<OrganizationMemberDto>(save, cancellationToken);

@@ -1,10 +1,11 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using GodForge.Api.Routing;
 using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Domain.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,32 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
-        services.AddControllers();
+        services.AddControllers(options =>
+            options.Conventions.Add(new RouteTokenTransformerConvention(new KebabCaseParameterTransformer())));
+        services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                var details = context.ModelState
+                    .Where(entry => entry.Value?.Errors.Count > 0)
+                    .ToDictionary(
+                        entry => entry.Key,
+                        entry => entry.Value!.Errors
+                            .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage)
+                                ? "The supplied value is invalid."
+                                : error.ErrorMessage)
+                            .Distinct(StringComparer.Ordinal)
+                            .ToArray(),
+                        StringComparer.Ordinal);
+
+                return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(
+                    ApiErrorResponseFactory.Create(
+                        context.HttpContext,
+                        "VALIDATION_ERROR",
+                        "Request validation failed.",
+                        details));
+            };
+        });
         services.AddEndpointsApiExplorer();
 
         services.AddHttpContextAccessor();
@@ -112,17 +138,14 @@ public static class DependencyInjection
                         return;
                     }
 
-                    var userRepository = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
                     var sessionRepository = context.HttpContext.RequestServices.GetRequiredService<IUserSessionRepository>();
                     var clock = context.HttpContext.RequestServices.GetRequiredService<IClock>();
-                    var user = await userRepository.GetByIdAsync(userId, context.HttpContext.RequestAborted);
-                    var session = await sessionRepository.GetActiveAsync(sessionId, userId, context.HttpContext.RequestAborted);
-                    if (user is null ||
-                        user.DeletedAt is not null ||
-                        user.Status != UserStatus.Active ||
-                        !string.Equals(user.SecurityStamp, securityStamp, StringComparison.Ordinal) ||
-                        session is null ||
-                        !session.IsActive(clock.UtcNow))
+                    if (!await sessionRepository.IsValidAsync(
+                            sessionId,
+                            userId,
+                            securityStamp,
+                            clock.UtcNow,
+                            context.HttpContext.RequestAborted))
                     {
                         context.Fail("The token is no longer valid for this account or session.");
                         return;

@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Ops;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,14 +20,17 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(o => o.PayloadJson).HasColumnName("payload").HasColumnType("jsonb").IsRequired();
         builder.Property(o => o.HeadersJson).HasColumnName("headers").HasColumnType("jsonb");
         builder.Property(o => o.CorrelationId).HasColumnName("correlation_id").HasMaxLength(80).IsRequired();
-        builder.Property(o => o.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(o => o.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(o => o.Attempts).HasColumnName("attempts").IsRequired();
         builder.Property(o => o.AvailableAt).HasColumnName("available_at").HasColumnType("timestamptz").IsRequired();
+        builder.Property(o => o.LeaseId).HasColumnName("lease_id").HasColumnType("uuid");
+        builder.Property(o => o.LeaseExpiresAt).HasColumnName("lease_expires_at").HasColumnType("timestamptz");
         builder.Property(o => o.ProcessedAt).HasColumnName("processed_at").HasColumnType("timestamptz");
         builder.Property(o => o.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
 
         builder.Property(o => o.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 
         builder.HasIndex(o => new { o.Status, o.AvailableAt }).HasDatabaseName("ix_outbox_status_available");
+        builder.HasIndex(o => new { o.Status, o.LeaseExpiresAt }).HasDatabaseName("ix_outbox_status_lease_expires");
     }
 }

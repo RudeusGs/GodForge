@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Repo;
 
@@ -6,7 +7,7 @@ public sealed class RepositorySyncRun : BaseEntity
 {
     public Guid RepositoryId { get; private set; }
     public string Type { get; private set; } = default!;
-    public string Status { get; private set; } = default!;
+    public RunStatus Status { get; private set; }
     public DateTimeOffset StartedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
     public string? ErrorMessage { get; private set; }
@@ -21,7 +22,7 @@ public sealed class RepositorySyncRun : BaseEntity
             Id = Guid.NewGuid(),
             RepositoryId = repositoryId,
             Type = type,
-            Status = "running",
+            Status = RunStatus.Running,
             StartedAt = now,
             CreatedAt = now
         };
@@ -29,13 +30,13 @@ public sealed class RepositorySyncRun : BaseEntity
 
     public void MarkAsCompleted(DateTimeOffset now)
     {
-        Status = "completed";
+        Status = RunStatus.Completed;
         CompletedAt = now;
     }
 
     public void MarkAsFailed(string errorMessage, DateTimeOffset now)
     {
-        Status = "failed";
+        Status = RunStatus.Failed;
         ErrorMessage = errorMessage;
         CompletedAt = now;
     }

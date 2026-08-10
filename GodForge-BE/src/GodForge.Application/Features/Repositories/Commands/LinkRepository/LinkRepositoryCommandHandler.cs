@@ -2,6 +2,7 @@ using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Repositories.DTOs;
 using GodForge.Domain.Entities.Repo;
 using GodForge.Domain.Enums;
@@ -49,7 +50,7 @@ public sealed class LinkRepositoryCommandHandler : IRequestHandler<LinkRepositor
             return ApplicationError.Conflict("REPOSITORY_ALREADY_CONNECTED", "A repository is already connected to this project.");
         }
 
-        if (!Enum.TryParse<GitProvider>(request.Provider, true, out var provider) || provider == GitProvider.Forgejo)
+        if (!EnumText.TryParseDefined<GitProvider>(request.Provider, out var provider) || provider == GitProvider.Forgejo)
         {
             return ApplicationError.Validation("REPOSITORY_PROVIDER_INVALID", "Use GitHub, GitLab, Bitbucket, or Generic for an external linked repository.");
         }

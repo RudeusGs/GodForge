@@ -7,22 +7,13 @@ public static class ApiErrorResponseWriter
         int statusCode,
         string code,
         string message,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        object? details = null)
     {
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
-        var correlationId = context.Items["CorrelationId"]?.ToString();
-        if (string.IsNullOrWhiteSpace(correlationId))
-            correlationId = context.TraceIdentifier;
-
-        return context.Response.WriteAsJsonAsync(new
-        {
-            error = new
-            {
-                code,
-                message,
-                correlationId
-            }
-        }, cancellationToken);
+        return context.Response.WriteAsJsonAsync(
+            ApiErrorResponseFactory.Create(context, code, message, details),
+            cancellationToken);
     }
 }

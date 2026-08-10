@@ -28,7 +28,10 @@ public sealed class UserInvite : BaseAuditableEntity
         Guid invitedBy,
         DateTimeOffset expiresAt,
         DateTimeOffset now)
-        => new()
+    {
+        EnumGuard.ThrowIfUndefined(role, nameof(role));
+
+        return new UserInvite
         {
             Id = Guid.NewGuid(),
             OrganizationId = organizationId,
@@ -44,6 +47,7 @@ public sealed class UserInvite : BaseAuditableEntity
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
 
     public bool IsActive(DateTimeOffset now) => Status == InviteStatus.Pending && now < ExpiresAt;
 
@@ -51,6 +55,7 @@ public sealed class UserInvite : BaseAuditableEntity
     {
         if (Status != InviteStatus.Pending)
             throw new InvalidOperationException("Only a pending invitation can be replaced.");
+        EnumGuard.ThrowIfUndefined(role, nameof(role));
         Role = role;
         TokenHash = tokenHash;
         InvitedBy = invitedBy;

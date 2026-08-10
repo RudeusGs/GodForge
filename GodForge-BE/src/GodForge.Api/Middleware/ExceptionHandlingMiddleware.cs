@@ -1,17 +1,16 @@
-using System.Net;
-using System.Text.Json;
+using GodForge.Api.Services;
 using GodForge.Application.Common.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace GodForge.Api.Middleware;
 
-public class ExceptionHandlingMiddleware
+public sealed class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(
+        RequestDelegate next,
+        ILogger<ExceptionHandlingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -23,31 +22,56 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
-        catch (Exception ex)
+        catch (Exception exception) when (!context.Response.HasStarted)
         {
-            _logger.LogError(ex, "An unhandled exception occurred.");
-            await HandleExceptionAsync(context, ex);
+            var mapping = Map(exception);
+            if (mapping.StatusCode >= StatusCodes.Status500InternalServerError)
+                _logger.LogError(exception, "An unhandled exception occurred. CorrelationId: {CorrelationId}", ApiErrorResponseFactory.GetCorrelationId(context));
+            else
+                _logger.LogWarning(exception, "Request failed with {ErrorCode}. CorrelationId: {CorrelationId}", mapping.Code, ApiErrorResponseFactory.GetCorrelationId(context));
+
+            context.Response.Clear();
+            await ApiErrorResponseWriter.WriteAsync(
+                context,
+                mapping.StatusCode,
+                mapping.Code,
+                mapping.Message,
+                context.RequestAborted,
+                mapping.Details);
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static ExceptionMapping Map(Exception exception) => exception switch
     {
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        UnauthorizedAccessException => new(
+            StatusCodes.Status401Unauthorized,
+            "UNAUTHORIZED",
+            "Authentication is missing or invalid."),
+        ConcurrencyConflictException => new(
+            StatusCodes.Status409Conflict,
+            "CONCURRENCY_CONFLICT",
+            "The resource changed before this operation completed."),
+        FluentValidation.ValidationException validationException => new(
+            StatusCodes.Status400BadRequest,
+            "VALIDATION_ERROR",
+            "Request validation failed.",
+            validationException.Errors
+                .GroupBy(failure => failure.PropertyName, StringComparer.Ordinal)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(failure => failure.ErrorMessage)
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray(),
+                    StringComparer.Ordinal)),
+        BadHttpRequestException => new(
+            StatusCodes.Status400BadRequest,
+            "VALIDATION_ERROR",
+            "The request is invalid."),
+        _ => new(
+            StatusCodes.Status500InternalServerError,
+            "INTERNAL_SERVER_ERROR",
+            "An unexpected error occurred.")
+    };
 
-        var correlationId = context.Items["CorrelationId"]?.ToString() ?? Guid.NewGuid().ToString();
-
-        var response = new
-        {
-            error = new
-            {
-                code = "INTERNAL_SERVER_ERROR",
-                message = "An unexpected error occurred.",
-                correlationId = correlationId
-            }
-        };
-
-        var json = JsonSerializer.Serialize(response);
-        await context.Response.WriteAsync(json);
-    }
+    private sealed record ExceptionMapping(int StatusCode, string Code, string Message, object? Details = null);
 }

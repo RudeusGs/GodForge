@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Repo;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,7 +16,7 @@ public sealed class RepositorySyncRunConfiguration : IEntityTypeConfiguration<Re
 
         builder.Property(r => r.RepositoryId).HasColumnName("repository_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(40).IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
         builder.Property(r => r.ErrorMessage).HasColumnName("error_message").HasColumnType("text");

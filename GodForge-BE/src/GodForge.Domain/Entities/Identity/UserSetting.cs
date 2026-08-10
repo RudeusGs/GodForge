@@ -1,14 +1,15 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Identity;
 
 public sealed class UserSetting : BaseAuditableEntity
 {
     public Guid UserId { get; private set; }
-    public string Theme { get; private set; } = default!;
+    public Theme Theme { get; private set; }
     public bool NotificationInApp { get; private set; }
     public bool NotificationEmail { get; private set; }
-    public string NotificationDigest { get; private set; } = default!;
+    public NotificationDigest NotificationDigest { get; private set; }
 
     private UserSetting() { } // EF Core
 
@@ -18,16 +19,16 @@ public sealed class UserSetting : BaseAuditableEntity
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Theme = "system",
+            Theme = Theme.Light,
             NotificationInApp = true,
             NotificationEmail = true,
-            NotificationDigest = "off",
+            NotificationDigest = NotificationDigest.Off,
             CreatedAt = now,
             UpdatedAt = now
         };
     }
 
-    public void Update(string theme, bool notificationInApp, bool notificationEmail, string notificationDigest, DateTimeOffset now)
+    public void Update(Theme theme, bool notificationInApp, bool notificationEmail, NotificationDigest notificationDigest, DateTimeOffset now)
     {
         Theme = theme;
         NotificationInApp = notificationInApp;

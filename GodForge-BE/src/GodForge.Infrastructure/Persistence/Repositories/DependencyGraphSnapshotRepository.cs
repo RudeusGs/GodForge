@@ -31,6 +31,7 @@ public sealed class DependencyGraphSnapshotRepository : IDependencyGraphSnapshot
     public async Task<DependencyGraphSnapshot?> GetLatestByProjectAsync(Guid projectId, CancellationToken cancellationToken)
     {
         return await _context.DependencyGraphSnapshots
+            .AsNoTracking()
             .Where(s => s.ProjectId == projectId)
             .OrderByDescending(s => s.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -39,6 +40,7 @@ public sealed class DependencyGraphSnapshotRepository : IDependencyGraphSnapshot
     public async Task<IReadOnlyList<DependencyGraphNode>> GetNodesBySnapshotAsync(Guid snapshotId, CancellationToken cancellationToken)
     {
         return await _context.DependencyGraphNodes
+            .AsNoTracking()
             .Where(n => n.GraphSnapshotId == snapshotId)
             .ToListAsync(cancellationToken);
     }
@@ -46,6 +48,7 @@ public sealed class DependencyGraphSnapshotRepository : IDependencyGraphSnapshot
     public async Task<IReadOnlyList<DependencyGraphEdge>> GetEdgesBySnapshotAsync(Guid snapshotId, CancellationToken cancellationToken)
     {
         return await _context.DependencyGraphEdges
+            .AsNoTracking()
             .Where(e => e.GraphSnapshotId == snapshotId)
             .ToListAsync(cancellationToken);
     }

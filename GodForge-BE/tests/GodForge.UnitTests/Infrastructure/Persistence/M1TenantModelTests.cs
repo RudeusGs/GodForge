@@ -54,4 +54,13 @@ public sealed class M1TenantModelTests
         Assert.Contains(entity.GetIndexes(), index => index.IsUnique &&
             index.Properties.Select(property => property.Name).SequenceEqual(new[] { nameof(ProjectSetting.ProjectId) }));
     }
+
+    [Fact]
+    public void ProjectSlug_UsesDomainMaximumLength()
+    {
+        using var context = CreateContext();
+        var entity = context.Model.FindEntityType(typeof(Project))!;
+
+        Assert.Equal(Project.MaxSlugLength, entity.FindProperty(nameof(Project.Slug))!.GetMaxLength());
+    }
 }

@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Domain.Entities.Analysis;
+using GodForge.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace GodForge.Infrastructure.Persistence.Repositories;
@@ -24,7 +25,7 @@ public sealed class AiAnalysisRepository : IAiAnalysisRepository
         CancellationToken cancellationToken = default)
         => _context.AiAnalysisRuns
             .AsNoTracking()
-            .Where(run => run.Status == "completed")
+            .Where(run => run.Status == RunStatus.Completed)
             .OrderByDescending(run => run.CompletedAt)
             .FirstOrDefaultAsync(
                 run => run.RepositoryId == repositoryId &&
@@ -39,7 +40,7 @@ public sealed class AiAnalysisRepository : IAiAnalysisRepository
     public Task<AiAnalysisRun?> GetLatestByProjectAsync(Guid projectId, CancellationToken cancellationToken = default)
         => _context.AiAnalysisRuns
             .AsNoTracking()
-            .Where(r => r.ProjectId == projectId && r.Status == "completed")
+            .Where(r => r.ProjectId == projectId && r.Status == RunStatus.Completed)
             .OrderByDescending(r => r.CompletedAt)
             .FirstOrDefaultAsync(cancellationToken);
 

@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+import { clearAccessToken, getAccessToken, setAccessToken } from './auth/authSession';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5072/api/v1';
 
@@ -11,21 +12,6 @@ const axiosClient = axios.create({
     withCredentials: true,
 });
 
-function getStoredToken(key: string): string | null {
-    return localStorage.getItem(key) || sessionStorage.getItem(key);
-}
-
-function clearStoredAuth(): void {
-    for (const storage of [localStorage, sessionStorage]) {
-        storage.removeItem('access_token');
-        storage.removeItem('auth_user');
-    }
-}
-
-function getActiveStorage(): Storage {
-    return localStorage.getItem('access_token') ? localStorage : sessionStorage;
-}
-
 function redirectToLogin(): void {
     if (window.location.pathname !== '/login') {
         window.location.assign('/login');
@@ -34,7 +20,7 @@ function redirectToLogin(): void {
 
 axiosClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        const token = getStoredToken('access_token');
+        const token = getAccessToken();
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -92,15 +78,14 @@ axiosClient.interceptors.response.use(
                     { timeout: 30000, withCredentials: true }
                 );
                 const newAccessToken = response.data.data.accessToken as string;
-                const storage = getActiveStorage();
 
-                storage.setItem('access_token', newAccessToken);
+                setAccessToken(newAccessToken);
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                 resolveRefreshSubscribers(newAccessToken);
                 return axiosClient(originalRequest);
             } catch (refreshError) {
                 rejectRefreshSubscribers(refreshError);
-                clearStoredAuth();
+                clearAccessToken();
                 redirectToLogin();
                 return Promise.reject(refreshError);
             } finally {

@@ -26,6 +26,7 @@ public sealed class HealthReportRepository : IHealthReportRepository
     public async Task<HealthReport?> GetLatestByProjectAsync(Guid projectId, CancellationToken cancellationToken)
     {
         return await _context.HealthReports
+            .AsNoTracking()
             .Where(r => r.ProjectId == projectId)
             .OrderByDescending(r => r.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -34,6 +35,7 @@ public sealed class HealthReportRepository : IHealthReportRepository
     public async Task<IReadOnlyList<HealthIssue>> GetIssuesByReportAsync(Guid reportId, CancellationToken cancellationToken)
     {
         return await _context.HealthIssues
+            .AsNoTracking()
             .Where(i => i.ReportId == reportId)
             .ToListAsync(cancellationToken);
     }

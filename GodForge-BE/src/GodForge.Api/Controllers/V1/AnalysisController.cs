@@ -29,13 +29,8 @@ public sealed class AnalysisController : BaseApiController
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetLatestHealthReport(Guid projectId, CancellationToken cancellationToken)
     {
-        if (_currentUser.Id is null)
-        {
-            return Unauthorized();
-        }
-
         var result = await _mediator.Send(
-            new GetHealthReportQuery(projectId, _currentUser.Id.Value),
+            new GetHealthReportQuery(projectId, RequireActorId(_currentUser)),
             cancellationToken);
         return HandleResult(result);
     }
@@ -47,13 +42,8 @@ public sealed class AnalysisController : BaseApiController
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetDependencyGraph(Guid projectId, CancellationToken cancellationToken)
     {
-        if (_currentUser.Id is null)
-        {
-            return Unauthorized();
-        }
-
         var result = await _mediator.Send(
-            new GetDependencyGraphQuery(projectId, _currentUser.Id.Value),
+            new GetDependencyGraphQuery(projectId, RequireActorId(_currentUser)),
             cancellationToken);
         return HandleResult(result);
     }
@@ -65,13 +55,8 @@ public sealed class AnalysisController : BaseApiController
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetLatestAiAdvisory(Guid projectId, CancellationToken cancellationToken)
     {
-        if (_currentUser.Id is null)
-        {
-            return Unauthorized();
-        }
-
         var result = await _mediator.Send(
-            new GetAiAdvisoryQuery(projectId, _currentUser.Id.Value),
+            new GetAiAdvisoryQuery(projectId, RequireActorId(_currentUser)),
             cancellationToken);
         return HandleResult(result);
     }

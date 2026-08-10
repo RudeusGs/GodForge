@@ -18,11 +18,32 @@ public sealed class OutboxWriter : IOutboxWriter
         _clock = clock;
     }
 
-    public async Task EnqueueAsync(
+    public Task EnqueueAsync(
         string queueName,
         WorkerMessage message,
         CancellationToken cancellationToken = default)
+        => EnqueueCoreAsync(queueName, message, _clock.UtcNow, cancellationToken);
+
+    public Task EnqueueScheduledAsync(
+        string queueName,
+        WorkerMessage message,
+        DateTimeOffset availableAt,
+        CancellationToken cancellationToken = default)
+        => EnqueueCoreAsync(queueName, message, availableAt, cancellationToken);
+
+    private async Task EnqueueCoreAsync(
+        string queueName,
+        WorkerMessage message,
+        DateTimeOffset availableAt,
+        CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
+        ArgumentNullException.ThrowIfNull(message);
+
+        var now = _clock.UtcNow;
+        if (availableAt < now)
+            availableAt = now;
+
         var payload = JsonSerializer.Serialize(message, message.GetType(), JsonOptions);
         var headers = JsonSerializer.Serialize(new
         {
@@ -30,14 +51,15 @@ public sealed class OutboxWriter : IOutboxWriter
             schemaVersion = message.SchemaVersion
         }, JsonOptions);
 
-        var outboxMessage = OutboxMessage.Create(
+        var outboxMessage = OutboxMessage.CreateScheduled(
             aggregateType: "Job",
             aggregateId: message.JobId,
             eventType: queueName,
             payloadJson: payload,
             headersJson: headers,
             correlationId: message.CorrelationId,
-            now: _clock.UtcNow);
+            availableAt,
+            now);
 
         await _context.OutboxMessages.AddAsync(outboxMessage, cancellationToken);
     }

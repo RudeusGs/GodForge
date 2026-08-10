@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Identity;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +18,7 @@ public sealed class LoginEventConfiguration : IEntityTypeConfiguration<LoginEven
         builder.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
         builder.Property(e => e.DeviceName).HasColumnName("device_name").HasMaxLength(200);
         builder.Property(e => e.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
-        builder.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(e => e.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(e => e.FailureReason).HasColumnName("failure_reason").HasMaxLength(255);
 
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();

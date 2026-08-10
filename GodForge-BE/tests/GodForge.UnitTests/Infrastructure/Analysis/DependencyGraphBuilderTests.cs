@@ -106,7 +106,66 @@ var preload_scene = preload(""res://main.tscn"")
             // player.tscn -> player.gd
             Assert.Contains(edges, e => e.SourceNodeKey == "res://player.tscn" && e.TargetNodeKey == "res://player.gd" && e.Relation == "attaches");
             // player.gd -> main.tscn
-            Assert.Contains(edges, e => e.SourceNodeKey == "res://player.gd" && e.TargetNodeKey == "res://main.tscn" && e.Relation == "load"); // Since it uses preload
+            Assert.Contains(edges, e => e.SourceNodeKey == "res://player.gd" && e.TargetNodeKey == "res://main.tscn" && e.Relation == "preload");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task BuildAsync_WithCSharpScriptReferencedByScene_TracksScriptNode()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "main.tscn"), @"
+[gd_scene load_steps=2 format=3]
+[ext_resource type=""Script"" path=""res://Player.cs"" id=""1_script""]
+");
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "Player.cs"), "public partial class Player { }");
+
+            var (_, nodes, edges) = await _builder.BuildAsync(
+                Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), tempDir);
+
+            Assert.Contains(nodes, node => node.NodeKey == "res://Player.cs" && node.NodeType == "script");
+            Assert.Contains(edges, edge =>
+                edge.SourceNodeKey == "res://main.tscn" &&
+                edge.TargetNodeKey == "res://Player.cs" &&
+                edge.Relation == "attaches");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task BuildAsync_ScriptOperations_PreserveExtendsPreloadAndLoadRelations()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "consumer.gd"), @"
+extends ""res://base.gd""
+var cached = preload(""res://cached.tscn"")
+var runtime = load(""res://runtime.tres"")
+");
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "base.gd"), "extends Node");
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "cached.tscn"), "[gd_scene format=3]");
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "runtime.tres"), "[gd_resource format=3]");
+
+            var (_, _, edges) = await _builder.BuildAsync(
+                Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), tempDir);
+
+            Assert.Contains(edges, edge => edge.TargetNodeKey == "res://base.gd" && edge.Relation == "extends");
+            Assert.Contains(edges, edge => edge.TargetNodeKey == "res://cached.tscn" && edge.Relation == "preload");
+            Assert.Contains(edges, edge => edge.TargetNodeKey == "res://runtime.tres" && edge.Relation == "load");
         }
         finally
         {

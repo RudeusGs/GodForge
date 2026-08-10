@@ -19,7 +19,7 @@ public sealed class GetOrganizationQueryHandler : OrganizationQueryHandlerBase, 
     {
         var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationsRead, cancellationToken);
         if (access.Error is not null) return access.Error;
-        
+
         return OrganizationDto.From(access.Organization!, access.Membership!);
     }
 }

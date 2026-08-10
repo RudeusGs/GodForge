@@ -1,20 +1,22 @@
 using System.Text;
 using System.Text.Json;
 using GodForge.Application.Common.Constants;
-using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Models.Messages;
 using GodForge.Infrastructure.Configuration;
 using GodForge.Worker.Handlers;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 
 namespace GodForge.Worker.Queues;
 
-public sealed class RabbitMqWorkerService : BackgroundService
+internal sealed class RabbitMqWorkerService : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly RabbitMqSettings _settings;
+    private readonly IRabbitMqConnectionFactory _connectionFactory;
+    private readonly IRabbitMqReconnectDelay _reconnectDelay;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<RabbitMqWorkerService> _logger;
     private IConnection? _connection;
@@ -23,10 +25,14 @@ public sealed class RabbitMqWorkerService : BackgroundService
 
     public RabbitMqWorkerService(
         IOptions<RabbitMqSettings> settings,
+        IRabbitMqConnectionFactory connectionFactory,
+        IRabbitMqReconnectDelay reconnectDelay,
         IServiceScopeFactory scopeFactory,
         ILogger<RabbitMqWorkerService> logger)
     {
         _settings = settings.Value;
+        _connectionFactory = connectionFactory;
+        _reconnectDelay = reconnectDelay;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -41,18 +47,37 @@ public sealed class RabbitMqWorkerService : BackgroundService
             return;
         }
 
-        var factory = new ConnectionFactory
+        var attempt = 0;
+        while (!stoppingToken.IsCancellationRequested)
         {
-            HostName = _settings.HostName,
-            Port = _settings.Port,
-            UserName = _settings.UserName,
-            Password = _settings.Password,
-            VirtualHost = _settings.VirtualHost,
-            DispatchConsumersAsync = true,
-            AutomaticRecoveryEnabled = true
-        };
+            try
+            {
+                ConnectAndConsume();
+                _logger.LogInformation("Worker is consuming queue {QueueName}", WorkerQueueNames.RepositoryPipeline);
+                await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (BrokerUnreachableException exception)
+            {
+                DisposeConnection();
+                attempt++;
+                var delay = CalculateReconnectDelay(attempt);
+                _logger.LogWarning(
+                    exception,
+                    "RabbitMQ is unavailable; connection attempt {Attempt} will be retried in {DelaySeconds} seconds",
+                    attempt,
+                    delay.TotalSeconds);
+                await _reconnectDelay.WaitAsync(delay, stoppingToken);
+            }
+        }
+    }
 
-        _connection = factory.CreateConnection();
+    private void ConnectAndConsume()
+    {
+        _connection = _connectionFactory.CreateConnection(_settings);
         _channel = _connection.CreateModel();
         _channel.QueueDeclare(WorkerQueueNames.DeadLetter, durable: true, exclusive: false, autoDelete: false);
         _channel.QueueDeclare(
@@ -73,9 +98,12 @@ public sealed class RabbitMqWorkerService : BackgroundService
             queue: WorkerQueueNames.RepositoryPipeline,
             autoAck: false,
             consumer: consumer);
+    }
 
-        _logger.LogInformation("Worker is consuming queue {QueueName}", WorkerQueueNames.RepositoryPipeline);
-        await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+    private static TimeSpan CalculateReconnectDelay(int attempt)
+    {
+        var exponentialSeconds = Math.Min(30, Math.Pow(2, Math.Min(attempt - 1, 5)));
+        return TimeSpan.FromMilliseconds((exponentialSeconds * 1000) + Random.Shared.Next(0, 501));
     }
 
     private async Task HandleMessageAsync(object sender, BasicDeliverEventArgs eventArgs)
@@ -112,18 +140,13 @@ public sealed class RabbitMqWorkerService : BackgroundService
 
             if (result.Disposition == JobExecutionDisposition.Retry)
             {
-                var publisher = scope.ServiceProvider.GetRequiredService<IJobPublisher>();
-                await publisher.PublishDelayedAsync(
-                    WorkerQueueNames.RepositoryPipeline,
-                    message with
-                    {
-                        MessageId = Guid.NewGuid(),
-                        AttemptCount = message.AttemptCount + 1,
-                        CreatedAt = DateTimeOffset.UtcNow
-                    },
-                    result.RetryDelay,
-                    _stoppingToken);
-                _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
+                // Retry scheduling is normally persisted through the database outbox by
+                // the handler. Requeue an unexpected Retry result rather than creating a
+                // non-transactional RabbitMQ retry message.
+                _logger.LogWarning(
+                    "Job {JobId} returned an unexpected direct retry disposition; the delivery will be requeued",
+                    message.JobId);
+                _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
                 return;
             }
 
@@ -141,22 +164,25 @@ public sealed class RabbitMqWorkerService : BackgroundService
         }
         catch (Exception exception)
         {
-            if (eventArgs.Redelivered)
-            {
-                _logger.LogError(exception, "Unhandled worker consumer failure after redelivery; message will be dead-lettered");
-                _channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
-                return;
-            }
-
-            _logger.LogError(exception, "Unhandled worker consumer failure; message will be requeued once");
+            // Consumer-level failures are infrastructure failures. Business/poison
+            // messages are converted to DeadLetter by the handler, so an unhandled
+            // exception must remain recoverable even after RabbitMQ redelivery.
+            _logger.LogError(exception, "Unhandled worker consumer failure; message will be requeued");
             _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
         }
     }
 
     public override void Dispose()
     {
+        DisposeConnection();
+        base.Dispose();
+    }
+
+    private void DisposeConnection()
+    {
         _channel?.Dispose();
         _connection?.Dispose();
-        base.Dispose();
+        _channel = null;
+        _connection = null;
     }
 }

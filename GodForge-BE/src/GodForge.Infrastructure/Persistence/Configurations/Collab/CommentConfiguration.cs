@@ -1,6 +1,7 @@
 using GodForge.Domain.Entities.Collab;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,7 +22,7 @@ public sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.Property(c => c.TargetId).HasColumnName("target_id").HasMaxLength(100).IsRequired();
         builder.Property(c => c.Content).HasColumnName("content").HasColumnType("text").IsRequired();
         builder.Property(c => c.ParentId).HasColumnName("parent_id").HasColumnType("uuid");
-        builder.Property(c => c.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(c => c.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
 
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();

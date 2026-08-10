@@ -21,7 +21,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
         TimeSpan.FromSeconds(1));
 
     private static readonly Regex ScriptDependenciesRegex = new(
-        @"(?:extends|preload|load)\s*\(?\s*""(?<path>res://[^""]+)""",
+        @"(?<operation>extends|preload|load)\s*\(?\s*""(?<path>res://[^""]+)""",
         RegexOptions.Compiled | RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
 
@@ -135,7 +135,7 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
                                 null);
                         }
 
-                        var relation = GetRelation(nodeType, nodes[targetPath].NodeType);
+                        var relation = NormalizeScriptRelation(match.Groups["operation"].Value);
                         edges.Add(DependencyGraphEdge.Create(
                             graphSnapshotId,
                             nodeKey,
@@ -193,8 +193,8 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
 
     private static bool IsTrackedFile(string path)
     {
-        var ext = Path.GetExtension(path);
-        return ext is ".tscn" or ".gd" or ".tres" or ".png" or ".jpg" or ".wav" or ".ogg" or ".json";
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext is ".tscn" or ".gd" or ".cs" or ".tres" or ".png" or ".jpg" or ".wav" or ".ogg" or ".json";
     }
 
     private static string GetNodeType(string path)
@@ -215,9 +215,15 @@ public sealed class DependencyGraphBuilder : IDependencyGraphBuilder
         if (sourceType == "scene" && targetType == "script") return "attaches";
         if (sourceType == "scene" && targetType == "resource") return "uses";
         if (sourceType == "scene" && targetType == "asset") return "references";
-        if (sourceType == "script" && targetType == "script") return "extends"; // or load/preload
-        if (sourceType == "script") return "load"; // preload/load scene or asset
         if (sourceType == "resource") return "references";
         return "references";
     }
+
+    private static string NormalizeScriptRelation(string operation)
+        => operation.ToLowerInvariant() switch
+        {
+            "extends" => "extends",
+            "preload" => "preload",
+            _ => "load"
+        };
 }

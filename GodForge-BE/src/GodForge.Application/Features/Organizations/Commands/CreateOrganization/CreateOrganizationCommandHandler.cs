@@ -1,6 +1,6 @@
+using GodForge.Application.Common.Idempotency;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
-using GodForge.Application.Common.Idempotency;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Organizations.DTOs;
@@ -38,67 +38,139 @@ public sealed class CreateOrganizationCommandHandler : OrganizationCommandHandle
         _clock = clock;
     }
 
-    private static bool ValidSlug(string? value) => !string.IsNullOrWhiteSpace(value) &&
-        value.Length <= 80 && System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-z0-9]+(?:-[a-z0-9]+)*$");
-
     public async Task<Result<OrganizationDto>> Handle(CreateOrganizationCommand request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 160 || !ValidSlug(request.Slug))
+        if (!Organization.IsValidName(request.Name) || !Organization.IsValidSlug(request.Slug))
             return ApplicationError.Validation("VALIDATION_ERROR", "Organization name or slug is invalid.");
         if (OrganizationSlugPolicy.IsReserved(request.Slug))
             return ApplicationError.Validation("ORGANIZATION_SLUG_RESERVED", "Organization slug is reserved.");
-            
-        var idempotencyError = IdempotencyRequest.Normalize(request.IdempotencyKey, out var normalizedIdempotencyKey);
-        if (idempotencyError is not null) return idempotencyError;
-        var requestHash = IdempotencyRequest.Hash($"{request.Name.Trim()}\n{request.Slug.Trim()}");
 
+        var idempotencyError = IdempotencyRequest.Normalize(request.IdempotencyKey, out var normalizedIdempotencyKey);
+        if (idempotencyError is not null)
+            return idempotencyError;
+
+        var requestHash = IdempotencyRequest.Hash($"{request.Name.Trim()}\n{request.Slug.Trim()}");
         var actor = await _users.GetByIdAsync(request.ActorId, cancellationToken);
         if (actor is null || actor.Status != UserStatus.Active || actor.EmailVerifiedAt is null)
             return ApplicationError.Forbidden("SECURITY_FORBIDDEN", "A verified active account is required.");
-            
+
         if (normalizedIdempotencyKey is not null)
         {
-            var existingRecord = await _idempotency.GetAsync(request.ActorId, "organization.create", normalizedIdempotencyKey, cancellationToken);
-            if (existingRecord is not null)
-            {
-                if (!string.Equals(existingRecord.RequestHash, requestHash, StringComparison.Ordinal))
-                    return ApplicationError.Conflict("IDEMPOTENCY_KEY_REUSED", "The idempotency key was already used with a different request.");
-                var existingOrganization = await _organizations.GetByIdAsync(existingRecord.ResourceId, cancellationToken);
-                var existingMembership = await _members.GetAsync(existingRecord.ResourceId, request.ActorId, cancellationToken);
-                if (existingOrganization is not null && existingMembership is not null)
-                    return OrganizationDto.From(existingOrganization, existingMembership);
-                return ApplicationError.Conflict("IDEMPOTENCY_RESOURCE_UNAVAILABLE", "The resource recorded for this idempotency key is unavailable.");
-            }
+            var existingResult = await GetExistingCreateResultAsync(
+                request.ActorId,
+                normalizedIdempotencyKey,
+                requestHash,
+                cancellationToken);
+            if (existingResult is not null)
+                return existingResult;
         }
-        
-        if (await _organizations.SlugExistsAsync(request.Slug, cancellationToken: cancellationToken))
-            return ApplicationError.Conflict("ORGANIZATION_SLUG_EXISTS", "Organization slug already exists.");
-            
-        var organizationCount = await _organizations.CountCreatedByAsync(request.ActorId, cancellationToken);
-        if (organizationCount >= _quotaPolicy.MaxOrganizationsPerUser)
-            return ApplicationError.TooManyRequests(
-                "ORGANIZATION_QUOTA_EXCEEDED",
-                "The account organization quota has been reached.",
-                new { limit = _quotaPolicy.MaxOrganizationsPerUser });
 
-        var now = _clock.UtcNow;
-        var organization = Organization.Create(request.Name, request.Slug, request.ActorId, now);
-        var membership = OrganizationMember.CreateOwner(organization.Id, request.ActorId, now);
-        
-        await _organizations.AddAsync(organization, cancellationToken);
-        await _members.AddAsync(membership, cancellationToken);
-        
-        if (normalizedIdempotencyKey is not null)
-            await _idempotency.AddAsync(IdempotencyRecord.Create(
-                request.ActorId, "organization.create", normalizedIdempotencyKey, requestHash, "organization", organization.Id, now), cancellationToken);
-                
-        await _auditWriter.WriteAuditAsync(
-            request.ActorId, null, "organization.created", "organization", organization.Id, "succeeded",
-            new { organization.Name, organization.Slug }, cancellationToken);
-            
-        var save = await SaveAsync(cancellationToken);
-        if (save is not null) return save;
-        
-        return OrganizationDto.From(organization, membership);
+        await BeginMembershipMutationAsync("user-organization-catalog", request.ActorId, cancellationToken);
+        try
+        {
+            actor = await _users.GetByIdAsync(request.ActorId, cancellationToken);
+            if (actor is null || actor.Status != UserStatus.Active || actor.EmailVerifiedAt is null)
+                return await RollbackAsync<OrganizationDto>(
+                    ApplicationError.Forbidden("SECURITY_FORBIDDEN", "A verified active account is required."),
+                    cancellationToken);
+
+            if (normalizedIdempotencyKey is not null)
+            {
+                var existingResult = await GetExistingCreateResultAsync(
+                    request.ActorId,
+                    normalizedIdempotencyKey,
+                    requestHash,
+                    cancellationToken);
+                if (existingResult is not null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    _unitOfWork.ClearTrackedChanges();
+                    return existingResult;
+                }
+            }
+
+            if (await _organizations.CountCreatedByAsync(request.ActorId, cancellationToken) >= _quotaPolicy.MaxOrganizationsPerUser)
+                return await RollbackAsync<OrganizationDto>(
+                    ApplicationError.TooManyRequests(
+                        "ORGANIZATION_QUOTA_EXCEEDED",
+                        "The account organization quota has been reached.",
+                        new { limit = _quotaPolicy.MaxOrganizationsPerUser }),
+                    cancellationToken);
+            if (await _organizations.SlugExistsAsync(request.Slug, cancellationToken: cancellationToken))
+                return await RollbackAsync<OrganizationDto>(
+                    ApplicationError.Conflict("ORGANIZATION_SLUG_EXISTS", "Organization slug already exists."),
+                    cancellationToken);
+
+            var now = _clock.UtcNow;
+            var organization = Organization.Create(request.Name, request.Slug, request.ActorId, now);
+            var membership = OrganizationMember.CreateOwner(organization.Id, request.ActorId, now);
+
+            await _organizations.AddAsync(organization, cancellationToken);
+            await _members.AddAsync(membership, cancellationToken);
+
+            if (normalizedIdempotencyKey is not null)
+            {
+                await _idempotency.AddAsync(IdempotencyRecord.Create(
+                    request.ActorId,
+                    "organization.create",
+                    normalizedIdempotencyKey,
+                    requestHash,
+                    "organization",
+                    organization.Id,
+                    now), cancellationToken);
+            }
+
+            await _auditWriter.WriteAuditAsync(
+                request.ActorId,
+                null,
+                "organization.created",
+                "organization",
+                organization.Id,
+                "succeeded",
+                new { organization.Name, organization.Slug },
+                cancellationToken);
+
+            var save = await SaveAsync(cancellationToken);
+            if (save is not null)
+                return await RollbackAsync<OrganizationDto>(save, cancellationToken);
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return OrganizationDto.From(organization, membership);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            _unitOfWork.ClearTrackedChanges();
+            throw;
+        }
     }
+    private async Task<Result<OrganizationDto>?> GetExistingCreateResultAsync(
+        Guid actorId,
+        string idempotencyKey,
+        string requestHash,
+        CancellationToken cancellationToken)
+    {
+        var existingRecord = await _idempotency.GetAsync(
+            actorId,
+            "organization.create",
+            idempotencyKey,
+            cancellationToken);
+        if (existingRecord is null)
+            return null;
+
+        if (!string.Equals(existingRecord.RequestHash, requestHash, StringComparison.Ordinal))
+            return ApplicationError.Conflict(
+                "IDEMPOTENCY_KEY_REUSED",
+                "The idempotency key was already used with a different request.");
+
+        var existingOrganization = await _organizations.GetByIdAsync(existingRecord.ResourceId, cancellationToken);
+        var existingMembership = await _members.GetAsync(existingRecord.ResourceId, actorId, cancellationToken);
+        if (existingOrganization is not null && existingMembership is not null)
+            return OrganizationDto.From(existingOrganization, existingMembership);
+
+        return ApplicationError.Conflict(
+            "IDEMPOTENCY_RESOURCE_UNAVAILABLE",
+            "The resource recorded for this idempotency key is unavailable.");
+    }
+
 }

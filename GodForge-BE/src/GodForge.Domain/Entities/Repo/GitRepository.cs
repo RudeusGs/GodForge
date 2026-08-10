@@ -43,6 +43,7 @@ public sealed class GitRepository : BaseAuditableEntity, ISoftDeletable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(remoteUrl);
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultBranch);
+        EnumGuard.ThrowIfUndefined(provider, nameof(provider));
 
         return new GitRepository
         {
@@ -128,6 +129,7 @@ public sealed class GitRepository : BaseAuditableEntity, ISoftDeletable
 
     public void UpdateGitRepositoryStatus(GitRepositoryStatus newStatus, DateTimeOffset now)
     {
+        EnumGuard.ThrowIfUndefined(newStatus, nameof(newStatus));
         GitRepositoryStatus = newStatus;
         UpdatedAt = now;
     }

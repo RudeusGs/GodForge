@@ -61,20 +61,47 @@ public sealed class UnitOfWork : IUnitOfWork
 
     public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
     {
-        if (_transaction is null)
+        var transaction = _transaction ??
             throw new InvalidOperationException("No unit-of-work transaction is active.");
-        await _transaction.CommitAsync(cancellationToken);
-        await _transaction.DisposeAsync();
-        _transaction = null;
+
+        try
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            await DisposeTransactionAsync(transaction);
+        }
     }
 
     public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
     {
-        if (_transaction is null)
+        _ = cancellationToken;
+        var transaction = _transaction;
+        if (transaction is null)
             return;
-        await _transaction.RollbackAsync(cancellationToken);
-        await _transaction.DisposeAsync();
-        _transaction = null;
+
+        // Transaction cleanup must still complete after the request token is cancelled.
+        try
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+        }
+        finally
+        {
+            await DisposeTransactionAsync(transaction);
+        }
+    }
+
+    private async Task DisposeTransactionAsync(IDbContextTransaction transaction)
+    {
+        try
+        {
+            await transaction.DisposeAsync();
+        }
+        finally
+        {
+            _transaction = null;
+        }
     }
 
     private static long CreateAdvisoryLockKey(string resourceType, Guid resourceId)

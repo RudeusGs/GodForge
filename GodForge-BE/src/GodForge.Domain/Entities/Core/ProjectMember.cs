@@ -20,7 +20,11 @@ public sealed class ProjectMember : BaseAuditableEntity
     private ProjectMember() { }
 
     public static ProjectMember Create(Guid projectId, Guid organizationId, Guid userId, ProjectRole role, ProjectMemberSource source, Guid? createdBy, DateTimeOffset now)
-        => new()
+    {
+        EnumGuard.ThrowIfUndefined(role, nameof(role));
+        EnumGuard.ThrowIfUndefined(source, nameof(source));
+
+        return new ProjectMember
         {
             Id = Guid.NewGuid(),
             ProjectId = projectId,
@@ -35,12 +39,14 @@ public sealed class ProjectMember : BaseAuditableEntity
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
 
     public void UpdateRole(ProjectRole newRole, long expectedVersion, DateTimeOffset now)
     {
         EnsureVersion(expectedVersion);
         if (Status != MembershipStatus.Active)
             throw new InvalidOperationException("Only active memberships can change role.");
+        EnumGuard.ThrowIfUndefined(newRole, nameof(newRole));
         Role = newRole;
         Version++;
         UpdatedAt = now;
@@ -66,6 +72,7 @@ public sealed class ProjectMember : BaseAuditableEntity
 
     public void Reactivate(ProjectRole role, DateTimeOffset now)
     {
+        EnumGuard.ThrowIfUndefined(role, nameof(role));
         Role = role;
         Status = MembershipStatus.Active;
         RemovedAt = null;

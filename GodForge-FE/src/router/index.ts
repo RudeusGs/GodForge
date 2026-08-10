@@ -15,6 +15,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/account/sessions',
+            name: 'accountSessions',
+            component: () => import('../views/AccountSessionsView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/login',
             name: 'login',
             component: () => import('../views/LoginView.vue'),
@@ -42,8 +48,9 @@ const router = createRouter({
 });
 
 // Navigation Guards
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
     const authStore = useAuthStore();
+    await authStore.initialize();
     const isAuthenticated = authStore.isAuthenticated;
 
     if (to.meta.requiresAuth && !isAuthenticated) {
@@ -55,4 +62,3 @@ router.beforeEach((to) => {
 });
 
 export default router;
-

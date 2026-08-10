@@ -1,11 +1,11 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
 using MediatR;
-using GodForge.Application.Common.Security;
 
 namespace GodForge.Application.Features.Organizations.Commands.AcceptOrganizationInvitation;
 
@@ -39,14 +39,14 @@ public sealed class AcceptOrganizationInvitationCommandHandler : OrganizationCom
     {
         if (string.IsNullOrWhiteSpace(request.Token))
             return ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired.");
-            
+
         var invitation = await _invitations.GetByTokenHashAsync(_secretHash.Hash(request.Token), cancellationToken);
         var user = await _users.GetByIdAsync(request.ActorId, cancellationToken);
         var now = _clock.UtcNow;
-        
+
         if (invitation is null || !invitation.IsActive(now) || user is null || user.EmailVerifiedAt is null || user.NormalizedEmail != invitation.NormalizedEmail)
             return ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired.");
-            
+
         var organization = await _organizations.GetByIdAsync(invitation.OrganizationId, cancellationToken);
         if (organization is null || organization.Status != OrganizationStatus.Active)
             return ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired.");
@@ -61,16 +61,16 @@ public sealed class AcceptOrganizationInvitationCommandHandler : OrganizationCom
         {
             membership.Change(invitation.Role, MembershipStatus.Active, invitation.InvitedBy, membership.Version, now);
         }
-        
+
         invitation.Accept(now);
-        
+
         await _auditWriter.WriteAuditAsync(
             request.ActorId, null, "organization.invitation_accepted", "organization-invitation", invitation.Id, "succeeded",
             new { organizationId = organization.Id, Role = membership.Role.ToString() }, cancellationToken);
-            
+
         var save = await SaveAsync(cancellationToken);
         if (save is not null) return save;
-        
+
         return new OrganizationInvitationAcceptanceDto(
             OrganizationDto.From(organization, membership),
             OrganizationMemberDto.From(membership, user));

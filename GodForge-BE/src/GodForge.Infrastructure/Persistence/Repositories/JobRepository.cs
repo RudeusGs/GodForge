@@ -1,6 +1,7 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Domain.Entities.Ops;
+using GodForge.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace GodForge.Infrastructure.Persistence.Repositories;
@@ -18,6 +19,72 @@ public sealed class JobRepository : IJobRepository
     {
         return await _context.Jobs.FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
     }
+
+
+    public async Task<Job?> TryClaimAsync(
+        Guid id,
+        DateTimeOffset now,
+        TimeSpan staleAfter,
+        CancellationToken cancellationToken = default)
+    {
+        if (staleAfter <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(staleAfter));
+
+        var staleBefore = now.Subtract(staleAfter);
+        var claimToken = Guid.NewGuid();
+        var affected = await _context.Jobs
+            .Where(job => job.Id == id &&
+                (((job.Status == JobStatus.Queued || job.Status == JobStatus.Retrying) && job.AvailableAt <= now) ||
+                 (job.Status == JobStatus.Running &&
+                  (job.LastHeartbeatAt == null || job.LastHeartbeatAt <= staleBefore))))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(job => job.Status, JobStatus.Running)
+                .SetProperty(job => job.StartedAt, job => job.StartedAt ?? (DateTimeOffset?)now)
+                .SetProperty(job => job.LastHeartbeatAt, now)
+                .SetProperty(job => job.ClaimToken, claimToken)
+                .SetProperty(job => job.AttemptCount, job => job.AttemptCount + 1)
+                .SetProperty(job => job.ErrorCode, (string?)null)
+                .SetProperty(job => job.ErrorMessage, (string?)null)
+                .SetProperty(job => job.UpdatedAt, now),
+                cancellationToken);
+
+        if (affected == 0)
+            return null;
+
+        // Once the atomic UPDATE succeeds, always materialize the claimed row so the
+        // caller can release the lease even if host shutdown was requested concurrently.
+        return await _context.Jobs.FirstAsync(job => job.Id == id, CancellationToken.None);
+    }
+
+    public async Task<bool> TryHeartbeatAsync(
+        Guid id,
+        Guid claimToken,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        if (claimToken == Guid.Empty)
+            throw new ArgumentException("A non-empty job claim token is required.", nameof(claimToken));
+
+        var affected = await _context.Jobs
+            .Where(job =>
+                job.Id == id &&
+                job.Status == JobStatus.Running &&
+                job.ClaimToken == claimToken)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(job => job.LastHeartbeatAt, now)
+                    .SetProperty(job => job.UpdatedAt, now),
+                cancellationToken);
+
+        return affected == 1;
+    }
+
+    public Task<bool> IsCancellationRequestedAsync(Guid id, CancellationToken cancellationToken = default)
+        => _context.Jobs
+            .AsNoTracking()
+            .Where(job => job.Id == id)
+            .Select(job => job.CancellationRequestedAt != null)
+            .SingleOrDefaultAsync(cancellationToken);
 
     public async Task AddAsync(Job job, CancellationToken cancellationToken = default)
     {

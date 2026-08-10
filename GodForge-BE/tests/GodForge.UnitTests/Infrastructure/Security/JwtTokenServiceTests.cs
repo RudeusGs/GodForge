@@ -35,7 +35,7 @@ public class JwtTokenServiceTests
         var now = DateTimeOffset.UtcNow;
         var sessionId = Guid.NewGuid();
         var user = User.Create("test@example.com", "Test User", "hash", now);
-        user.UpdateSystemRole(SystemRole.SystemAdmin);
+        user.UpdateSystemRole(SystemRole.SystemAdmin, DateTimeOffset.UtcNow);
 
         var result = _sut.GenerateAccessToken(user, sessionId, now);
 

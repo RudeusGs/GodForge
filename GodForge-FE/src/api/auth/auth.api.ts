@@ -8,6 +8,7 @@ import type {
     RegisterPayload,
     ResetPasswordPayload,
     UserDto,
+    SessionDto,
 } from './auth.models';
 
 const API_PREFIX = '/auth';
@@ -39,6 +40,18 @@ export const authApi = {
 
     forgotPassword(payload: ForgotPasswordPayload): Promise<ApiResponse<ChallengeAcceptedDto>> {
         return baseApi.post<ApiResponse<ChallengeAcceptedDto>>(`${API_PREFIX}/forgot-password`, payload);
+    },
+
+    getMe(): Promise<ApiResponse<UserDto>> {
+        return baseApi.get<ApiResponse<UserDto>>('/users/me');
+    },
+
+    getSessions(): Promise<ApiResponse<SessionDto[]>> {
+        return baseApi.get<ApiResponse<SessionDto[]>>('/users/me/sessions');
+    },
+
+    revokeSession(sessionId: string): Promise<void> {
+        return baseApi.delete<void>(`/users/me/sessions/${encodeURIComponent(sessionId)}`);
     },
 };
 

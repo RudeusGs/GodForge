@@ -5,6 +5,9 @@ namespace GodForge.Domain.Entities.Core;
 
 public sealed class Organization : BaseAuditableEntity, ISoftDeletable
 {
+    public const int MaxNameLength = 160;
+    public const int MaxSlugLength = 80;
+
     public string Slug { get; private set; } = default!;
     public string Name { get; private set; } = default!;
     public OrganizationStatus Status { get; private set; }
@@ -14,10 +17,16 @@ public sealed class Organization : BaseAuditableEntity, ISoftDeletable
 
     private Organization() { }
 
+    public static bool IsValidName(string? value)
+        => !string.IsNullOrWhiteSpace(value) && value.Trim().Length <= MaxNameLength;
+
+    public static bool IsValidSlug(string? value) => SlugRules.IsValid(value, MaxSlugLength);
+
     public static Organization Create(string name, string slug, Guid actorId, DateTimeOffset now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (!System.Text.RegularExpressions.Regex.IsMatch(slug, "^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+        if (!IsValidName(name))
+            throw new ArgumentException("Organization name is invalid.", nameof(name));
+        if (!IsValidSlug(slug))
             throw new ArgumentException("Organization slug is invalid.", nameof(slug));
 
         return new Organization
@@ -38,8 +47,9 @@ public sealed class Organization : BaseAuditableEntity, ISoftDeletable
         EnsureVersion(expectedVersion);
         if (Status != OrganizationStatus.Active)
             throw new InvalidOperationException("Only active organizations can be updated.");
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (!System.Text.RegularExpressions.Regex.IsMatch(slug, "^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+        if (!IsValidName(name))
+            throw new ArgumentException("Organization name is invalid.", nameof(name));
+        if (!IsValidSlug(slug))
             throw new ArgumentException("Organization slug is invalid.", nameof(slug));
         Name = name.Trim();
         Slug = slug;

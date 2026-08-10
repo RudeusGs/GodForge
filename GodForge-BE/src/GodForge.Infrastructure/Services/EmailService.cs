@@ -20,6 +20,9 @@ public sealed class EmailService : IEmailService
 
     public async Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
     {
+        if (_settings.Smtp.IsUnconfigured)
+            throw new InvalidOperationException("SMTP is not configured.");
+
         _logger.LogInformation("Attempting to send email to {To} with subject: {Subject}", to, subject);
 
         using var client = new SmtpClient(_settings.Smtp.Host, _settings.Smtp.Port)
@@ -43,4 +46,3 @@ public sealed class EmailService : IEmailService
         _logger.LogInformation("Email sent successfully to {To}", to);
     }
 }
-

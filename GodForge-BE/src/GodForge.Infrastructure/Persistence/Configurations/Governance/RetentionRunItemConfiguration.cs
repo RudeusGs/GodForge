@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Governance;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +18,7 @@ public sealed class RetentionRunItemConfiguration : IEntityTypeConfiguration<Ret
         builder.Property(i => i.TargetTable).HasColumnName("target_table").HasMaxLength(120).IsRequired();
         builder.Property(i => i.TargetId).HasColumnName("target_id").HasColumnType("uuid");
         builder.Property(i => i.Action).HasColumnName("action").HasConversion<string>().HasMaxLength(30).IsRequired();
-        builder.Property(i => i.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(i => i.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(i => i.ErrorMessage).HasColumnName("error_message").HasColumnType("text");
 
         builder.HasOne<RetentionRun>().WithMany().HasForeignKey(i => i.RetentionRunId).OnDelete(DeleteBehavior.Restrict);

@@ -84,6 +84,22 @@ public class LinkRepositoryCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithUndefinedNumericProvider_ReturnsValidationFailed()
+    {
+        var request = new LinkRepositoryCommand(Guid.NewGuid(), "https://github.com/a/b", "999", "main", null, true, Guid.NewGuid(), "corr-1");
+        _authorizationMock.Setup(a => a.HasPermissionAsync(request.ActorId, request.ProjectId, Permissions.RepositoryManage, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _repositoriesMock.Setup(r => r.GetByProjectIdAsync(request.ProjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GitRepository?)null);
+
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("REPOSITORY_PROVIDER_INVALID", result.Error!.Code);
+        _repositoriesMock.Verify(r => r.AddAsync(It.IsAny<GitRepository>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_WithForgejoProvider_ReturnsValidationFailed()
     {
         var request = new LinkRepositoryCommand(Guid.NewGuid(), "https://forgejo.com/a/b", "Forgejo", "main", null, true, Guid.NewGuid(), "corr-1");

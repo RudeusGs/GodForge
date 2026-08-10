@@ -9,7 +9,6 @@ const authStore = useAuthStore();
 
 const email = ref('');
 const password = ref('');
-const rememberMe = ref(false);
 const loading = ref(false);
 const errorMsg = ref('');
 
@@ -26,7 +25,7 @@ const handleLogin = async () => {
     try {
         loading.value = true;
         errorMsg.value = '';
-        await authStore.login({ email: email.value, password: password.value }, rememberMe.value);
+        await authStore.login({ email: email.value, password: password.value });
         router.push('/');
     } catch (error: unknown) {
         // Handle mock or actual error
@@ -88,14 +87,7 @@ const handleLogin = async () => {
                 />
             </div>
 
-            <div class="flex items-center justify-between pt-1">
-                <label class="flex items-center space-x-2 cursor-pointer group">
-                    <div class="relative w-4 h-4 bg-[#121214] border border-white/10 group-hover:border-zinc-700 transition-colors flex items-center justify-center rounded">
-                        <input type="checkbox" v-model="rememberMe" class="sr-only" />
-                        <i v-if="rememberMe" class="bi bi-check2 text-cyan-400 text-xs"></i>
-                    </div>
-                    <span class="text-xs text-zinc-500 font-sans group-hover:text-zinc-300 transition-colors">Keep Session</span>
-                </label>
+            <div class="flex items-center justify-end pt-1">
                 <router-link to="/forgot-password" class="text-xs text-cyan-500 hover:text-cyan-400 font-sans transition-colors">Reset Key?</router-link>
             </div>
 
@@ -130,4 +122,3 @@ const handleLogin = async () => {
         </form>
     </div>
 </template>
-

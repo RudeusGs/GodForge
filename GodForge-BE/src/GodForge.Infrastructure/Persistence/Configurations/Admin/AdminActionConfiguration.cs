@@ -9,7 +9,7 @@ public sealed class AdminActionConfiguration : IEntityTypeConfiguration<AdminAct
 {
     public void Configure(EntityTypeBuilder<AdminAction> builder)
     {
-        builder.ToTable("admin_actions", "audit"); // Documented as audit.admin_actions
+        builder.ToTable("admin_actions", "audit");
 
         builder.HasKey(a => a.Id);
         builder.Property(a => a.Id).HasColumnName("id").HasColumnType("uuid");

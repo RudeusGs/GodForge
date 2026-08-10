@@ -50,6 +50,22 @@ public sealed class ProjectManagementServiceTests
     }
 
     [Fact]
+    public async Task UpdateMemberAsync_WithUndefinedNumericRole_ReturnsValidationBeforeTransaction()
+    {
+        var result = await CreateService().UpdateMemberAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "999",
+            1,
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("VALIDATION_ERROR", result.Error?.Code);
+        _unitOfWork.Verify(unit => unit.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task UpdateMemberAsync_WhenDemotingLastOwner_ReturnsConflictInsideResourceLock()
     {
         var now = DateTimeOffset.UtcNow;
@@ -81,15 +97,26 @@ public sealed class ProjectManagementServiceTests
         _unitOfWork.Verify(unit => unit.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    private ProjectManagementService CreateService() => new(
-        _projects.Object,
-        _members.Object,
-        _organizations.Object,
-        _organizationMembers.Object,
-        _users.Object,
-        _idempotency.Object,
-        _audit.Object,
-        _quota.Object,
-        _clock.Object,
-        _unitOfWork.Object);
+    private ProjectManagementService CreateService()
+    {
+        var lifecycle = new ProjectLifecycleService(
+            _projects.Object,
+            _members.Object,
+            _organizations.Object,
+            _organizationMembers.Object,
+            _idempotency.Object,
+            _audit.Object,
+            _quota.Object,
+            _clock.Object,
+            _unitOfWork.Object);
+        var membership = new ProjectMembershipService(
+            _projects.Object,
+            _members.Object,
+            _organizationMembers.Object,
+            _users.Object,
+            _audit.Object,
+            _clock.Object,
+            _unitOfWork.Object);
+        return new ProjectManagementService(lifecycle, membership);
+    }
 }

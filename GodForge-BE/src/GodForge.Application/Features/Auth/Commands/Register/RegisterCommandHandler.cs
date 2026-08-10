@@ -42,6 +42,8 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         var challenge = await _challenges.GetActiveAsync(normalizedEmail, AuthChallengePurposes.Registration, cancellationToken);
         if (challenge is null || now >= challenge.ExpiresAt)
             return ApplicationError.Validation("AUTH_OTP_EXPIRED", "OTP expired or not found. Please request a new one.");
+        if (!challenge.IsActive(now))
+            return ApplicationError.Validation("AUTH_OTP_INVALID", "Invalid OTP verification code.");
 
         if (!_secretHash.Verify(request.Otp, challenge.SecretHash))
         {
@@ -57,7 +59,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         user.MarkEmailVerified(now);
         challenge.Consume(now);
         await _users.AddAsync(user, cancellationToken);
-        await _auditWriter.WriteSecurityAsync(user.Id, "auth.registration_completed", "informational", new { user.Email }, cancellationToken);
+        await _auditWriter.WriteSecurityAsync(user.Id, "auth.registration_completed", "informational", null, cancellationToken);
         try
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);

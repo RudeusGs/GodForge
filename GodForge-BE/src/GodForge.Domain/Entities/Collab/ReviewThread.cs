@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Collab;
 
@@ -7,7 +8,7 @@ public sealed class ReviewThread : BaseAuditableEntity
     public Guid ProjectId { get; private set; }
     public Guid RepositoryId { get; private set; }
     public string TargetId { get; private set; } = default!;
-    public string Status { get; private set; } = default!;
+    public ReviewThreadStatus Status { get; private set; }
     public Guid CreatedBy { get; private set; }
 
     private ReviewThread() { } // EF Core
@@ -20,7 +21,7 @@ public sealed class ReviewThread : BaseAuditableEntity
             ProjectId = projectId,
             RepositoryId = repositoryId,
             TargetId = targetId,
-            Status = "open",
+            Status = ReviewThreadStatus.Open,
             CreatedBy = createdBy,
             CreatedAt = now,
             UpdatedAt = now
@@ -29,18 +30,18 @@ public sealed class ReviewThread : BaseAuditableEntity
 
     public void Resolve(DateTimeOffset now)
     {
-        if (Status == "open")
+        if (Status == ReviewThreadStatus.Open)
         {
-            Status = "resolved";
+            Status = ReviewThreadStatus.Resolved;
             UpdatedAt = now;
         }
     }
 
     public void Close(DateTimeOffset now)
     {
-        if (Status != "closed")
+        if (Status != ReviewThreadStatus.Closed)
         {
-            Status = "closed";
+            Status = ReviewThreadStatus.Closed;
             UpdatedAt = now;
         }
     }

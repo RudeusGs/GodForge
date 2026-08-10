@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Ops;
 
@@ -8,7 +9,7 @@ public sealed class WorkerHeartbeat : BaseEntity
     public string WorkerName { get; private set; } = default!;
     public string WorkerInstanceId { get; private set; } = default!;
     public List<string> Queues { get; private set; } = new();
-    public string Status { get; private set; } = default!;
+    public WorkerHeartbeatStatus Status { get; private set; }
     public DateTimeOffset StartedAt { get; private set; }
     public DateTimeOffset LastSeenAt { get; private set; }
     public string? MetadataJson { get; private set; }
@@ -23,15 +24,16 @@ public sealed class WorkerHeartbeat : BaseEntity
             WorkerName = workerName,
             WorkerInstanceId = workerInstanceId,
             Queues = queues,
-            Status = "starting",
+            Status = WorkerHeartbeatStatus.Starting,
             StartedAt = now,
             LastSeenAt = now,
             MetadataJson = metadataJson
         };
     }
 
-    public void Heartbeat(string status, DateTimeOffset now)
+    public void Heartbeat(WorkerHeartbeatStatus status, DateTimeOffset now)
     {
+        EnumGuard.ThrowIfUndefined(status, nameof(status));
         Status = status;
         LastSeenAt = now;
     }

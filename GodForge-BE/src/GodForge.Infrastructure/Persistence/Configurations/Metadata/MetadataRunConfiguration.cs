@@ -2,6 +2,7 @@ using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Metadata;
 using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Repo;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,7 +22,7 @@ public sealed class MetadataRunConfiguration : IEntityTypeConfiguration<Metadata
         builder.Property(r => r.SnapshotId).HasColumnName("snapshot_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.JobId).HasColumnName("job_id").HasColumnType("uuid");
         builder.Property(r => r.RunType).HasColumnName("run_type").HasMaxLength(40).IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(r => r.SchemaVersion).HasColumnName("schema_version").HasMaxLength(20).IsRequired().HasDefaultValue("1.0");
         builder.Property(r => r.FileCount).HasColumnName("file_count").IsRequired();
         builder.Property(r => r.SceneCount).HasColumnName("scene_count").IsRequired();

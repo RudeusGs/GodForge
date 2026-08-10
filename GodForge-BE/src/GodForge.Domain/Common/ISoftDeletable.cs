@@ -2,6 +2,6 @@ namespace GodForge.Domain.Common;
 
 public interface ISoftDeletable
 {
-    DateTimeOffset? DeletedAt { get; }
-    void SoftDelete(DateTimeOffset now);
+    public DateTimeOffset? DeletedAt { get; }
+    public void SoftDelete(DateTimeOffset now);
 }

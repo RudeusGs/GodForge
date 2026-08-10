@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace GodForge.Infrastructure.Persistence.Repositories;
@@ -16,8 +17,28 @@ public sealed class UserSessionRepository : IUserSessionRepository
     public Task<UserSession?> GetActiveAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
         => _context.UserSessions.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId && x.RevokedAt == null, cancellationToken);
 
+    public Task<bool> IsValidAsync(
+        Guid id,
+        Guid userId,
+        string securityStamp,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+        => _context.UserSessions
+            .AsNoTracking()
+            .AnyAsync(session =>
+                session.Id == id &&
+                session.UserId == userId &&
+                session.RevokedAt == null &&
+                session.ExpiresAt > now &&
+                _context.Users.Any(user =>
+                    user.Id == userId &&
+                    user.Status == UserStatus.Active &&
+                    user.SecurityStamp == securityStamp),
+                cancellationToken);
+
     public async Task<IReadOnlyList<UserSession>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default)
         => await _context.UserSessions
+            .AsNoTracking()
             .Where(x => x.UserId == userId)
             .OrderByDescending(x => x.LastSeenAt ?? x.CreatedAt)
             .ToListAsync(cancellationToken);

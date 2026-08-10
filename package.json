@@ -30,7 +30,7 @@
   },
   "lint-staged": {
     "GodForge-BE/**/*.cs": [
-      "dotnet format GodForge-BE/GodForge-BE.sln --include"
+      "dotnet format GodForge-BE/GodForge.sln --include"
     ],
     "GodForge-FE/**/*.{vue,js,ts}": [
       "npm run lint --prefix GodForge-FE"

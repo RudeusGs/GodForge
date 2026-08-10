@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Governance;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,7 +15,7 @@ public sealed class RetentionRunConfiguration : IEntityTypeConfiguration<Retenti
         builder.Property(r => r.Id).HasColumnName("id").HasColumnType("uuid");
 
         builder.Property(r => r.PolicyId).HasColumnName("policy_id").HasColumnType("uuid").IsRequired();
-        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(r => r.AffectedCount).HasColumnName("affected_count").IsRequired();
 
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();

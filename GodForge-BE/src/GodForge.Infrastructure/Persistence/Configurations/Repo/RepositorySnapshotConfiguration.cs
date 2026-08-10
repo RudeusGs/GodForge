@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Repo;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,7 +17,7 @@ public sealed class RepositorySnapshotConfiguration : IEntityTypeConfiguration<R
         builder.Property(s => s.RepositoryId).HasColumnName("repository_id").HasColumnType("uuid").IsRequired();
         builder.Property(s => s.CommitHash).HasColumnName("commit_hash").HasMaxLength(80).IsRequired();
         builder.Property(s => s.BranchName).HasColumnName("branch_name").HasMaxLength(255).IsRequired();
-        builder.Property(s => s.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(s => s.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(s => s.MetadataJson).HasColumnName("metadata_json").HasColumnType("jsonb");
 
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();

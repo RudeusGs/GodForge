@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Analysis;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +20,7 @@ public sealed class AiAnalysisRunConfiguration : IEntityTypeConfiguration<AiAnal
         builder.Property(x => x.Model).HasColumnName("model").HasMaxLength(120).IsRequired();
         builder.Property(x => x.PromptVersion).HasColumnName("prompt_version").HasMaxLength(80).IsRequired();
         builder.Property(x => x.InputHash).HasColumnName("input_hash").HasMaxLength(128).IsRequired();
-        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+        builder.Property(x => x.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(x => x.Summary).HasColumnName("summary").HasColumnType("text");
         builder.Property(x => x.RawArtifactKey).HasColumnName("raw_artifact_key").HasMaxLength(500);
         builder.Property(x => x.InputTokenCount).HasColumnName("input_token_count");

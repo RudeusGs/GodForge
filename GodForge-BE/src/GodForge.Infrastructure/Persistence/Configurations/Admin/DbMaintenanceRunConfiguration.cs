@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Admin;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,7 +16,7 @@ public sealed class DbMaintenanceRunConfiguration : IEntityTypeConfiguration<DbM
 
         builder.Property(r => r.MaintenanceType).HasColumnName("maintenance_type").HasMaxLength(100).IsRequired();
         builder.Property(r => r.Target).HasColumnName("target").HasMaxLength(200);
-        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
         builder.Property(r => r.DetailsJson).HasColumnName("details").HasColumnType("jsonb");

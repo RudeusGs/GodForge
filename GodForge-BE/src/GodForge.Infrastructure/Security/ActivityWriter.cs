@@ -34,7 +34,7 @@ public sealed class ActivityWriter : IActivityWriter
             action,
             targetType,
             targetId,
-            status.ToString(),
+            status,
             metadataJson,
             correlationId,
             _clock.UtcNow);

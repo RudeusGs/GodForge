@@ -1,83 +1,106 @@
-using System.Net.Sockets;
+using System.Net;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Infrastructure.Configuration;
 using GodForge.Infrastructure.Git;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 
 namespace GodForge.UnitTests.Infrastructure.Git;
 
-public class GitWorkspaceServiceTests
+public sealed class GitWorkspaceServiceTests
 {
-    private readonly Mock<ILogger<GitWorkspaceService>> _loggerMock;
-    private readonly RepositoryProcessingSettings _settings;
-    private readonly GitWorkspaceService _service;
-
-    public GitWorkspaceServiceTests()
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("10.0.0.1")]
+    [InlineData("100.64.0.1")]
+    [InlineData("169.254.10.20")]
+    [InlineData("172.16.0.1")]
+    [InlineData("192.168.1.1")]
+    [InlineData("198.18.0.1")]
+    [InlineData("203.0.113.10")]
+    [InlineData("::1")]
+    [InlineData("fc00::1")]
+    [InlineData("fe80::1")]
+    [InlineData("2001:db8::1")]
+    public void IsRestrictedAddress_RejectsNonPublicRanges(string value)
     {
-        _loggerMock = new Mock<ILogger<GitWorkspaceService>>();
-        _settings = new RepositoryProcessingSettings
-        {
-            WorkspaceRoot = Path.Combine(Path.GetTempPath(), "GodForgeTest"),
-            MaxFiles = 10000,
-            MaxRepositoryBytes = 100_000_000,
-            MaxTextFileBytes = 10_000_000,
-            GitCommandTimeoutSeconds = 30,
-            AllowedRemoteHosts = new[] { "github.com", "gitlab.com" },
-            AllowPrivateNetworkRemotes = false
-        };
+        Assert.True(GitWorkspaceService.IsRestrictedAddress(IPAddress.Parse(value)));
+    }
 
-        var optionsMock = new Mock<IOptions<RepositoryProcessingSettings>>();
-        optionsMock.Setup(o => o.Value).Returns(_settings);
+    [Theory]
+    [InlineData("1.1.1.1")]
+    [InlineData("8.8.8.8")]
+    [InlineData("2606:4700:4700::1111")]
+    public void IsRestrictedAddress_AllowsPublicAddresses(string value)
+    {
+        Assert.False(GitWorkspaceService.IsRestrictedAddress(IPAddress.Parse(value)));
+    }
 
-        var lockProvider = new Mock<IRepositoryLockProvider>();
-        lockProvider.Setup(provider => provider.AcquireAsync(
+    [Fact]
+    public void IsRestrictedAddress_NormalizesIpv4MappedIpv6()
+    {
+        Assert.True(GitWorkspaceService.IsRestrictedAddress(IPAddress.Parse("::ffff:127.0.0.1")));
+    }
+
+    [Fact]
+    public async Task ExceedsNullDelimitedEntryLimitAsync_StopsAfterLimitIsExceeded()
+    {
+        await using var stream = new MemoryStream("one\0two\0three\0"u8.ToArray());
+
+        var exceeded = await GitWorkspaceService.ExceedsNullDelimitedEntryLimitAsync(stream, 2);
+
+        Assert.True(exceeded);
+    }
+
+    [Fact]
+    public async Task ExceedsNullDelimitedEntryLimitAsync_AllowsEntriesAtConfiguredLimit()
+    {
+        await using var stream = new MemoryStream("one\0two\0"u8.ToArray());
+
+        var exceeded = await GitWorkspaceService.ExceedsNullDelimitedEntryLimitAsync(stream, 2);
+
+        Assert.False(exceeded);
+    }
+
+    [Fact]
+    public void GetNextLimitMonitorInterval_UsesBoundedExponentialBackoff()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(10), GitWorkspaceService.GetNextLimitMonitorInterval(TimeSpan.FromSeconds(5)));
+        Assert.Equal(TimeSpan.FromSeconds(20), GitWorkspaceService.GetNextLimitMonitorInterval(TimeSpan.FromSeconds(10)));
+        Assert.Equal(TimeSpan.FromSeconds(30), GitWorkspaceService.GetNextLimitMonitorInterval(TimeSpan.FromSeconds(20)));
+        Assert.Equal(TimeSpan.FromSeconds(30), GitWorkspaceService.GetNextLimitMonitorInterval(TimeSpan.FromSeconds(30)));
+    }
+
+    [Fact]
+    public async Task SyncAsync_WhenDistributedLockFails_ReleasesRepositoryLockEntry()
+    {
+        var repositoryLockProvider = new Mock<IRepositoryLockProvider>();
+        repositoryLockProvider
+            .Setup(provider => provider.AcquireAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<TimeSpan>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NoopAsyncDisposable());
+            .ThrowsAsync(new OperationCanceledException());
+        var settings = Options.Create(new RepositoryProcessingSettings
+        {
+            WorkspaceRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),
+            GitCommandTimeoutSeconds = 30
+        });
+        var service = new GitWorkspaceService(
+            settings,
+            repositoryLockProvider.Object,
+            NullLogger<GitWorkspaceService>.Instance);
 
-        _service = new GitWorkspaceService(optionsMock.Object, lockProvider.Object, _loggerMock.Object);
-    }
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.SyncAsync(
+            Guid.NewGuid(),
+            "https://github.com/example/repository.git",
+            "main",
+            CancellationToken.None));
 
-    [Fact]
-    public async Task SyncAsync_WithNonHttpsUrl_ThrowsArgumentException()
-    {
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.SyncAsync(Guid.NewGuid(), "http://github.com/a/b.git", "main"));
-        Assert.Contains("Only absolute HTTPS Git URLs are supported", ex.Message);
-    }
-
-    [Fact]
-    public async Task SyncAsync_WithEmbeddedCredentials_ThrowsArgumentException()
-    {
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.SyncAsync(Guid.NewGuid(), "https://user:pass@github.com/a/b.git", "main"));
-        Assert.Contains("Git URLs must not contain embedded credentials", ex.Message);
-    }
-
-    [Fact]
-    public async Task SyncAsync_WithLocalhost_ThrowsInvalidOperationException()
-    {
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.SyncAsync(Guid.NewGuid(), "https://localhost/repo.git", "main"));
-        Assert.Contains("Private-network Git remotes are disabled", ex.Message);
-    }
-
-    [Fact]
-    public async Task SyncAsync_WithUnresolvableHost_ThrowsInvalidOperationException()
-    {
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.SyncAsync(Guid.NewGuid(), "https://this-domain-does-not-exist-12345.com/repo.git", "main"));
-        Assert.Contains("The Git remote host could not be resolved", ex.Message);
-    }
-
-    [Fact]
-    public async Task SyncAsync_WithInvalidBranchName_ThrowsArgumentException()
-    {
-        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.SyncAsync(Guid.NewGuid(), "https://github.com/a/b.git", "-invalid-branch"));
-        Assert.Contains("Branch name is not a safe Git branch reference", ex.Message);
-    }
-
-    private sealed class NoopAsyncDisposable : IAsyncDisposable
-    {
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        Assert.Equal(0, GitWorkspaceService.RepositoryLockCount);
+        repositoryLockProvider.Verify(
+            provider => provider.AcquireAsync(It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

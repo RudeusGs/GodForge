@@ -8,4 +8,10 @@ public interface IOutboxWriter
         string queueName,
         WorkerMessage message,
         CancellationToken cancellationToken = default);
+
+    Task EnqueueScheduledAsync(
+        string queueName,
+        WorkerMessage message,
+        DateTimeOffset availableAt,
+        CancellationToken cancellationToken = default);
 }

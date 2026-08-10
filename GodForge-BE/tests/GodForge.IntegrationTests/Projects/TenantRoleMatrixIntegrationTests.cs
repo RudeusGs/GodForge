@@ -21,8 +21,8 @@ public sealed class TenantRoleMatrixIntegrationTests : IClassFixture<CustomWebAp
     public static IEnumerable<object[]> ActiveRoleMatrix()
     {
         foreach (var organizationRole in Enum.GetValues<OrganizationRole>())
-        foreach (var projectRole in Enum.GetValues<ProjectRole>())
-            yield return new object[] { organizationRole, projectRole };
+            foreach (var projectRole in Enum.GetValues<ProjectRole>())
+                yield return new object[] { organizationRole, projectRole };
     }
 
     [Theory]

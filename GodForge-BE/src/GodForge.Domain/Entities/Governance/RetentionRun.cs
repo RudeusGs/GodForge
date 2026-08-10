@@ -1,11 +1,12 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Governance;
 
 public sealed class RetentionRun : BaseEntity
 {
     public Guid PolicyId { get; private set; }
-    public string Status { get; private set; } = default!;
+    public RunStatus Status { get; private set; }
     public int AffectedCount { get; private set; }
     public DateTimeOffset StartedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
@@ -19,7 +20,7 @@ public sealed class RetentionRun : BaseEntity
         {
             Id = Guid.NewGuid(),
             PolicyId = policyId,
-            Status = "running",
+            Status = RunStatus.Running,
             AffectedCount = 0,
             StartedAt = now
         };
@@ -27,14 +28,14 @@ public sealed class RetentionRun : BaseEntity
 
     public void MarkAsCompleted(int affectedCount, DateTimeOffset now)
     {
-        Status = "completed";
+        Status = RunStatus.Completed;
         AffectedCount = affectedCount;
         CompletedAt = now;
     }
 
     public void MarkAsFailed(DateTimeOffset now)
     {
-        Status = "failed";
+        Status = RunStatus.Failed;
         CompletedAt = now;
     }
 }

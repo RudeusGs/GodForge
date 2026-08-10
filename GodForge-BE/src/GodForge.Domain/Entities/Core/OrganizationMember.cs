@@ -21,7 +21,10 @@ public sealed class OrganizationMember : BaseAuditableEntity
         => Create(organizationId, userId, OrganizationRole.OrganizationOwner, userId, now);
 
     public static OrganizationMember Create(Guid organizationId, Guid userId, OrganizationRole role, Guid actorId, DateTimeOffset now)
-        => new()
+    {
+        EnumGuard.ThrowIfUndefined(role, nameof(role));
+
+        return new OrganizationMember
         {
             Id = Guid.NewGuid(),
             OrganizationId = organizationId,
@@ -34,10 +37,13 @@ public sealed class OrganizationMember : BaseAuditableEntity
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
 
     public void Change(OrganizationRole role, MembershipStatus status, Guid actorId, long expectedVersion, DateTimeOffset now)
     {
         EnsureVersion(expectedVersion);
+        EnumGuard.ThrowIfUndefined(role, nameof(role));
+        EnumGuard.ThrowIfUndefined(status, nameof(status));
         Role = role;
         Status = status;
         SuspendedAt = status == MembershipStatus.Suspended ? now : null;

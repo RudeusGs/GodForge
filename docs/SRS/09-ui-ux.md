@@ -12,6 +12,7 @@
 | Screen | Required content |
 |---|---|
 | Authentication | Login, registration/OTP, forgot/reset password. |
+| Account security | Current-user profile, active/recent sessions, current-session label and own-session revocation with re-authentication after current-session revocation. |
 | Organization | Projects, members, policies, quotas and activity. |
 | Project dashboard | Repository state, latest revision, health trend, critical findings, jobs and activity. |
 | Repository | Mode/provider, clone information, branches, commits, tree and bounded text blob. |

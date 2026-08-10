@@ -1,7 +1,7 @@
 # M1 API Contract - Authentication and Sessions
 
-Base path: `/api/v1`  
-Requirements: `FR-01.1` to `FR-01.6`  
+Base path: `/api/v1`
+Requirements: `FR-01.1` to `FR-01.6`
 Acceptance criteria: `AC-FR-01.*` in `../03-functional/auth.md`
 
 ## Common DTOs
@@ -50,7 +50,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Actor:** anonymous.
 - **Permission:** none.
 - **Request:** `{ "email": "user@example.com" }`.
-- **Validation:** trim; normalize email; maximum 320 characters; reject malformed email.
+- **Validation:** trim; normalize email; maximum 255 characters; reject malformed email.
 - **Response:** `202 Accepted` with `{ "requestAccepted": true, "resendAfterSeconds": 60 }` in standard envelope.
 - **Behavior:** create/reuse one active registration challenge within cooldown and enqueue email through outbox.
 - **Idempotency:** normalized email + purpose + cooldown window.
@@ -74,7 +74,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 }
 ```
 
-- **Validation:** normalized email; bounded display name; password policy; OTP format.
+- **Validation:** normalized email up to 255 characters; display name up to 120 characters; password length 8-256 plus complexity policy; OTP format.
 - **Response:** `201 Created` with `UserSummary` and `Location: /api/v1/users/me`.
 - **Transaction:** lock/consume challenge, enforce unique normalized email, create verified user and security event atomically.
 - **Idempotency:** no generic retry key; unique email and consumed challenge prevent duplicates.
@@ -88,7 +88,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Actor:** anonymous.
 - **Permission:** none.
 - **Request:** `{ "email": "user@example.com", "password": "secret", "deviceName": "Chrome on Windows" }`.
-- **Validation:** email/password required; device name optional and bounded.
+- **Validation:** email required and limited to 255 characters; password required and limited to 256 characters; device name optional and bounded.
 - **Response:** `200 OK` with `AuthSessionResponse`.
 - **Transaction:** verify account and password; create session and first refresh token; record login outcome.
 - **Idempotency:** none; each successful login creates a distinct session.
@@ -129,6 +129,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Actor:** anonymous.
 - **Permission:** none.
 - **Request:** `{ "email": "user@example.com" }`.
+- **Validation:** normalized email, valid format, maximum 255 characters.
 - **Response:** always `202 Accepted` for syntactically valid email.
 - **Behavior:** create/reuse password-reset challenge only when eligible; enqueue email through outbox.
 - **Idempotency:** normalized email + purpose + cooldown window.
@@ -142,6 +143,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Actor:** anonymous with reset challenge.
 - **Permission:** valid reset challenge.
 - **Request:** `{ "email": "user@example.com", "token": "secret", "newPassword": "new-secret" }`.
+- **Validation:** email maximum 255 characters; new password length 8-256 plus complexity policy.
 - **Response:** `204 No Content`.
 - **Transaction:** consume challenge, update password/security stamp, revoke configured active sessions/tokens and record security event atomically.
 - **Idempotency:** consumed token cannot be reused.

@@ -21,8 +21,9 @@ const sendingOtp = ref(false);
 const otpCooldown = ref(0);
 let cooldownTimer: number | undefined = undefined;
 
-const startCooldown = () => {
-    otpCooldown.value = 60;
+const startCooldown = (seconds: number) => {
+    if (cooldownTimer) window.clearInterval(cooldownTimer);
+    otpCooldown.value = seconds;
     cooldownTimer = window.setInterval(() => {
         if (otpCooldown.value > 0) {
             otpCooldown.value--;
@@ -45,9 +46,9 @@ const handleSendOtp = async () => {
     try {
         sendingOtp.value = true;
         errorMsg.value = '';
-        await authApi.sendOtp(email.value);
+        const response = await authApi.sendOtp(email.value);
         otpSent.value = true;
-        startCooldown();
+        startCooldown(response.data.resendAfterSeconds);
     } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: { message?: string } } } };
         errorMsg.value = err.response?.data?.error?.message || 'Failed to send OTP verification code.';
@@ -225,4 +226,3 @@ const handleRegister = async () => {
         </form>
     </div>
 </template>
-

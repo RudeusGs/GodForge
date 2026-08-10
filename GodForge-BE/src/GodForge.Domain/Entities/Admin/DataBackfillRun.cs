@@ -1,11 +1,12 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Admin;
 
 public sealed class DataBackfillRun : BaseEntity
 {
     public string Name { get; private set; } = default!;
-    public string Status { get; private set; } = default!;
+    public RunStatus Status { get; private set; }
     public int ProcessedCount { get; private set; }
     public int FailedCount { get; private set; }
     public DateTimeOffset StartedAt { get; private set; }
@@ -21,7 +22,7 @@ public sealed class DataBackfillRun : BaseEntity
         {
             Id = Guid.NewGuid(),
             Name = name,
-            Status = "running",
+            Status = RunStatus.Running,
             ProcessedCount = 0,
             FailedCount = 0,
             StartedAt = now
@@ -30,7 +31,7 @@ public sealed class DataBackfillRun : BaseEntity
 
     public void MarkAsCompleted(int processedCount, int failedCount, DateTimeOffset now)
     {
-        Status = "completed";
+        Status = RunStatus.Completed;
         ProcessedCount = processedCount;
         FailedCount = failedCount;
         CompletedAt = now;
@@ -38,7 +39,7 @@ public sealed class DataBackfillRun : BaseEntity
 
     public void MarkAsFailed(int processedCount, int failedCount, DateTimeOffset now)
     {
-        Status = "failed";
+        Status = RunStatus.Failed;
         ProcessedCount = processedCount;
         FailedCount = failedCount;
         CompletedAt = now;

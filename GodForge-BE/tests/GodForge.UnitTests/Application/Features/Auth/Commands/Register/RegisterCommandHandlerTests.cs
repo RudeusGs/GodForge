@@ -94,6 +94,30 @@ public class RegisterCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_AttemptExhaustedChallenge_ReturnsSafeOtpErrorWithoutCreatingUser()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new RegisterCommand("newuser@example.com", "New User", "password123", "123456");
+        var challenge = ActiveChallenge(command.Email, now);
+        for (var attempt = 0; attempt < challenge.MaxAttempts; attempt++)
+            challenge.RecordFailedAttempt(now);
+
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _challenges.Setup(x => x.GetActiveAsync(
+                User.NormalizeEmail(command.Email),
+                AuthChallengePurposes.Registration,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(challenge);
+        _secretHash.Setup(x => x.Verify(command.Otp, challenge.SecretHash)).Returns(true);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("AUTH_OTP_INVALID", result.Error?.Code);
+        _users.Verify(x => x.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_GivenExistingEmail_ReturnsConflict()
     {
         var now = DateTimeOffset.UtcNow;

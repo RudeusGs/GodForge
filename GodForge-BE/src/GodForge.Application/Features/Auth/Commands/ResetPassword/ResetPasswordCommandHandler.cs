@@ -59,7 +59,7 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
 
         challenge.Consume(now);
         user.UpdatePassword(_passwordHasher.HashPassword(request.NewPassword), now);
-        user.ClearPasswordResetToken();
+        user.ClearPasswordResetToken(now);
         await _refreshTokens.RevokeAllForUserAsync(user.Id, "password-reset", now, cancellationToken);
         await _sessions.RevokeAllForUserAsync(user.Id, "password-reset", now, cancellationToken);
         await _auditWriter.WriteSecurityAsync(user.Id, "auth.password_reset", "high", new { SessionsRevoked = true }, cancellationToken);

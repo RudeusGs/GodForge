@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Repo;
 
@@ -7,7 +8,7 @@ public sealed class RepositorySnapshot : BaseEntity
     public Guid RepositoryId { get; private set; }
     public string CommitHash { get; private set; } = default!;
     public string BranchName { get; private set; } = default!;
-    public string Status { get; private set; } = default!;
+    public ProcessingStatus Status { get; private set; }
     public string? MetadataJson { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -21,20 +22,20 @@ public sealed class RepositorySnapshot : BaseEntity
             RepositoryId = repositoryId,
             CommitHash = commitHash,
             BranchName = branchName,
-            Status = "processing",
+            Status = ProcessingStatus.Processing,
             CreatedAt = now
         };
     }
 
     public void MarkAsReady(string? metadataJson)
     {
-        Status = "ready";
+        Status = ProcessingStatus.Ready;
         MetadataJson = metadataJson;
     }
 
     public void MarkAsFailed(string errorMetadataJson)
     {
-        Status = "failed";
+        Status = ProcessingStatus.Failed;
         MetadataJson = errorMetadataJson;
     }
 }

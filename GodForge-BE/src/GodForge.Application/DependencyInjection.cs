@@ -18,6 +18,8 @@ public static class DependencyInjection
         // Add Authorization service
         services.AddScoped<Common.Security.IAuthorizationService, Common.Security.AuthorizationService>();
 
+        services.AddScoped<Features.Projects.ProjectLifecycleService>();
+        services.AddScoped<Features.Projects.ProjectMembershipService>();
         services.AddScoped<Features.Projects.IProjectManagementService, Features.Projects.ProjectManagementService>();
 
         return services;

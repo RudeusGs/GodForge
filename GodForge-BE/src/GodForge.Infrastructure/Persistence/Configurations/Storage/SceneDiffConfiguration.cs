@@ -1,5 +1,6 @@
 using GodForge.Domain.Entities.Repo;
 using GodForge.Domain.Entities.Storage;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +20,7 @@ public sealed class SceneDiffConfiguration : IEntityTypeConfiguration<SceneDiff>
         builder.Property(d => d.HeadCommit).HasColumnName("head_commit").HasMaxLength(40).IsRequired();
         builder.Property(d => d.ScenePath).HasColumnName("scene_path").HasMaxLength(500).IsRequired();
         builder.Property(d => d.DiffJsonPath).HasColumnName("diff_json_path").HasMaxLength(500);
-        builder.Property(d => d.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(d => d.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
 
         builder.Property(d => d.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
 

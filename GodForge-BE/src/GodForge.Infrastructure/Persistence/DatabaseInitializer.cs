@@ -1,6 +1,5 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -34,46 +33,44 @@ public static class DatabaseInitializer
                 $"SELECT pg_advisory_lock({BootstrapAdvisoryLockId});",
                 cancellationToken);
 
-            if (await MigrationHistoryExistsAsync(context, cancellationToken))
-            {
-                await context.Database.MigrateAsync(cancellationToken);
-                return;
-            }
-
-            if (await HasApplicationTablesAsync(context, cancellationToken))
+            if (!await MigrationHistoryExistsAsync(context, cancellationToken) &&
+                await HasApplicationTablesAsync(context, cancellationToken))
             {
                 throw new InvalidOperationException(
                     "The database contains application tables but has no EF migration history. " +
                     "Back up the database and establish a migration baseline before starting GodForge.");
             }
 
-            logger.LogInformation("Initializing an empty GodForge database from the current EF model");
-            await context.Database.EnsureCreatedAsync(cancellationToken);
-            await CreateMigrationHistoryAsync(context, cancellationToken);
-
-            var migrations = context.Database.GetMigrations().ToArray();
-            if (migrations.Length == 0)
+            var pendingMigrations = (await context.Database.GetPendingMigrationsAsync(cancellationToken)).ToArray();
+            if (pendingMigrations.Length == 0)
             {
-                throw new InvalidOperationException("No EF migrations were discovered while creating the database baseline.");
-            }
-
-            foreach (var migration in migrations)
-            {
-                await RecordMigrationAsync(context, migration, cancellationToken);
+                logger.LogInformation("GodForge database schema is already up to date");
+                return;
             }
 
             logger.LogInformation(
-                "GodForge database baseline initialized with {MigrationCount} recorded migrations",
-                migrations.Length);
+                "Applying {MigrationCount} pending GodForge database migration(s)",
+                pendingMigrations.Length);
+
+            // Always build relational databases through EF migrations. EnsureCreated bypasses
+            // migration operations such as raw SQL, filtered/functional indexes and data fixes.
+            await context.Database.MigrateAsync(cancellationToken);
+
+            logger.LogInformation(
+                "GodForge database migrations applied successfully; latest migration is {MigrationId}",
+                pendingMigrations[^1]);
         }
         finally
         {
             try
             {
-                await ExecuteScalarAsync(
-                    context,
-                    $"SELECT pg_advisory_unlock({BootstrapAdvisoryLockId});",
-                    cancellationToken);
+                if (context.Database.GetDbConnection().State == ConnectionState.Open)
+                {
+                    await ExecuteScalarAsync(
+                        context,
+                        $"SELECT pg_advisory_unlock({BootstrapAdvisoryLockId});",
+                        CancellationToken.None);
+                }
             }
             finally
             {
@@ -112,48 +109,6 @@ public static class DatabaseInitializer
         return result is true;
     }
 
-    private static async Task CreateMigrationHistoryAsync(
-        GodForgeDbContext context,
-        CancellationToken cancellationToken)
-    {
-        await ExecuteNonQueryAsync(
-            context,
-            """
-            CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
-                "MigrationId" character varying(150) NOT NULL,
-                "ProductVersion" character varying(32) NOT NULL,
-                CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
-            );
-            """,
-            cancellationToken);
-    }
-
-    private static async Task RecordMigrationAsync(
-        GodForgeDbContext context,
-        string migrationId,
-        CancellationToken cancellationToken)
-    {
-        await using var command = context.Database.GetDbConnection().CreateCommand();
-        command.CommandText = """
-            INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-            VALUES (@migrationId, @productVersion)
-            ON CONFLICT ("MigrationId") DO NOTHING;
-            """;
-        command.CommandType = CommandType.Text;
-
-        var migrationParameter = command.CreateParameter();
-        migrationParameter.ParameterName = "migrationId";
-        migrationParameter.Value = migrationId;
-        command.Parameters.Add(migrationParameter);
-
-        var productVersionParameter = command.CreateParameter();
-        productVersionParameter.ParameterName = "productVersion";
-        productVersionParameter.Value = ProductInfo.GetVersion();
-        command.Parameters.Add(productVersionParameter);
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
     private static async Task<object?> ExecuteScalarAsync(
         GodForgeDbContext context,
         string sql,
@@ -163,16 +118,5 @@ public static class DatabaseInitializer
         command.CommandText = sql;
         command.CommandType = CommandType.Text;
         return await command.ExecuteScalarAsync(cancellationToken);
-    }
-
-    private static async Task ExecuteNonQueryAsync(
-        GodForgeDbContext context,
-        string sql,
-        CancellationToken cancellationToken)
-    {
-        await using var command = context.Database.GetDbConnection().CreateCommand();
-        command.CommandText = sql;
-        command.CommandType = CommandType.Text;
-        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }

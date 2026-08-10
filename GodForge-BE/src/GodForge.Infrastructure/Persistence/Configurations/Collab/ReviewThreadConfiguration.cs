@@ -2,6 +2,7 @@ using GodForge.Domain.Entities.Collab;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Identity;
 using GodForge.Domain.Entities.Repo;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +20,7 @@ public sealed class ReviewThreadConfiguration : IEntityTypeConfiguration<ReviewT
         builder.Property(t => t.ProjectId).HasColumnName("project_id").HasColumnType("uuid").IsRequired();
         builder.Property(t => t.RepositoryId).HasColumnName("repository_id").HasColumnType("uuid").IsRequired();
         builder.Property(t => t.TargetId).HasColumnName("target_id").HasMaxLength(100).IsRequired();
-        builder.Property(t => t.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(t => t.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(t => t.CreatedBy).HasColumnName("created_by").HasColumnType("uuid").IsRequired();
 
         builder.Property(t => t.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();

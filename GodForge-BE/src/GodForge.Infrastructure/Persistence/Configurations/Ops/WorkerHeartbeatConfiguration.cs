@@ -1,4 +1,5 @@
 using GodForge.Domain.Entities.Ops;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +18,7 @@ public sealed class WorkerHeartbeatConfiguration : IEntityTypeConfiguration<Work
         builder.Property(w => w.WorkerInstanceId).HasColumnName("worker_instance_id").HasMaxLength(120).IsRequired();
         // Postgres text[] array mapping requires Npgsql integration
         builder.Property(w => w.Queues).HasColumnName("queues").HasColumnType("text[]").IsRequired();
-        builder.Property(w => w.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(w => w.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(w => w.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(w => w.LastSeenAt).HasColumnName("last_seen_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(w => w.MetadataJson).HasColumnName("metadata").HasColumnType("jsonb");

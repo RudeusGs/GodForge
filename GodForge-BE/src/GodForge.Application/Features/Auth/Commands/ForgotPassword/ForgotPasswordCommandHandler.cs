@@ -4,6 +4,7 @@ using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.DTOs;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Enums;
 using MediatR;
 
 namespace GodForge.Application.Features.Auth.Commands.ForgotPassword;
@@ -47,7 +48,7 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
     public async Task<Result<ChallengeAcceptedDto>> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
     {
         var user = await _users.GetByEmailAsync(request.Email, cancellationToken);
-        if (user is null)
+        if (user is null || user.Status != UserStatus.Active)
             return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
 
         var now = _clock.UtcNow;

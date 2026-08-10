@@ -6,8 +6,8 @@ public sealed class UserSession : BaseEntity
 {
     public Guid UserId { get; private set; }
     public string? DeviceName { get; private set; }
-    public string? IpAddress { get; private set; }
-    public string? UserAgent { get; private set; }
+    public string? IpHash { get; private set; }
+    public string? UserAgentHash { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? LastSeenAt { get; private set; }
     public DateTimeOffset ExpiresAt { get; private set; }
@@ -17,14 +17,14 @@ public sealed class UserSession : BaseEntity
 
     private UserSession() { }
 
-    public static UserSession Create(Guid userId, string? deviceName, string? ipAddress, string? userAgent, DateTimeOffset expiresAt, DateTimeOffset now)
+    public static UserSession Create(Guid userId, string? deviceName, string? ipHash, string? userAgentHash, DateTimeOffset expiresAt, DateTimeOffset now)
         => new()
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             DeviceName = string.IsNullOrWhiteSpace(deviceName) ? null : deviceName.Trim(),
-            IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? null : ipAddress.Trim(),
-            UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent.Trim(),
+            IpHash = string.IsNullOrWhiteSpace(ipHash) ? null : ipHash.Trim(),
+            UserAgentHash = string.IsNullOrWhiteSpace(userAgentHash) ? null : userAgentHash.Trim(),
             CreatedAt = now,
             LastSeenAt = now,
             ExpiresAt = expiresAt,

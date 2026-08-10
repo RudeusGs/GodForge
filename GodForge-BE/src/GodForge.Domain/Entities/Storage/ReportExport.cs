@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Storage;
 
@@ -6,7 +7,7 @@ public sealed class ReportExport : BaseEntity
 {
     public Guid ProjectId { get; private set; }
     public string Type { get; private set; } = default!;
-    public string Status { get; private set; } = default!;
+    public ProcessingStatus Status { get; private set; }
     public string? FilePath { get; private set; }
     public DateTimeOffset? ExpiresAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
@@ -20,7 +21,7 @@ public sealed class ReportExport : BaseEntity
             Id = Guid.NewGuid(),
             ProjectId = projectId,
             Type = type,
-            Status = "processing",
+            Status = ProcessingStatus.Processing,
             CreatedAt = now
         };
     }
@@ -29,11 +30,11 @@ public sealed class ReportExport : BaseEntity
     {
         FilePath = filePath;
         ExpiresAt = expiresAt;
-        Status = "ready";
+        Status = ProcessingStatus.Ready;
     }
 
     public void MarkAsFailed()
     {
-        Status = "failed";
+        Status = ProcessingStatus.Failed;
     }
 }

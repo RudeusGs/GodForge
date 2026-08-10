@@ -15,6 +15,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
+    private readonly ISecretHashService _secretHash;
     private readonly IAuditWriter _auditWriter;
     private readonly IClock _clock;
     private readonly IUnitOfWork _unitOfWork;
@@ -25,6 +26,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
         IRefreshTokenRepository refreshTokens,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
+        ISecretHashService secretHash,
         IAuditWriter auditWriter,
         IClock clock,
         IUnitOfWork unitOfWork)
@@ -34,6 +36,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
         _refreshTokens = refreshTokens;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
+        _secretHash = secretHash;
         _auditWriter = auditWriter;
         _clock = clock;
         _unitOfWork = unitOfWork;
@@ -45,6 +48,8 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
         var user = await _users.GetByEmailAsync(request.Email, cancellationToken);
         if (user is null)
         {
+            // Keep the invalid-email path computationally comparable to a failed password check.
+            _ = _passwordHasher.HashPassword(request.Password);
             await _auditWriter.WriteSecurityAsync(null, "auth.login_failed", "medium", new { Reason = "invalid-credentials" }, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
@@ -63,6 +68,12 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
         }
         if (user.Status == UserStatus.Locked)
             user.Unlock(now);
+        if (user.Status != UserStatus.Active)
+        {
+            await _auditWriter.WriteSecurityAsync(user.Id, "auth.login_failed", "medium", new { Reason = "invalid-credentials" }, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
+        }
 
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
@@ -74,7 +85,13 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
 
         user.RecordLoginSuccess(now);
         var refreshExpiresAt = now.Add(_tokenService.RefreshTokenLifetime);
-        var session = UserSession.Create(user.Id, request.DeviceName, request.IpAddress, request.UserAgent, refreshExpiresAt, now);
+        var session = UserSession.Create(
+            user.Id,
+            request.DeviceName,
+            HashOptional(request.IpAddress),
+            HashOptional(request.UserAgent),
+            refreshExpiresAt,
+            now);
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
         var refreshToken = GodForge.Domain.Entities.Identity.RefreshToken.Create(
             user.Id,
@@ -98,4 +115,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
             rawRefreshToken,
             refreshExpiresAt);
     }
+
+    private string? HashOptional(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : _secretHash.Hash(value.Trim());
 }

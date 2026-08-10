@@ -1,18 +1,15 @@
-using GodForge.Application;
 using GodForge.Infrastructure;
 using GodForge.Infrastructure.Persistence;
-using GodForge.Worker.Handlers;
-using GodForge.Worker.Queues;
+using GodForge.Worker;
 
 DotNetEnv.Env.TraversePath().Load();
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddOutboxDispatching();
-builder.Services.AddScoped<RepositoryAnalysisPipelineHandler>();
-builder.Services.AddHostedService<RabbitMqWorkerService>();
+builder.Services.AddWorkerServices();
 
 var host = builder.Build();
-await host.Services.InitializeGodForgeDatabaseAsync();
-host.Run();
+if (builder.Environment.IsDevelopment())
+    await host.Services.InitializeGodForgeDatabaseAsync();
+
+await host.RunAsync();

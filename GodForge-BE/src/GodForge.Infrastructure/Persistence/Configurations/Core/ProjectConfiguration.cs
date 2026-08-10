@@ -15,8 +15,8 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.Id).HasColumnName("id").HasColumnType("uuid");
         builder.Property(p => p.OrganizationId).HasColumnName("organization_id").HasColumnType("uuid").IsRequired();
 
-        builder.Property(p => p.Name).HasColumnName("name").HasMaxLength(80).IsRequired();
-        builder.Property(p => p.Slug).HasColumnName("slug").HasMaxLength(100).IsRequired();
+        builder.Property(p => p.Name).HasColumnName("name").HasMaxLength(Project.MaxNameLength).IsRequired();
+        builder.Property(p => p.Slug).HasColumnName("slug").HasMaxLength(Project.MaxSlugLength).IsRequired();
         builder.Property(p => p.Description).HasColumnName("description").HasColumnType("text");
         builder.Property(p => p.GodotVersion).HasColumnName("godot_version").HasMaxLength(30).IsRequired();
         builder.Property(p => p.Visibility).HasColumnName("visibility").HasConversion<string>().HasMaxLength(30).IsRequired();

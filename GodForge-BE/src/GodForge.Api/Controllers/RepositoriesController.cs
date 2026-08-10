@@ -1,3 +1,4 @@
+using GodForge.Api.Contracts.Repositories;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Repositories.Commands.LinkRepository;
@@ -36,11 +37,6 @@ public sealed class RepositoriesController : BaseApiController
         [FromBody] LinkRepositoryRequest request,
         CancellationToken cancellationToken)
     {
-        if (_currentUser.Id is null)
-        {
-            return Unauthorized();
-        }
-
         Result<RepositoryDto> result = await _mediator.Send(new LinkRepositoryCommand(
             projectId,
             request.RemoteUrl,
@@ -48,19 +44,20 @@ public sealed class RepositoriesController : BaseApiController
             request.DefaultBranch,
             request.ExternalRepositoryId,
             request.AutoAnalyzeEnabled,
-            _currentUser.Id.Value,
+            ActorId,
             CorrelationId), cancellationToken);
 
         if (!result.IsSuccess)
-        {
             return HandleResult(result);
-        }
 
-        return StatusCode(StatusCodes.Status201Created, new ApiResponse<RepositoryDto>
-        {
-            Data = result.Value,
-            Meta = new ApiMeta { CorrelationId = CorrelationId }
-        });
+        return CreatedAtAction(
+            nameof(GetRepository),
+            new { projectId },
+            new ApiResponse<RepositoryDto>
+            {
+                Data = result.Value,
+                Meta = new ApiMeta { CorrelationId = CorrelationId }
+            });
     }
 
     /// <summary>
@@ -73,14 +70,7 @@ public sealed class RepositoriesController : BaseApiController
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetRepository(Guid projectId, CancellationToken cancellationToken)
     {
-        if (_currentUser.Id is null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _mediator.Send(
-            new GetRepositoryQuery(projectId, _currentUser.Id.Value),
-            cancellationToken);
+        var result = await _mediator.Send(new GetRepositoryQuery(projectId, ActorId), cancellationToken);
         return HandleResult(result);
     }
 
@@ -98,23 +88,16 @@ public sealed class RepositoriesController : BaseApiController
         [FromBody] TriggerRepositoryAnalysisRequest request,
         CancellationToken cancellationToken)
     {
-        if (_currentUser.Id is null)
-        {
-            return Unauthorized();
-        }
-
         Result<Guid> result = await _mediator.Send(new TriggerRepositoryAnalysisCommand(
             projectId,
             request.Branch,
             request.AnalysisProfile,
             request.IncludeAi,
-            _currentUser.Id.Value,
+            ActorId,
             CorrelationId), cancellationToken);
 
         if (!result.IsSuccess)
-        {
             return HandleResult(result);
-        }
 
         return Accepted(new ApiResponse<object>
         {
@@ -122,16 +105,6 @@ public sealed class RepositoriesController : BaseApiController
             Meta = new ApiMeta { CorrelationId = CorrelationId }
         });
     }
+
+    private Guid ActorId => RequireActorId(_currentUser);
 }
-
-public sealed record LinkRepositoryRequest(
-    string RemoteUrl,
-    string Provider,
-    string DefaultBranch,
-    string? ExternalRepositoryId,
-    bool AutoAnalyzeEnabled);
-
-public sealed record TriggerRepositoryAnalysisRequest(
-    string? Branch,
-    string AnalysisProfile = "health_overview",
-    bool IncludeAi = false);

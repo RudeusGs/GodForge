@@ -36,6 +36,8 @@ dotnet run --project src/GodForge.Api
 dotnet run --project src/GodForge.Worker
 ```
 
+The Worker launch profile selects `Development` and validates its own composition root without requiring HTTP request or Identity services. If RabbitMQ is temporarily unavailable, the Worker remains running and retries the initial broker connection with bounded exponential backoff and jitter; start the local dependencies with `docker compose up -d` to begin consuming jobs.
+
 ## Frontend
 
 ```bash

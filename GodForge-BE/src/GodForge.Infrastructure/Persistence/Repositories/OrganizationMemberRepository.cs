@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Text;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -39,9 +40,10 @@ public sealed class OrganizationMemberRepository : IOrganizationMemberRepository
     public async Task<PagedResult<OrganizationMember>> GetForOrganizationAsync(Guid organizationId, int page, int pageSize, string? role, string? status, string? search, CancellationToken cancellationToken = default)
     {
         var query = _context.OrganizationMembers.AsNoTracking().Where(x => x.OrganizationId == organizationId);
-        if (Enum.TryParse<OrganizationRole>(role, true, out var parsedRole))
+        query = query.Where(x => _context.Users.Any(user => user.Id == x.UserId));
+        if (EnumText.TryParseDefined<OrganizationRole>(role, out var parsedRole))
             query = query.Where(x => x.Role == parsedRole);
-        if (Enum.TryParse<MembershipStatus>(status, true, out var parsedStatus))
+        if (EnumText.TryParseDefined<MembershipStatus>(status, out var parsedStatus))
             query = query.Where(x => x.Status == parsedStatus);
         if (!string.IsNullOrWhiteSpace(search))
         {

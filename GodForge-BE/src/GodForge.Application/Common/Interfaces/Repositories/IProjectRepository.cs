@@ -6,7 +6,7 @@ namespace GodForge.Application.Common.Interfaces.Repositories;
 public interface IProjectRepository
 {
     Task<Project?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<bool> NameExistsAsync(Guid organizationId, string name, CancellationToken cancellationToken = default);
+    Task<bool> NameExistsAsync(Guid organizationId, string name, Guid? exceptProjectId = null, CancellationToken cancellationToken = default);
     Task<bool> SlugExistsAsync(Guid organizationId, string slug, Guid? exceptProjectId = null, CancellationToken cancellationToken = default);
     Task AddAsync(Project project, CancellationToken cancellationToken = default);
     Task AddSettingsAsync(ProjectSetting settings, CancellationToken cancellationToken = default);

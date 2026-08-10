@@ -31,6 +31,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = "GodForge.IntegrationTests",
                 ["Jwt:Audience"] = "GodForge.IntegrationTests",
                 ["OutboxEncryption:Key"] = "integration-test-only-outbox-encryption-key-64-characters-0000000000",
+                ["SecretHashing:Key"] = "integration-test-only-secret-hash-key-64-characters-0000000000000",
                 ["Frontend:BaseUrl"] = "https://frontend.integration.test"
             });
         });

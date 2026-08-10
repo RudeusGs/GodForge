@@ -2,6 +2,7 @@ using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
@@ -33,7 +34,7 @@ public sealed class TransferOrganizationOwnershipCommandHandler : OrganizationCo
     {
         if (request.ActorId == request.NewOwnerUserId)
             return ApplicationError.Validation("VALIDATION_ERROR", "The target user is already the current owner.");
-        if (!Enum.TryParse<OrganizationRole>(request.RetainCurrentOwnerAs, true, out var retainedRole) || retainedRole == OrganizationRole.OrganizationOwner)
+        if (!EnumText.TryParseDefined<OrganizationRole>(request.RetainCurrentOwnerAs, out var retainedRole) || retainedRole == OrganizationRole.OrganizationOwner)
             return ApplicationError.Validation("VALIDATION_ERROR", "retainCurrentOwnerAs must be organizationAdmin or organizationMember.");
 
         await BeginMembershipMutationAsync("organization-membership", request.OrganizationId, cancellationToken);
@@ -63,11 +64,11 @@ public sealed class TransferOrganizationOwnershipCommandHandler : OrganizationCo
             var previousOwner = access.Membership!;
             target.Change(OrganizationRole.OrganizationOwner, MembershipStatus.Active, request.ActorId, target.Version, now);
             previousOwner.Change(retainedRole, MembershipStatus.Active, request.ActorId, previousOwner.Version, now);
-            
+
             await _auditWriter.WriteAuditAsync(
                 request.ActorId, null, "organization.ownership_transferred", "organization", request.OrganizationId, "succeeded",
                 new { PreviousOwnerUserId = request.ActorId, NewOwnerUserId = request.NewOwnerUserId, RetainedRole = retainedRole.ToString() }, cancellationToken);
-                
+
             var save = await SaveAsync(cancellationToken);
             if (save is not null)
                 return await RollbackAsync<OrganizationOwnershipTransferDto>(save, cancellationToken);

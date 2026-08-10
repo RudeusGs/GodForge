@@ -5,6 +5,9 @@ namespace GodForge.Domain.Entities.Core;
 
 public sealed class Project : BaseAuditableEntity, ISoftDeletable
 {
+    public const string UnknownGodotVersion = "unknown";
+    public const int MaxNameLength = 80;
+    public const int MaxSlugLength = 80;
     public Guid OrganizationId { get; private set; }
     public string Name { get; private set; } = default!;
     public string Slug { get; private set; } = default!;
@@ -20,10 +23,17 @@ public sealed class Project : BaseAuditableEntity, ISoftDeletable
 
     private Project() { }
 
+    public static bool IsValidName(string? value)
+        => !string.IsNullOrWhiteSpace(value) && value.Trim().Length <= MaxNameLength;
+
+    public static bool IsValidSlug(string? value) => SlugRules.IsValid(value, MaxSlugLength);
+
     public static Project Create(Guid organizationId, string name, string slug, string? description, string godotVersion, ProjectVisibility visibility, Guid createdBy, DateTimeOffset now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (!System.Text.RegularExpressions.Regex.IsMatch(slug, "^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+        if (!IsValidName(name))
+            throw new ArgumentException("Project name is invalid.", nameof(name));
+        EnumGuard.ThrowIfUndefined(visibility, nameof(visibility));
+        if (!IsValidSlug(slug))
             throw new ArgumentException("Project slug is invalid.", nameof(slug));
 
         return new Project
@@ -46,8 +56,10 @@ public sealed class Project : BaseAuditableEntity, ISoftDeletable
     public void UpdateDetails(string name, string slug, string? description, ProjectVisibility visibility, long expectedVersion, DateTimeOffset now)
     {
         EnsureMutable(expectedVersion);
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (!System.Text.RegularExpressions.Regex.IsMatch(slug, "^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+        if (!IsValidName(name))
+            throw new ArgumentException("Project name is invalid.", nameof(name));
+        EnumGuard.ThrowIfUndefined(visibility, nameof(visibility));
+        if (!IsValidSlug(slug))
             throw new ArgumentException("Project slug is invalid.", nameof(slug));
         Name = name.Trim();
         Slug = slug;
@@ -78,7 +90,6 @@ public sealed class Project : BaseAuditableEntity, ISoftDeletable
         Version++;
         UpdatedAt = now;
     }
-
 
     public void MarkDeleting(long expectedVersion, DateTimeOffset now)
     {

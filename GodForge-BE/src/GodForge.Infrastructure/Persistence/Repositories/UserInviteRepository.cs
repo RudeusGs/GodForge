@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Text;
 using GodForge.Domain.Entities.Identity;
 using GodForge.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ public sealed class UserInviteRepository : IUserInviteRepository
     public async Task<PagedResult<UserInvite>> GetForOrganizationAsync(Guid organizationId, int page, int pageSize, string? status, string? email, CancellationToken cancellationToken = default)
     {
         var query = _context.UserInvites.AsNoTracking().Where(x => x.OrganizationId == organizationId);
-        if (Enum.TryParse<InviteStatus>(status, true, out var parsedStatus))
+        if (EnumText.TryParseDefined<InviteStatus>(status, out var parsedStatus))
             query = query.Where(x => x.Status == parsedStatus);
         if (!string.IsNullOrWhiteSpace(email))
         {

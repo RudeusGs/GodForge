@@ -1,6 +1,7 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Analysis.DTOs;
 using MediatR;
 
@@ -55,7 +56,7 @@ public sealed class GetAiAdvisoryQueryHandler : IRequestHandler<GetAiAdvisoryQue
             run.CommitSha,
             run.Provider,
             run.Model,
-            run.Status,
+            EnumText.ToCamelCase(run.Status),
             run.Summary,
             run.StartedAt,
             run.CompletedAt);
@@ -69,7 +70,7 @@ public sealed class GetAiAdvisoryQueryHandler : IRequestHandler<GetAiAdvisoryQue
             f.Recommendation,
             f.Confidence,
             f.EvidenceRefsJson,
-            f.Status,
+            EnumText.ToCamelCase(f.Status),
             f.CreatedAt)).ToList();
 
         return Result<AiAdvisoryResponseDto>.Success(new AiAdvisoryResponseDto(advisoryDto, findingsDto));

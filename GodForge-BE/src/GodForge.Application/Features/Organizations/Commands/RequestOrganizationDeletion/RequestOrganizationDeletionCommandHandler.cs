@@ -29,22 +29,22 @@ public sealed class RequestOrganizationDeletionCommandHandler : OrganizationComm
     {
         var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationsDelete, cancellationToken);
         if (access.Error is not null) return access.Error;
-        
+
         var organization = access.Organization!;
         if (!string.Equals(organization.Slug, request.ConfirmationSlug?.Trim(), StringComparison.Ordinal))
             return ApplicationError.Validation("VALIDATION_ERROR", "confirmationSlug does not match the organization slug.");
         if (organization.Version != request.Version)
             return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "Organization version is stale.");
-            
+
         organization.MarkDeleting(request.Version, _clock.UtcNow);
-        
+
         await _auditWriter.WriteAuditAsync(
             request.ActorId, null, "organization.deletion_requested", "organization", organization.Id, "succeeded",
             new { organization.Slug, organization.Version }, cancellationToken);
-            
+
         var save = await SaveAsync(cancellationToken);
         if (save is not null) return save;
-        
+
         return new DeletionAcceptedDto(organization.Id, "deleting", organization.Version);
     }
 }

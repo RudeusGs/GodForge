@@ -16,12 +16,20 @@ const handleLogout = async () => {
         <div class="max-w-4xl w-full bg-white rounded-lg shadow-sm p-8">
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-                <button
-                    @click="handleLogout"
-                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                >
-                    Logout
-                </button>
+                <div class="flex items-center gap-3">
+                    <router-link
+                        :to="{ name: 'accountSessions' }"
+                        class="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    >
+                        Security sessions
+                    </router-link>
+                    <button
+                        @click="handleLogout"
+                        class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                    >
+                        Logout
+                    </button>
+                </div>
             </div>
 
             <div class="prose max-w-none">
@@ -32,4 +40,3 @@ const handleLogout = async () => {
         </div>
     </div>
 </template>
-

@@ -1,6 +1,7 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Enums;
 using MediatR;
@@ -27,14 +28,14 @@ public sealed class ListOrganizationInvitationsQueryHandler : OrganizationQueryH
         var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationMembersInvite, cancellationToken);
         if (access.Error is not null) return access.Error;
 
-        if (!string.IsNullOrWhiteSpace(request.Status) && !Enum.TryParse<InviteStatus>(request.Status, true, out _))
+        if (!string.IsNullOrWhiteSpace(request.Status) && !EnumText.TryParseDefined<InviteStatus>(request.Status, out _))
             return ApplicationError.Validation("VALIDATION_ERROR", "Invitation status is invalid.");
 
         var invitations = await _invitations.GetForOrganizationAsync(request.OrganizationId, request.Page, request.PageSize, request.Status, request.Email, cancellationToken);
         return new PagedResult<OrganizationInvitationDto>(
-            invitations.Items.Select(OrganizationInvitationDto.From).ToList(), 
-            invitations.Page, 
-            invitations.PageSize, 
+            invitations.Items.Select(OrganizationInvitationDto.From).ToList(),
+            invitations.Page,
+            invitations.PageSize,
             invitations.TotalItems);
     }
 }

@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Collab;
 
@@ -10,7 +11,7 @@ public sealed class Activity : BaseEntity
     public string Action { get; private set; } = default!;
     public string? TargetType { get; private set; }
     public string? TargetId { get; private set; }
-    public string Status { get; private set; } = default!;
+    public ActivityStatus Status { get; private set; }
     public string? MetadataJson { get; private set; }
     public string CorrelationId { get; private set; } = default!;
     public DateTimeOffset CreatedAt { get; private set; }
@@ -19,9 +20,11 @@ public sealed class Activity : BaseEntity
 
     public static Activity Create(
         Guid projectId, Guid? repositoryId, Guid? actorId, string action,
-        string? targetType, string? targetId, string status,
+        string? targetType, string? targetId, ActivityStatus status,
         string? metadataJson, string correlationId, DateTimeOffset now)
     {
+        EnumGuard.ThrowIfUndefined(status, nameof(status));
+
         return new Activity
         {
             Id = Guid.NewGuid(),

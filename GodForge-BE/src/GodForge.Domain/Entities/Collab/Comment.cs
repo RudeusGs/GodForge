@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Collab;
 
@@ -10,7 +11,7 @@ public sealed class Comment : BaseAuditableEntity
     public string TargetId { get; private set; } = default!;
     public string Content { get; private set; } = default!;
     public Guid? ParentId { get; private set; }
-    public string Status { get; private set; } = default!;
+    public CommentStatus Status { get; private set; }
     public DateTimeOffset? DeletedAt { get; private set; }
 
     private Comment() { } // EF Core
@@ -26,7 +27,7 @@ public sealed class Comment : BaseAuditableEntity
             TargetId = targetId,
             Content = content,
             ParentId = parentId,
-            Status = "active",
+            Status = CommentStatus.Active,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -34,7 +35,7 @@ public sealed class Comment : BaseAuditableEntity
 
     public void UpdateContent(string content, DateTimeOffset now)
     {
-        if (Status == "active")
+        if (Status == CommentStatus.Active)
         {
             Content = content;
             UpdatedAt = now;
@@ -46,7 +47,7 @@ public sealed class Comment : BaseAuditableEntity
         if (DeletedAt is null)
         {
             DeletedAt = now;
-            Status = "deleted";
+            Status = CommentStatus.Deleted;
             UpdatedAt = now;
         }
     }

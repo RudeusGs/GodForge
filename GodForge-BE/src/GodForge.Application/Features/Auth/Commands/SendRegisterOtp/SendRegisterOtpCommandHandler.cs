@@ -69,7 +69,12 @@ public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegister
         var safeOtp = WebUtility.HtmlEncode(otp);
         var body = $"<h2>Verify your email address</h2><p>Your GodForge verification code is <strong>{safeOtp}</strong>.</p><p>This code expires in 5 minutes.</p>";
         await _emailOutbox.EnqueueAsync(email, "GodForge - Email verification", body, request.CorrelationId, cancellationToken);
-        await _auditWriter.WriteSecurityAsync(null, "auth.registration_challenge_created", "informational", new { NormalizedEmail = normalizedEmail }, cancellationToken);
+        await _auditWriter.WriteSecurityAsync(
+            null,
+            "auth.registration_challenge_created",
+            "informational",
+            new { EmailHash = _secretHash.Hash(normalizedEmail) },
+            cancellationToken);
         try
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);

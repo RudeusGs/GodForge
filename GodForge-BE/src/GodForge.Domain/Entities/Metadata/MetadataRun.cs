@@ -1,4 +1,5 @@
 using GodForge.Domain.Common;
+using GodForge.Domain.Enums;
 
 namespace GodForge.Domain.Entities.Metadata;
 
@@ -9,7 +10,7 @@ public sealed class MetadataRun : BaseEntity
     public Guid SnapshotId { get; private set; }
     public Guid? JobId { get; private set; }
     public string RunType { get; private set; } = default!;
-    public string Status { get; private set; } = default!;
+    public RunStatus Status { get; private set; }
     public string SchemaVersion { get; private set; } = "1.0";
     public int FileCount { get; private set; }
     public int SceneCount { get; private set; }
@@ -33,7 +34,7 @@ public sealed class MetadataRun : BaseEntity
             SnapshotId = snapshotId,
             JobId = jobId,
             RunType = runType,
-            Status = "running",
+            Status = RunStatus.Running,
             FileCount = 0,
             SceneCount = 0,
             AssetCount = 0,
@@ -47,7 +48,7 @@ public sealed class MetadataRun : BaseEntity
 
     public void MarkAsCompleted(int fileCount, int sceneCount, int assetCount, int scriptCount, int resourceCount, int dependencyCount, DateTimeOffset now)
     {
-        Status = "completed";
+        Status = RunStatus.Completed;
         FileCount = fileCount;
         SceneCount = sceneCount;
         AssetCount = assetCount;
@@ -59,7 +60,7 @@ public sealed class MetadataRun : BaseEntity
 
     public void MarkAsFailed(DateTimeOffset now)
     {
-        Status = "failed";
+        Status = RunStatus.Failed;
         CompletedAt = now;
     }
 }

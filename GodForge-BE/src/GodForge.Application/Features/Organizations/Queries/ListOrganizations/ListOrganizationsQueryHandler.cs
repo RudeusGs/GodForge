@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Enums;
 using MediatR;
@@ -27,7 +28,7 @@ public sealed class ListOrganizationsQueryHandler : IRequestHandler<ListOrganiza
         OrganizationStatus? parsedStatus = null;
         if (!string.IsNullOrWhiteSpace(request.Status))
         {
-            if (!Enum.TryParse<OrganizationStatus>(request.Status, true, out var value))
+            if (!EnumText.TryParseDefined<OrganizationStatus>(request.Status, out var value))
                 return ApplicationError.Validation("VALIDATION_ERROR", "Organization status is invalid.");
             parsedStatus = value;
         }

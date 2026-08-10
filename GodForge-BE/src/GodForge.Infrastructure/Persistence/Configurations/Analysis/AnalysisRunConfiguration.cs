@@ -3,6 +3,7 @@ using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Metadata;
 using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Repo;
+using GodForge.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -22,7 +23,7 @@ public sealed class AnalysisRunConfiguration : IEntityTypeConfiguration<Analysis
         builder.Property(r => r.SnapshotId).HasColumnName("snapshot_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.MetadataRunId).HasColumnName("metadata_run_id").HasColumnType("uuid");
         builder.Property(r => r.JobId).HasColumnName("job_id").HasColumnType("uuid");
-        builder.Property(r => r.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(r => r.Status).HasColumnName("status").HasCamelCaseEnumConversion().HasMaxLength(30).IsRequired();
         builder.Property(r => r.StartedAt).HasColumnName("started_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(r => r.CompletedAt).HasColumnName("completed_at").HasColumnType("timestamptz");
 
@@ -31,5 +32,10 @@ public sealed class AnalysisRunConfiguration : IEntityTypeConfiguration<Analysis
         builder.HasOne<RepositorySnapshot>().WithMany().HasForeignKey(r => r.SnapshotId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<MetadataRun>().WithMany().HasForeignKey(r => r.MetadataRunId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<Job>().WithMany().HasForeignKey(r => r.JobId).OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(r => r.JobId)
+            .HasDatabaseName("ux_analysis_runs_job")
+            .IsUnique()
+            .HasFilter("job_id IS NOT NULL");
     }
 }

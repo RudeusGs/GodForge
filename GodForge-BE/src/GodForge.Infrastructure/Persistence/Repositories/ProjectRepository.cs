@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Common.Text;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,14 @@ public sealed class ProjectRepository : IProjectRepository
     public Task<Project?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => _context.Projects.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
-    public Task<bool> NameExistsAsync(Guid organizationId, string name, CancellationToken cancellationToken = default)
+    public Task<bool> NameExistsAsync(Guid organizationId, string name, Guid? exceptProjectId = null, CancellationToken cancellationToken = default)
     {
         var normalizedName = name.Trim().ToUpperInvariant();
-        return _context.Projects.AnyAsync(project => project.OrganizationId == organizationId && project.Name.ToUpper() == normalizedName, cancellationToken);
+        return _context.Projects.AnyAsync(
+            project => project.OrganizationId == organizationId &&
+                       project.Name.ToUpper() == normalizedName &&
+                       (!exceptProjectId.HasValue || project.Id != exceptProjectId.Value),
+            cancellationToken);
     }
 
     public Task<bool> SlugExistsAsync(Guid organizationId, string slug, Guid? exceptProjectId = null, CancellationToken cancellationToken = default)
@@ -40,7 +45,7 @@ public sealed class ProjectRepository : IProjectRepository
                         _context.OrganizationMembers.Any(m => m.OrganizationId == p.OrganizationId && m.UserId == userId && m.Status == MembershipStatus.Active));
         if (organizationId.HasValue)
             query = query.Where(x => x.OrganizationId == organizationId.Value);
-        if (Enum.TryParse<ProjectStatus>(status, true, out var parsedStatus))
+        if (EnumText.TryParseDefined<ProjectStatus>(status, out var parsedStatus))
             query = query.Where(x => x.Status == parsedStatus);
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(p => p.Name.Contains(search) || (p.Description != null && p.Description.Contains(search)));

@@ -1,8 +1,8 @@
+using GodForge.Api.Contracts.Organizations;
 using GodForge.Application.Common.Interfaces;
-using GodForge.Application.Features.Organizations;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MediatR;
 
 namespace GodForge.Api.Controllers;
 
@@ -22,9 +22,10 @@ public sealed class OrganizationInvitationsController : BaseApiController
     [HttpPost("accept")]
     public async Task<IActionResult> Accept([FromBody] AcceptOrganizationInvitationRequest request, CancellationToken cancellationToken)
     {
-        if (_currentUser.Id is not { } actorId) return Unauthorized();
-        return HandleResult(await _mediator.Send(new GodForge.Application.Features.Organizations.Commands.AcceptOrganizationInvitation.AcceptOrganizationInvitationCommand(actorId, request.Token), cancellationToken));
+        return HandleResult(await _mediator.Send(
+            new GodForge.Application.Features.Organizations.Commands.AcceptOrganizationInvitation.AcceptOrganizationInvitationCommand(
+                RequireActorId(_currentUser),
+                request.Token),
+            cancellationToken));
     }
 }
-
-public sealed record AcceptOrganizationInvitationRequest(string Token);

@@ -12,8 +12,8 @@ public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organiz
         builder.ToTable("organizations", "core");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id").HasColumnType("uuid");
-        builder.Property(x => x.Slug).HasColumnName("slug").HasMaxLength(80).IsRequired();
-        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(160).IsRequired();
+        builder.Property(x => x.Slug).HasColumnName("slug").HasMaxLength(Organization.MaxSlugLength).IsRequired();
+        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(Organization.MaxNameLength).IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(24).IsRequired();
         builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasColumnType("uuid").IsRequired();
         builder.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken().IsRequired();
