@@ -9,7 +9,7 @@ using GodForge.Domain.Enums;
 
 namespace GodForge.Application.Features.Projects;
 
-public sealed class ProjectMembershipService : ProjectOperationServiceBase
+public sealed class ProjectMembershipService : ProjectOperationServiceBase, IProjectMembershipService
 {
     private readonly IUserRepository _users;
 

@@ -16,9 +16,9 @@ public sealed record UpdateProjectSettingsCommand(
 
 public sealed class UpdateProjectSettingsCommandHandler : IRequestHandler<UpdateProjectSettingsCommand, Result<ProjectSettingsDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectSettingsService _projects;
 
-    public UpdateProjectSettingsCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public UpdateProjectSettingsCommandHandler(IProjectSettingsService projects) => _projects = projects;
 
     public Task<Result<ProjectSettingsDto>> Handle(
         UpdateProjectSettingsCommand request,

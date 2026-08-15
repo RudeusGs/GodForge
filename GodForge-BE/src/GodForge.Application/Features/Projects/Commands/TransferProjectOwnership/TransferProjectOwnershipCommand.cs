@@ -14,9 +14,9 @@ public sealed record TransferProjectOwnershipCommand(
 
 public sealed class TransferProjectOwnershipCommandHandler : IRequestHandler<TransferProjectOwnershipCommand, Result<ProjectOwnershipTransferDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectMembershipService _projects;
 
-    public TransferProjectOwnershipCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public TransferProjectOwnershipCommandHandler(IProjectMembershipService projects) => _projects = projects;
 
     public Task<Result<ProjectOwnershipTransferDto>> Handle(
         TransferProjectOwnershipCommand request,

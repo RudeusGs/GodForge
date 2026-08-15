@@ -11,9 +11,9 @@ public sealed record RemoveProjectMemberCommand(
 
 public sealed class RemoveProjectMemberCommandHandler : IRequestHandler<RemoveProjectMemberCommand, Result>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectMembershipService _projects;
 
-    public RemoveProjectMemberCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public RemoveProjectMemberCommandHandler(IProjectMembershipService projects) => _projects = projects;
 
     public Task<Result> Handle(RemoveProjectMemberCommand request, CancellationToken cancellationToken)
         => _projects.RemoveMemberAsync(request.ActorId, request.ProjectId, request.UserId, cancellationToken);

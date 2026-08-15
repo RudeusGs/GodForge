@@ -71,9 +71,11 @@ public sealed class ProjectMemberRepository : IProjectMemberRepository
             query = query.Where(x => x.Status == parsedStatus);
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var normalized = search.Trim().ToUpperInvariant();
+            var normalizedEmailPattern = PostgresSearch.ContainsPattern(search.ToUpperInvariant());
+            var displayNamePattern = PostgresSearch.ContainsPattern(search);
             query = query.Where(x => _context.Users.Any(u => u.Id == x.UserId &&
-                (u.NormalizedEmail.Contains(normalized) || EF.Functions.ILike(u.DisplayName, $"%{search.Trim()}%"))));
+                (EF.Functions.Like(u.NormalizedEmail, normalizedEmailPattern, PostgresSearch.LikeEscapeCharacter) ||
+                 EF.Functions.ILike(u.DisplayName, displayNamePattern, PostgresSearch.LikeEscapeCharacter))));
         }
         var total = await query.CountAsync(cancellationToken);
         var items = await query.OrderBy(x => x.Role).ThenBy(x => x.JoinedAt)

@@ -29,8 +29,11 @@ public sealed class UserInviteRepository : IUserInviteRepository
             query = query.Where(x => x.Status == parsedStatus);
         if (!string.IsNullOrWhiteSpace(email))
         {
-            var normalized = User.NormalizeEmail(email);
-            query = query.Where(x => x.NormalizedEmail.Contains(normalized));
+            var normalizedPattern = PostgresSearch.ContainsPattern(User.NormalizeEmail(email));
+            query = query.Where(x => EF.Functions.Like(
+                x.NormalizedEmail,
+                normalizedPattern,
+                PostgresSearch.LikeEscapeCharacter));
         }
         var total = await query.CountAsync(cancellationToken);
         var items = await query.OrderByDescending(x => x.CreatedAt)

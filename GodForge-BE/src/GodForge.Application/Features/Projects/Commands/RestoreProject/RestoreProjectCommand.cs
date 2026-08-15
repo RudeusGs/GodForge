@@ -9,9 +9,9 @@ public sealed record RestoreProjectCommand(Guid ActorId, Guid ProjectId, long Ve
 
 public sealed class RestoreProjectCommandHandler : IRequestHandler<RestoreProjectCommand, Result<ProjectDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectLifecycleService _projects;
 
-    public RestoreProjectCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public RestoreProjectCommandHandler(IProjectLifecycleService projects) => _projects = projects;
 
     public Task<Result<ProjectDto>> Handle(RestoreProjectCommand request, CancellationToken cancellationToken)
         => _projects.RestoreAsync(request.ActorId, request.ProjectId, request.Version, cancellationToken);

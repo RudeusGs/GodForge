@@ -39,6 +39,9 @@ public sealed class UpdateOrganizationCommandHandler : OrganizationCommandHandle
         if (nextSlug != organization.Slug && OrganizationSlugPolicy.IsReserved(nextSlug))
             return ApplicationError.Validation("ORGANIZATION_SLUG_RESERVED", "Organization slug is reserved.");
 
+        if (organization.Version != request.Version)
+            return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "The resource changed before this operation completed.");
+
         var now = _clock.UtcNow;
         organization.Update(nextName, nextSlug, request.Version, now);
 

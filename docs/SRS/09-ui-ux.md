@@ -11,6 +11,7 @@
 
 | Screen | Required content |
 |---|---|
+| Public landing | Product positioning, bounded differentiators and clear login/register/dashboard entry actions; decorative 3D remains non-essential and reduced-motion safe. |
 | Authentication | Login, registration/OTP, forgot/reset password. |
 | Account security | Current-user profile, active/recent sessions, current-session label and own-session revocation with re-authentication after current-session revocation. |
 | Organization | Projects, members, policies, quotas and activity. |

@@ -2,6 +2,7 @@
 
 ## 1.1 Core release — Must
 
+- Public product landing and secure entry into authentication/workspace routes.
 - Identity, secure sessions, organizations, projects, members and RBAC.
 - External linked repository and Forgejo-hosted repository.
 - Clone/push/pull through Git engine; branch, commit, tree and text-blob browsing.

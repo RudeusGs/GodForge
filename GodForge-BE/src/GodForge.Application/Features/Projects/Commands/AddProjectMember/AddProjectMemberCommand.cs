@@ -13,9 +13,9 @@ public sealed record AddProjectMemberCommand(
 
 public sealed class AddProjectMemberCommandHandler : IRequestHandler<AddProjectMemberCommand, Result<ProjectMemberDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectMembershipService _projects;
 
-    public AddProjectMemberCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public AddProjectMemberCommandHandler(IProjectMembershipService projects) => _projects = projects;
 
     public Task<Result<ProjectMemberDto>> Handle(AddProjectMemberCommand request, CancellationToken cancellationToken)
         => _projects.AddMemberAsync(

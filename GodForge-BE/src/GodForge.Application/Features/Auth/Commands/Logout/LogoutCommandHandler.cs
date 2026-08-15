@@ -9,6 +9,7 @@ public sealed class LogoutCommandHandler : IRequestHandler<LogoutCommand, Result
 {
     private readonly ICurrentUser _currentUser;
     private readonly ITokenBlacklistService _tokenBlacklist;
+    private readonly ISessionValidationService _sessionValidation;
     private readonly IUserSessionRepository _sessions;
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IAuditWriter _auditWriter;
@@ -18,6 +19,7 @@ public sealed class LogoutCommandHandler : IRequestHandler<LogoutCommand, Result
     public LogoutCommandHandler(
         ICurrentUser currentUser,
         ITokenBlacklistService tokenBlacklist,
+        ISessionValidationService sessionValidation,
         IUserSessionRepository sessions,
         IRefreshTokenRepository refreshTokens,
         IAuditWriter auditWriter,
@@ -26,6 +28,7 @@ public sealed class LogoutCommandHandler : IRequestHandler<LogoutCommand, Result
     {
         _currentUser = currentUser;
         _tokenBlacklist = tokenBlacklist;
+        _sessionValidation = sessionValidation;
         _sessions = sessions;
         _refreshTokens = refreshTokens;
         _auditWriter = auditWriter;
@@ -51,6 +54,10 @@ public sealed class LogoutCommandHandler : IRequestHandler<LogoutCommand, Result
         }
 
         await _auditWriter.WriteSecurityAsync(userId, "auth.logout", "informational", new { SessionId = sessionId }, cancellationToken);
+
+        // Publish the cache-bypass barrier before committing the revocation so a stale
+        // positive session cache entry can never survive a successful logout.
+        await _sessionValidation.InvalidateSessionAsync(sessionId, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

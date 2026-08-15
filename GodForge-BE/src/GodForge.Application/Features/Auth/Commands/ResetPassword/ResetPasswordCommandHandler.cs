@@ -13,6 +13,7 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
     private readonly IPasswordHasher _passwordHasher;
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IUserSessionRepository _sessions;
+    private readonly ISessionValidationService _sessionValidation;
     private readonly IAuditWriter _auditWriter;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
@@ -24,6 +25,7 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
         IPasswordHasher passwordHasher,
         IRefreshTokenRepository refreshTokens,
         IUserSessionRepository sessions,
+        ISessionValidationService sessionValidation,
         IAuditWriter auditWriter,
         IUnitOfWork unitOfWork,
         IClock clock)
@@ -34,6 +36,7 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
         _passwordHasher = passwordHasher;
         _refreshTokens = refreshTokens;
         _sessions = sessions;
+        _sessionValidation = sessionValidation;
         _auditWriter = auditWriter;
         _unitOfWork = unitOfWork;
         _clock = clock;
@@ -61,8 +64,13 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
         user.UpdatePassword(_passwordHasher.HashPassword(request.NewPassword), now);
         user.ClearPasswordResetToken(now);
         await _refreshTokens.RevokeAllForUserAsync(user.Id, "password-reset", now, cancellationToken);
-        await _sessions.RevokeAllForUserAsync(user.Id, "password-reset", now, cancellationToken);
+        var revokedSessionIds = await _sessions.RevokeAllForUserAsync(user.Id, "password-reset", now, cancellationToken);
         await _auditWriter.WriteSecurityAsync(user.Id, "auth.password_reset", "high", new { SessionsRevoked = true }, cancellationToken);
+
+        // Disable positive session caching before the password/security-stamp revocation is committed.
+        // If the distributed cache is unavailable, fail before persistence rather than committing a
+        // security change that another API instance could temporarily miss.
+        await _sessionValidation.InvalidateSessionsAsync(revokedSessionIds, cancellationToken);
 
         try
         {

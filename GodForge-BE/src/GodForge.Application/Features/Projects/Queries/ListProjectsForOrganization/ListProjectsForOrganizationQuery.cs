@@ -13,9 +13,9 @@ public sealed record ListProjectsForOrganizationQuery(
 
 public sealed class ListProjectsForOrganizationQueryHandler : IRequestHandler<ListProjectsForOrganizationQuery, Result<PagedResult<ProjectAdministrationDto>>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectLifecycleService _projects;
 
-    public ListProjectsForOrganizationQueryHandler(IProjectManagementService projects) => _projects = projects;
+    public ListProjectsForOrganizationQueryHandler(IProjectLifecycleService projects) => _projects = projects;
 
     public Task<Result<PagedResult<ProjectAdministrationDto>>> Handle(
         ListProjectsForOrganizationQuery request,

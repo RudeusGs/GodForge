@@ -17,6 +17,9 @@ public class JwtSettings
     [Range(1, 100000, ErrorMessage = "JWT ExpiryMinutes must be greater than 0.")]
     public int ExpiryMinutes { get; set; } = 15;
 
+    [Range(1, 60, ErrorMessage = "JWT SessionValidationCacheSeconds must be between 1 and 60.")]
+    public int SessionValidationCacheSeconds { get; set; } = 10;
+
     [Range(1, 365, ErrorMessage = "JWT RefreshTokenDays must be between 1 and 365.")]
     public int RefreshTokenDays { get; set; } = 30;
 }

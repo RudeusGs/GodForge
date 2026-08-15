@@ -11,6 +11,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
 {
     private readonly IUserRepository _users;
     private readonly IUserSessionRepository _sessions;
+    private readonly ISessionValidationService _sessionValidation;
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly ITokenService _tokenService;
     private readonly IAuditWriter _auditWriter;
@@ -20,6 +21,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
     public RefreshTokenCommandHandler(
         IUserRepository users,
         IUserSessionRepository sessions,
+        ISessionValidationService sessionValidation,
         IRefreshTokenRepository refreshTokens,
         ITokenService tokenService,
         IAuditWriter auditWriter,
@@ -28,6 +30,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
     {
         _users = users;
         _sessions = sessions;
+        _sessionValidation = sessionValidation;
         _refreshTokens = refreshTokens;
         _tokenService = tokenService;
         _auditWriter = auditWriter;
@@ -104,6 +107,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
         var session = await _sessions.GetByIdAsync(token.SessionId, cancellationToken);
         session?.Revoke("refresh-token-reuse", now);
         await _auditWriter.WriteSecurityAsync(token.UserId, "auth.refresh_reuse_detected", "critical", new { token.SessionId, token.FamilyId }, cancellationToken);
+        await _sessionValidation.InvalidateSessionAsync(token.SessionId, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

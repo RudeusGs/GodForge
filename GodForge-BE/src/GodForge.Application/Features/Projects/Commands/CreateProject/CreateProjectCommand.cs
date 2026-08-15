@@ -18,9 +18,9 @@ public sealed record CreateProjectCommand(
 
 public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand, Result<ProjectDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectLifecycleService _projects;
 
-    public CreateProjectCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public CreateProjectCommandHandler(IProjectLifecycleService projects) => _projects = projects;
 
     public Task<Result<ProjectDto>> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
         => _projects.CreateAsync(

@@ -12,8 +12,10 @@ using GodForge.Infrastructure.Persistence.Repositories;
 using GodForge.Infrastructure.Security;
 using GodForge.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace GodForge.Infrastructure;
@@ -177,6 +179,12 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddSingleton<ICacheService, GodForge.Infrastructure.Caching.RedisCacheService>();
         services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
+        services.AddScoped<ISessionValidationService>(serviceProvider => new SessionValidationService(
+            serviceProvider.GetRequiredService<IUserSessionRepository>(),
+            serviceProvider.GetRequiredService<IDistributedCache>(),
+            serviceProvider.GetRequiredService<IOptions<JwtSettings>>(),
+            serviceProvider.GetRequiredService<ILogger<SessionValidationService>>(),
+            enablePositiveCache: !string.IsNullOrWhiteSpace(redisConfiguration)));
 
         services.AddSingleton<ISecretRedactor, SecretRedactor>();
         services.AddScoped<IRepositoryContextBuilder, RepositoryContextBuilder>();

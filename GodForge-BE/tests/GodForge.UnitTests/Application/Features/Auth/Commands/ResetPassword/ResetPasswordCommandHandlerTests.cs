@@ -15,6 +15,7 @@ public sealed class ResetPasswordCommandHandlerTests
     private readonly Mock<IPasswordHasher> _passwords = new();
     private readonly Mock<IRefreshTokenRepository> _refreshTokens = new();
     private readonly Mock<IUserSessionRepository> _sessions = new();
+    private readonly Mock<ISessionValidationService> _sessionValidation = new();
     private readonly Mock<IAuditWriter> _audit = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IClock> _clock = new();
@@ -40,6 +41,16 @@ public sealed class ResetPasswordCommandHandlerTests
             It.IsAny<CancellationToken>())).ReturnsAsync(challenge);
         _secretHash.Setup(x => x.Verify("raw-token", "token-hash")).Returns(true);
         _passwords.Setup(x => x.HashPassword("NewPassword1")).Returns("new-hash");
+        var revokedSessionIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        _sessions.Setup(x => x.RevokeAllForUserAsync(user.Id, "password-reset", now, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(revokedSessionIds);
+        var sequence = new MockSequence();
+        _sessionValidation.InSequence(sequence)
+            .Setup(x => x.InvalidateSessionsAsync(revokedSessionIds, CancellationToken.None))
+            .Returns(Task.CompletedTask);
+        _unitOfWork.InSequence(sequence)
+            .Setup(x => x.SaveChangesAsync(CancellationToken.None))
+            .ReturnsAsync(1);
 
         var result = await CreateHandler().Handle(
             new ResetPasswordCommand("reset@example.com", "raw-token", "NewPassword1"),
@@ -54,6 +65,7 @@ public sealed class ResetPasswordCommandHandlerTests
         _sessions.Verify(x => x.RevokeAllForUserAsync(
             user.Id, "password-reset", now, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _sessionValidation.Verify(x => x.InvalidateSessionsAsync(revokedSessionIds, CancellationToken.None), Times.Once);
     }
 
     [Fact]
@@ -95,6 +107,7 @@ public sealed class ResetPasswordCommandHandlerTests
         _passwords.Object,
         _refreshTokens.Object,
         _sessions.Object,
+        _sessionValidation.Object,
         _audit.Object,
         _unitOfWork.Object,
         _clock.Object);

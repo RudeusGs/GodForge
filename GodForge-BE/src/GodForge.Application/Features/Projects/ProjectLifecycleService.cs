@@ -11,7 +11,7 @@ using GodForge.Domain.Enums;
 
 namespace GodForge.Application.Features.Projects;
 
-public sealed class ProjectLifecycleService : ProjectOperationServiceBase
+public sealed class ProjectLifecycleService : ProjectOperationServiceBase, IProjectLifecycleService
 {
     private readonly IOrganizationRepository _organizations;
     private readonly IIdempotencyRepository _idempotency;
@@ -317,36 +317,6 @@ public sealed class ProjectLifecycleService : ProjectOperationServiceBase
         if (access.ProjectMembership is not null)
             return ProjectDto.From(project, access.ProjectMembership);
         return ProjectDto.From(project, EnumText.ToCamelCase(access.OrganizationMembership!.Role));
-    }
-
-    public async Task<Result<ProjectSettingsDto>> GetSettingsAsync(Guid actorId, Guid projectId, CancellationToken cancellationToken)
-    {
-        var access = await GetProjectAccessAsync(actorId, projectId, Permissions.ProjectsRead, false, cancellationToken);
-        if (access.Error is not null) return access.Error;
-        var settings = await _projects.GetSettingsAsync(projectId, cancellationToken);
-        return settings is null
-            ? ApplicationError.NotFound("PROJECT_SETTINGS_NOT_FOUND", "Project settings were not found.")
-            : ProjectSettingsDto.From(settings);
-    }
-
-    public async Task<Result<ProjectSettingsDto>> UpdateSettingsAsync(Guid actorId, Guid projectId, string analysisProfileKey, bool aiAdvisoryEnabled, string defaultAssetVisibility, int notificationPolicyVersion, long version, CancellationToken cancellationToken)
-    {
-        var access = await GetProjectAccessAsync(actorId, projectId, Permissions.SettingsUpdate, false, cancellationToken);
-        if (access.Error is not null) return access.Error;
-        if (string.IsNullOrWhiteSpace(analysisProfileKey) || defaultAssetVisibility is not ("private" or "internal") || notificationPolicyVersion < 1)
-            return ApplicationError.Validation("VALIDATION_ERROR", "Project settings are invalid.");
-        var settings = await _projects.GetSettingsAsync(projectId, cancellationToken);
-        if (settings is null)
-            return ApplicationError.NotFound("PROJECT_SETTINGS_NOT_FOUND", "Project settings were not found.");
-        if (settings.Version != version)
-            return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "Project settings version is stale.");
-        settings.Update(analysisProfileKey, aiAdvisoryEnabled, defaultAssetVisibility, notificationPolicyVersion, version, _clock.UtcNow);
-        await _auditWriter.WriteAuditAsync(
-            actorId, projectId, "project.settings_updated", "project-settings", settings.Id, "succeeded",
-            new { analysisProfileKey, aiAdvisoryEnabled, defaultAssetVisibility, notificationPolicyVersion, settings.Version }, cancellationToken);
-        var save = await SaveAsync(cancellationToken);
-        if (save is not null) return save;
-        return ProjectSettingsDto.From(settings);
     }
 
     private async Task<Result<ProjectDto>?> GetExistingCreateResultAsync(

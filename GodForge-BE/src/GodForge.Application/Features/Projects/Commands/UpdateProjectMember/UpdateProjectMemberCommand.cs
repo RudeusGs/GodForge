@@ -14,9 +14,9 @@ public sealed record UpdateProjectMemberCommand(
 
 public sealed class UpdateProjectMemberCommandHandler : IRequestHandler<UpdateProjectMemberCommand, Result<ProjectMemberDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectMembershipService _projects;
 
-    public UpdateProjectMemberCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public UpdateProjectMemberCommandHandler(IProjectMembershipService projects) => _projects = projects;
 
     public Task<Result<ProjectMemberDto>> Handle(UpdateProjectMemberCommand request, CancellationToken cancellationToken)
         => _projects.UpdateMemberAsync(

@@ -9,7 +9,7 @@ using Moq;
 
 namespace GodForge.UnitTests.Application.Projects;
 
-public sealed class ProjectManagementServiceTests
+public sealed class ProjectServicesTests
 {
     private readonly Mock<IProjectRepository> _projects = new();
     private readonly Mock<IProjectMemberRepository> _members = new();
@@ -39,7 +39,7 @@ public sealed class ProjectManagementServiceTests
                 It.IsAny<IReadOnlyCollection<Guid>>(), actorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { firstMembership, secondMembership });
 
-        var result = await CreateService().ListAsync(actorId, 1, 20, null, null, null, CancellationToken.None);
+        var result = await CreateLifecycleService().ListAsync(actorId, 1, 20, null, null, null, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Value.Items.Count);
@@ -52,7 +52,7 @@ public sealed class ProjectManagementServiceTests
     [Fact]
     public async Task UpdateMemberAsync_WithUndefinedNumericRole_ReturnsValidationBeforeTransaction()
     {
-        var result = await CreateService().UpdateMemberAsync(
+        var result = await CreateMembershipService().UpdateMemberAsync(
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -86,7 +86,7 @@ public sealed class ProjectManagementServiceTests
         _unitOfWork.Setup(unit => unit.AcquireResourceLockAsync("project-membership", project.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _unitOfWork.Setup(unit => unit.RollbackTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var result = await CreateService().UpdateMemberAsync(
+        var result = await CreateMembershipService().UpdateMemberAsync(
             actorId, project.Id, actorId, "viewer", projectMembership.Version, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -97,9 +97,8 @@ public sealed class ProjectManagementServiceTests
         _unitOfWork.Verify(unit => unit.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    private ProjectManagementService CreateService()
-    {
-        var lifecycle = new ProjectLifecycleService(
+    private ProjectLifecycleService CreateLifecycleService()
+        => new(
             _projects.Object,
             _members.Object,
             _organizations.Object,
@@ -109,7 +108,9 @@ public sealed class ProjectManagementServiceTests
             _quota.Object,
             _clock.Object,
             _unitOfWork.Object);
-        var membership = new ProjectMembershipService(
+
+    private ProjectMembershipService CreateMembershipService()
+        => new(
             _projects.Object,
             _members.Object,
             _organizationMembers.Object,
@@ -117,6 +118,5 @@ public sealed class ProjectManagementServiceTests
             _audit.Object,
             _clock.Object,
             _unitOfWork.Object);
-        return new ProjectManagementService(lifecycle, membership);
-    }
+
 }

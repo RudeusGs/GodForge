@@ -177,13 +177,13 @@ public sealed class ConcurrencyPersistenceTests
         try
         {
             var results = await Task.WhenAll(
-                firstService.Service.AddMemberAsync(
+                firstService.Membership.AddMemberAsync(
                     seeded.OwnerId,
                     seeded.ProjectId,
                     seeded.TargetId,
                     "developer",
                     CancellationToken.None),
-                secondService.Service.AddMemberAsync(
+                secondService.Membership.AddMemberAsync(
                     seeded.OwnerId,
                     seeded.ProjectId,
                     seeded.TargetId,
@@ -219,7 +219,7 @@ public sealed class ConcurrencyPersistenceTests
         try
         {
             var results = await Task.WhenAll(
-                firstService.Service.CreateAsync(
+                firstService.Lifecycle.CreateAsync(
                     seeded.OwnerId,
                     seeded.OrganizationId,
                     sharedName,
@@ -228,7 +228,7 @@ public sealed class ConcurrencyPersistenceTests
                     "private",
                     null,
                     CancellationToken.None),
-                secondService.Service.CreateAsync(
+                secondService.Lifecycle.CreateAsync(
                     seeded.OwnerId,
                     seeded.OrganizationId,
                     sharedName.ToUpperInvariant(),
@@ -259,7 +259,7 @@ public sealed class ConcurrencyPersistenceTests
         try
         {
             var results = await Task.WhenAll(
-                firstService.Service.CreateAsync(
+                firstService.Lifecycle.CreateAsync(
                     seeded.OwnerId,
                     seeded.OrganizationId,
                     $"Quota A {Guid.NewGuid():N}",
@@ -268,7 +268,7 @@ public sealed class ConcurrencyPersistenceTests
                     "private",
                     null,
                     CancellationToken.None),
-                secondService.Service.CreateAsync(
+                secondService.Lifecycle.CreateAsync(
                     seeded.OwnerId,
                     seeded.OrganizationId,
                     $"Quota B {Guid.NewGuid():N}",
@@ -372,10 +372,9 @@ public sealed class ConcurrencyPersistenceTests
             audit.Object,
             clock.Object,
             unitOfWork);
-        var service = new ProjectManagementService(lifecycle, membership);
-        return new ProjectServiceScope(context, service);
+        return new ProjectServiceScope(context, lifecycle, membership);
     }
 
     private sealed record SeededProject(Guid OwnerId, Guid TargetId, Guid OrganizationId, Guid ProjectId);
-    private sealed record ProjectServiceScope(GodForgeDbContext Context, ProjectManagementService Service);
+    private sealed record ProjectServiceScope(GodForgeDbContext Context, ProjectLifecycleService Lifecycle, ProjectMembershipService Membership);
 }

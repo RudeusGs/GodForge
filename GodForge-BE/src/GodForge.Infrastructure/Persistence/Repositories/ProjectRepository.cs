@@ -40,7 +40,7 @@ public sealed class ProjectRepository : IProjectRepository
     public async Task<PagedResult<Project>> GetVisibleProjectsAsync(Guid userId, int page, int pageSize, string? search, Guid? organizationId = null, string? status = null, CancellationToken cancellationToken = default)
     {
         var query = _context.Projects
-            .Where(p => p.Status != ProjectStatus.Deleted)
+            .Where(p => p.Status != ProjectStatus.Deleted && p.DeletedAt == null)
             .Where(p => _context.ProjectMembers.Any(m => m.ProjectId == p.Id && m.OrganizationId == p.OrganizationId && m.UserId == userId && m.Status == MembershipStatus.Active) &&
                         _context.OrganizationMembers.Any(m => m.OrganizationId == p.OrganizationId && m.UserId == userId && m.Status == MembershipStatus.Active));
         if (organizationId.HasValue)
@@ -48,7 +48,12 @@ public sealed class ProjectRepository : IProjectRepository
         if (EnumText.TryParseDefined<ProjectStatus>(status, out var parsedStatus))
             query = query.Where(x => x.Status == parsedStatus);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(p => p.Name.Contains(search) || (p.Description != null && p.Description.Contains(search)));
+        {
+            var pattern = PostgresSearch.ContainsPattern(search);
+            query = query.Where(p =>
+                EF.Functions.Like(p.Name, pattern, PostgresSearch.LikeEscapeCharacter) ||
+                (p.Description != null && EF.Functions.Like(p.Description, pattern, PostgresSearch.LikeEscapeCharacter)));
+        }
         var total = await query.CountAsync(cancellationToken);
         var items = await query.AsNoTracking().OrderByDescending(p => p.UpdatedAt)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);

@@ -4,6 +4,7 @@ This registry assigns stable requirement families to modules. Existing IDs are n
 
 | Requirement family | Owning module |
 |---|---|
+| `FR-00.*` | Public product experience |
 | `FR-01.*` | Identity, authentication and sessions |
 | `FR-03`, `FR-03.*` | Project lifecycle and project membership |
 | `FR-04` to `FR-07` | Linked repository, refs, commits and file browsing |

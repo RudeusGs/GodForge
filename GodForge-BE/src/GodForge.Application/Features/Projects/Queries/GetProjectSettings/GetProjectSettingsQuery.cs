@@ -9,9 +9,9 @@ public sealed record GetProjectSettingsQuery(Guid ActorId, Guid ProjectId) : IRe
 
 public sealed class GetProjectSettingsQueryHandler : IRequestHandler<GetProjectSettingsQuery, Result<ProjectSettingsDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectSettingsService _projects;
 
-    public GetProjectSettingsQueryHandler(IProjectManagementService projects) => _projects = projects;
+    public GetProjectSettingsQueryHandler(IProjectSettingsService projects) => _projects = projects;
 
     public Task<Result<ProjectSettingsDto>> Handle(GetProjectSettingsQuery request, CancellationToken cancellationToken)
         => _projects.GetSettingsAsync(request.ActorId, request.ProjectId, cancellationToken);

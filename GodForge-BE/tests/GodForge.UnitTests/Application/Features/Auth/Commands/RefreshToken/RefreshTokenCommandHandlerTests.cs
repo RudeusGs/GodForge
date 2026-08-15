@@ -11,6 +11,7 @@ public sealed class RefreshTokenCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IUserSessionRepository> _sessions = new();
+    private readonly Mock<ISessionValidationService> _sessionValidation = new();
     private readonly Mock<IRefreshTokenRepository> _refreshTokens = new();
     private readonly Mock<ITokenService> _tokens = new();
     private readonly Mock<IAuditWriter> _audit = new();
@@ -49,12 +50,20 @@ public sealed class RefreshTokenCommandHandlerTests
             .ReturnsAsync(fixture.Token);
         _sessions.Setup(x => x.GetByIdAsync(fixture.Session.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(fixture.Session);
+        var sequence = new MockSequence();
+        _sessionValidation.InSequence(sequence)
+            .Setup(x => x.InvalidateSessionAsync(fixture.Session.Id, CancellationToken.None))
+            .Returns(Task.CompletedTask);
+        _unitOfWork.InSequence(sequence)
+            .Setup(x => x.SaveChangesAsync(CancellationToken.None))
+            .ReturnsAsync(1);
 
         var result = await CreateHandler().Handle(new RefreshTokenCommand("presented"), CancellationToken.None);
 
         Assert.True(result.IsError);
         Assert.Equal("AUTH_REFRESH_REUSED", result.Error!.Code);
         Assert.NotNull(fixture.Session.RevokedAt);
+        _sessionValidation.Verify(x => x.InvalidateSessionAsync(fixture.Session.Id, CancellationToken.None), Times.Once);
         _refreshTokens.Verify(x => x.RevokeAllForFamilyAsync(
             fixture.Token.FamilyId,
             "refresh-token-reuse",
@@ -104,6 +113,7 @@ public sealed class RefreshTokenCommandHandlerTests
     private RefreshTokenCommandHandler CreateHandler() => new(
         _users.Object,
         _sessions.Object,
+        _sessionValidation.Object,
         _refreshTokens.Object,
         _tokens.Object,
         _audit.Object,

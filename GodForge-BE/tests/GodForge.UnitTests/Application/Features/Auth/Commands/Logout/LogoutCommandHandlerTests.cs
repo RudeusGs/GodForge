@@ -11,6 +11,7 @@ public class LogoutCommandHandlerTests
 {
     private readonly Mock<ICurrentUser> _currentUser = new();
     private readonly Mock<ITokenBlacklistService> _blacklist = new();
+    private readonly Mock<ISessionValidationService> _sessionValidation = new();
     private readonly Mock<IUserSessionRepository> _sessions = new();
     private readonly Mock<IRefreshTokenRepository> _refreshTokens = new();
     private readonly Mock<IAuditWriter> _auditWriter = new();
@@ -23,6 +24,7 @@ public class LogoutCommandHandlerTests
         _handler = new LogoutCommandHandler(
             _currentUser.Object,
             _blacklist.Object,
+            _sessionValidation.Object,
             _sessions.Object,
             _refreshTokens.Object,
             _auditWriter.Object,
@@ -44,6 +46,13 @@ public class LogoutCommandHandlerTests
         _currentUser.SetupGet(x => x.Jti).Returns(jti);
         _currentUser.SetupGet(x => x.TokenExpiration).Returns(now.AddMinutes(10));
         _sessions.Setup(x => x.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+        var sequence = new MockSequence();
+        _sessionValidation.InSequence(sequence)
+            .Setup(x => x.InvalidateSessionAsync(sessionId, CancellationToken.None))
+            .Returns(Task.CompletedTask);
+        _unitOfWork.InSequence(sequence)
+            .Setup(x => x.SaveChangesAsync(CancellationToken.None))
+            .ReturnsAsync(1);
 
         var result = await _handler.Handle(new LogoutCommand(), CancellationToken.None);
 
@@ -52,6 +61,7 @@ public class LogoutCommandHandlerTests
         _refreshTokens.Verify(x => x.RevokeAllForSessionAsync(sessionId, "logout", now, It.IsAny<CancellationToken>()), Times.Once);
         _blacklist.Verify(x => x.BlacklistTokenAsync(jti, It.Is<TimeSpan>(t => t > TimeSpan.FromMinutes(9)), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _sessionValidation.Verify(x => x.InvalidateSessionAsync(sessionId, CancellationToken.None), Times.Once);
     }
 
     [Fact]

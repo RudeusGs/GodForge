@@ -14,9 +14,9 @@ public sealed record RequestProjectDeletionCommand(
 
 public sealed class RequestProjectDeletionCommandHandler : IRequestHandler<RequestProjectDeletionCommand, Result<ProjectDeletionAcceptedDto>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectLifecycleService _projects;
 
-    public RequestProjectDeletionCommandHandler(IProjectManagementService projects) => _projects = projects;
+    public RequestProjectDeletionCommandHandler(IProjectLifecycleService projects) => _projects = projects;
 
     public Task<Result<ProjectDeletionAcceptedDto>> Handle(
         RequestProjectDeletionCommand request,

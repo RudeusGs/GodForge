@@ -3,7 +3,6 @@ using System.Threading.RateLimiting;
 using GodForge.Api.Routing;
 using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
-using GodForge.Application.Common.Interfaces.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.RateLimiting;
@@ -138,9 +137,9 @@ public static class DependencyInjection
                         return;
                     }
 
-                    var sessionRepository = context.HttpContext.RequestServices.GetRequiredService<IUserSessionRepository>();
+                    var sessionValidation = context.HttpContext.RequestServices.GetRequiredService<ISessionValidationService>();
                     var clock = context.HttpContext.RequestServices.GetRequiredService<IClock>();
-                    if (!await sessionRepository.IsValidAsync(
+                    if (!await sessionValidation.IsValidAsync(
                             sessionId,
                             userId,
                             securityStamp,

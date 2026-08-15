@@ -26,6 +26,7 @@ M1 physical schema: `04-database-m1-physical.md`.
 
 | Requirement | Module | Primary API group | Primary data | Primary tests |
 |---|---|---|---|---|
+| `FR-00.1` | Public landing experience | none; public Vue route | none | `TC-LANDING-*` |
 | `FR-04` to `FR-07`, `FR-21` | Repository/Git | repository, branches, commits, webhooks | repo tables, Forgejo | `TC-REPO-*`, `TC-WEBHOOK-*` |
 | `FR-20.*` | Validation | revision validation | validation runs/findings | `TC-VALID-*` |
 | `FR-08.*` | Parser | analysis pipeline/read models | metadata tables | `TC-PARSER-*` |

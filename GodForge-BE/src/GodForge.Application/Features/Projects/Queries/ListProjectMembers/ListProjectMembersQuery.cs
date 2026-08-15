@@ -16,9 +16,9 @@ public sealed record ListProjectMembersQuery(
 
 public sealed class ListProjectMembersQueryHandler : IRequestHandler<ListProjectMembersQuery, Result<PagedResult<ProjectMemberDto>>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectMembershipService _projects;
 
-    public ListProjectMembersQueryHandler(IProjectManagementService projects) => _projects = projects;
+    public ListProjectMembersQueryHandler(IProjectMembershipService projects) => _projects = projects;
 
     public Task<Result<PagedResult<ProjectMemberDto>>> Handle(
         ListProjectMembersQuery request,

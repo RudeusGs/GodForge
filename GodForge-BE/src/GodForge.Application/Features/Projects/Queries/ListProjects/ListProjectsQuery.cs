@@ -15,9 +15,9 @@ public sealed record ListProjectsQuery(
 
 public sealed class ListProjectsQueryHandler : IRequestHandler<ListProjectsQuery, Result<PagedResult<ProjectDto>>>
 {
-    private readonly IProjectManagementService _projects;
+    private readonly IProjectLifecycleService _projects;
 
-    public ListProjectsQueryHandler(IProjectManagementService projects) => _projects = projects;
+    public ListProjectsQueryHandler(IProjectLifecycleService projects) => _projects = projects;
 
     public Task<Result<PagedResult<ProjectDto>>> Handle(ListProjectsQuery request, CancellationToken cancellationToken)
         => _projects.ListAsync(

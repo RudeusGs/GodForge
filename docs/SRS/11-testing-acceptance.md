@@ -48,6 +48,7 @@ Cleanup
 
 | Suite | Minimum evidence |
 |---|---|
+| TC-LANDING | anonymous/authenticated calls to action, product positioning, semantic landmarks and bounded decorative 3D isolation |
 | TC-AUTH | registration, login, refresh replay, logout, reset, rate limit |
 | TC-TENANT | cross-org/project isolation and owner-transfer rules |
 | TC-REPO | linked/hosted provisioning, sync, commit/tree/blob limits |

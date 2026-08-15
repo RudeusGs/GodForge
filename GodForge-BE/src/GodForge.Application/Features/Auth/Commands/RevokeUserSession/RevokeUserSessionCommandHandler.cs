@@ -8,6 +8,7 @@ namespace GodForge.Application.Features.Auth.Commands.RevokeUserSession;
 public sealed class RevokeUserSessionCommandHandler : IRequestHandler<RevokeUserSessionCommand, Result>
 {
     private readonly IUserSessionRepository _sessions;
+    private readonly ISessionValidationService _sessionValidation;
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IAuditWriter _auditWriter;
     private readonly IUnitOfWork _unitOfWork;
@@ -15,12 +16,14 @@ public sealed class RevokeUserSessionCommandHandler : IRequestHandler<RevokeUser
 
     public RevokeUserSessionCommandHandler(
         IUserSessionRepository sessions,
+        ISessionValidationService sessionValidation,
         IRefreshTokenRepository refreshTokens,
         IAuditWriter auditWriter,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
         _sessions = sessions;
+        _sessionValidation = sessionValidation;
         _refreshTokens = refreshTokens;
         _auditWriter = auditWriter;
         _unitOfWork = unitOfWork;
@@ -36,6 +39,7 @@ public sealed class RevokeUserSessionCommandHandler : IRequestHandler<RevokeUser
         session.Revoke("user-revoked", now);
         await _refreshTokens.RevokeAllForSessionAsync(session.Id, "user-revoked", now, cancellationToken);
         await _auditWriter.WriteSecurityAsync(request.UserId, "auth.session_revoked", "high", new { SessionId = session.Id }, cancellationToken);
+        await _sessionValidation.InvalidateSessionAsync(session.Id, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
