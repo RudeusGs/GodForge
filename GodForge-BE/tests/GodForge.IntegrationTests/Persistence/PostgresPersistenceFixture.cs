@@ -12,7 +12,7 @@ public sealed class PostgresPersistenceCollection : ICollectionFixture<PostgresP
 public sealed class PostgresPersistenceFixture : IAsyncLifetime
 {
     public string ConnectionString { get; } = Environment.GetEnvironmentVariable("GODFORGE_TEST_POSTGRES")
-        ?? "Host=localhost;Port=5432;Database=godforge_test;Username=godforge;Password=godforge_local_password";
+        ?? "Host=localhost;Port=5433;Database=godforge_test;Username=godforge;Password=godforge";
 
     public GodForgeDbContext CreateContext()
     {

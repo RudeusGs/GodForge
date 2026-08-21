@@ -79,7 +79,7 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_auth_challenges_active_scope")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.AuthChallengeActiveScope)
         {
             _unitOfWork.ClearTrackedChanges();
             return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);

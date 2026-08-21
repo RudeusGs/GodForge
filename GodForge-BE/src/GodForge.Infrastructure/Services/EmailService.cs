@@ -23,7 +23,7 @@ public sealed class EmailService : IEmailService
         if (_settings.Smtp.IsUnconfigured)
             throw new InvalidOperationException("SMTP is not configured.");
 
-        _logger.LogInformation("Attempting to send email to {To} with subject: {Subject}", to, subject);
+        _logger.LogInformation("Attempting to send email via SMTP");
 
         using var client = new SmtpClient(_settings.Smtp.Host, _settings.Smtp.Port)
         {
@@ -43,6 +43,6 @@ public sealed class EmailService : IEmailService
 
         await client.SendMailAsync(mailMessage, cancellationToken);
 
-        _logger.LogInformation("Email sent successfully to {To}", to);
+        _logger.LogInformation("Email sent successfully via SMTP");
     }
 }

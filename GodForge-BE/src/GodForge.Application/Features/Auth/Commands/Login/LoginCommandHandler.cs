@@ -54,28 +54,29 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
         }
-        if (user.Status == UserStatus.Disabled)
-        {
-            await _auditWriter.WriteSecurityAsync(user.Id, "auth.login_blocked", "high", new { Reason = "account-disabled" }, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ApplicationError.Forbidden("AUTH_ACCOUNT_DISABLED", "Account is disabled.");
-        }
+        // Verify before evaluating account state so unauthenticated callers cannot use
+        // response semantics or a cheap status branch to distinguish blocked accounts.
+        var passwordIsValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
+
         if (user.Status == UserStatus.Locked && user.LockedUntil > now)
         {
             await _auditWriter.WriteSecurityAsync(user.Id, "auth.login_blocked", "high", new { Reason = "account-locked" }, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ApplicationError.Forbidden("AUTH_ACCOUNT_LOCKED", "Account is temporarily locked.");
+            return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
         }
+
         if (user.Status == UserStatus.Locked)
             user.Unlock(now);
+
         if (user.Status != UserStatus.Active)
         {
-            await _auditWriter.WriteSecurityAsync(user.Id, "auth.login_failed", "medium", new { Reason = "invalid-credentials" }, cancellationToken);
+            var reason = user.Status == UserStatus.Disabled ? "account-disabled" : "invalid-credentials";
+            await _auditWriter.WriteSecurityAsync(user.Id, "auth.login_blocked", "high", new { Reason = reason }, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
         }
 
-        if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        if (!passwordIsValid)
         {
             user.RecordLoginFailure(now, 5, TimeSpan.FromMinutes(15));
             await _auditWriter.WriteSecurityAsync(user.Id, "auth.login_failed", "medium", new { Reason = "invalid-credentials", user.FailedLoginCount }, cancellationToken);

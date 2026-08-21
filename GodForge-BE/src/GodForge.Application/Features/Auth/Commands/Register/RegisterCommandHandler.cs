@@ -69,7 +69,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
             return ApplicationError.Validation("AUTH_OTP_INVALID", "The OTP has already been consumed.");
         }
         catch (UniqueConstraintConflictException exception)
-            when (exception.ConstraintName == "ux_users_normalized_email")
+            when (exception.Constraint == UniqueConstraintKind.UserNormalizedEmail)
         {
             return ApplicationError.Conflict("AUTH_EMAIL_EXISTS", "Email is already in use.");
         }

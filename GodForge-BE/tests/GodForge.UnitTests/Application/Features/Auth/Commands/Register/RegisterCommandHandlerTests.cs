@@ -154,7 +154,7 @@ public class RegisterCommandHandlerTests
         _unitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new GodForge.Application.Common.Models.UniqueConstraintConflictException(
                 "duplicate email",
-                "ux_users_normalized_email"));
+                GodForge.Application.Common.Models.UniqueConstraintKind.UserNormalizedEmail));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 

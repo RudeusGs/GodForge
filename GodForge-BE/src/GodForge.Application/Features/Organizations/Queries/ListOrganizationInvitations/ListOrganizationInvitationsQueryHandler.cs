@@ -25,6 +25,11 @@ public sealed class ListOrganizationInvitationsQueryHandler : OrganizationQueryH
         if (request.Page <= 0 || request.PageSize <= 0 || request.PageSize > 100)
             return ApplicationError.Validation("VALIDATION_ERROR", "page must be positive and pageSize must be between 1 and 100.");
 
+        if (request.Email?.Length > GodForge.Domain.Entities.Identity.User.MaxEmailLength)
+            return ApplicationError.Validation(
+                "VALIDATION_ERROR",
+                $"Email filter must not exceed {GodForge.Domain.Entities.Identity.User.MaxEmailLength} characters.");
+
         var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationMembersInvite, cancellationToken);
         if (access.Error is not null) return access.Error;
 

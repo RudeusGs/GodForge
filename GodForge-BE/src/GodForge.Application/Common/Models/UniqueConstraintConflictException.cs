@@ -2,9 +2,12 @@ namespace GodForge.Application.Common.Models;
 
 public sealed class UniqueConstraintConflictException : Exception
 {
-    public string? ConstraintName { get; }
+    public UniqueConstraintKind Constraint { get; }
 
-    public UniqueConstraintConflictException(string message, string? constraintName, Exception? innerException = null)
+    public UniqueConstraintConflictException(
+        string message,
+        UniqueConstraintKind constraint,
+        Exception? innerException = null)
         : base(message, innerException)
-        => ConstraintName = constraintName;
+        => Constraint = constraint;
 }

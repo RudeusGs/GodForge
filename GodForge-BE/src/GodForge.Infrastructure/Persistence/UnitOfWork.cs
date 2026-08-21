@@ -30,7 +30,7 @@ public sealed class UnitOfWork : IUnitOfWork
         {
             throw new UniqueConstraintConflictException(
                 "A unique database constraint was violated.",
-                postgres.ConstraintName,
+                MapUniqueConstraint(postgres.ConstraintName),
                 exception);
         }
     }
@@ -103,6 +103,21 @@ public sealed class UnitOfWork : IUnitOfWork
             _transaction = null;
         }
     }
+
+    private static UniqueConstraintKind MapUniqueConstraint(string? constraintName)
+        => constraintName switch
+        {
+            "ux_auth_challenges_active_scope" => UniqueConstraintKind.AuthChallengeActiveScope,
+            "ux_users_normalized_email" => UniqueConstraintKind.UserNormalizedEmail,
+            "ux_organizations_slug" => UniqueConstraintKind.OrganizationSlug,
+            "ux_user_invites_active_org_email" => UniqueConstraintKind.UserInviteActiveOrganizationEmail,
+            "ux_idempotency_records_scope" => UniqueConstraintKind.IdempotencyScope,
+            "ux_projects_org_slug_active" => UniqueConstraintKind.ProjectOrganizationSlug,
+            "ux_projects_org_upper_name_active" => UniqueConstraintKind.ProjectOrganizationName,
+            "ux_project_members_project_user" => UniqueConstraintKind.ProjectMemberUser,
+            "ux_repositories_project" => UniqueConstraintKind.RepositoryProject,
+            _ => UniqueConstraintKind.Unknown
+        };
 
     private static long CreateAdvisoryLockKey(string resourceType, Guid resourceId)
     {

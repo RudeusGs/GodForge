@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth.Commands.Login;
 using GodForge.Domain.Entities.Identity;
 using Moq;
@@ -108,7 +109,7 @@ public class LoginCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_DeletedAccount_ReturnsUniformInvalidCredentialsWithoutPasswordVerification()
+    public async Task Handle_DeletedAccount_ReturnsUniformInvalidCredentialsAfterPasswordVerification()
     {
         var now = DateTimeOffset.UtcNow;
         var command = new LoginCommand("deleted@example.com", "password123", null, null, null);
@@ -117,13 +118,36 @@ public class LoginCommandHandlerTests
 
         _clock.SetupGet(x => x.UtcNow).Returns(now);
         _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _passwordHasher.Setup(x => x.VerifyPassword(command.Password, user.PasswordHash)).Returns(true);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
         Assert.Equal("AUTH_INVALID_CREDENTIALS", result.Error?.Code);
         _passwordHasher.Verify(
-            x => x.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()),
-            Times.Never);
+            x => x.VerifyPassword(command.Password, user.PasswordHash),
+            Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_LockedAccount_ReturnsUniformInvalidCredentialsAfterPasswordVerification()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new LoginCommand("locked@example.com", "password123", null, null, null);
+        var user = User.Create(command.Email, "Locked User", "hashed_password", now.AddDays(-1));
+        for (var attempt = 0; attempt < 5; attempt++)
+            user.RecordLoginFailure(now.AddMinutes(-1), 5, TimeSpan.FromMinutes(15));
+
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _passwordHasher.Setup(x => x.VerifyPassword(command.Password, user.PasswordHash)).Returns(true);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("AUTH_INVALID_CREDENTIALS", result.Error?.Code);
+        Assert.Equal(ErrorType.Unauthorized, result.Error?.Type);
+        _passwordHasher.Verify(x => x.VerifyPassword(command.Password, user.PasswordHash), Times.Once);
+    }
+
 }

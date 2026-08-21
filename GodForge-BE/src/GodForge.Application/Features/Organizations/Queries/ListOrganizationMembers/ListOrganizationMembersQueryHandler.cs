@@ -25,6 +25,9 @@ public sealed class ListOrganizationMembersQueryHandler : OrganizationQueryHandl
         if (request.Page <= 0 || request.PageSize <= 0 || request.PageSize > 100)
             return ApplicationError.Validation("VALIDATION_ERROR", "page must be positive and pageSize must be between 1 and 100.");
 
+        if (request.Search?.Length > 200)
+            return ApplicationError.Validation("VALIDATION_ERROR", "Search must not exceed 200 characters.");
+
         var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationMembersRead, cancellationToken);
         if (access.Error is not null) return access.Error;
 

@@ -152,4 +152,25 @@ public class LinkRepositoryCommandHandlerTests
 
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenRepositoryUniqueConstraintWinsRace_ReturnsConflict()
+    {
+        var request = new LinkRepositoryCommand(Guid.NewGuid(), "https://github.com/a/b.git", "GitHub", "main", null, true, Guid.NewGuid(), "corr-race");
+        _authorizationMock.Setup(a => a.HasPermissionAsync(request.ActorId, request.ProjectId, Permissions.RepositoryManage, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _repositoriesMock.Setup(r => r.GetByProjectIdAsync(request.ProjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GitRepository?)null);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UniqueConstraintConflictException(
+                "repository project unique constraint",
+                UniqueConstraintKind.RepositoryProject));
+
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("REPOSITORY_ALREADY_CONNECTED", result.Error!.Code);
+        _unitOfWorkMock.Verify(u => u.ClearTrackedChanges(), Times.Once);
+    }
+
 }

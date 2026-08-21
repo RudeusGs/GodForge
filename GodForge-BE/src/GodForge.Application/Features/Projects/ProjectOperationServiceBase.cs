@@ -81,19 +81,19 @@ public abstract class ProjectOperationServiceBase
         {
             return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "The resource changed before this operation completed.");
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_projects_org_slug_active")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.ProjectOrganizationSlug)
         {
             return ApplicationError.Conflict("PROJECT_SLUG_EXISTS", "A project with this slug already exists in the organization.");
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_projects_org_upper_name_active")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.ProjectOrganizationName)
         {
             return ApplicationError.Conflict("PROJECT_NAME_EXISTS", "A project with this name already exists in the organization.");
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_idempotency_records_scope")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.IdempotencyScope)
         {
             return ApplicationError.Conflict("IDEMPOTENCY_KEY_REUSED", "The idempotency key is already being processed or was used previously.");
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_project_members_project_user")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.ProjectMemberUser)
         {
             return ApplicationError.Conflict("MEMBERSHIP_ALREADY_EXISTS", "Project membership already exists.");
         }

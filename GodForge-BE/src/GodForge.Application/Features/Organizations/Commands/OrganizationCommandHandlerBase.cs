@@ -51,15 +51,15 @@ public abstract class OrganizationCommandHandlerBase
         {
             return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "The resource changed before this operation completed.");
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_organizations_slug")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.OrganizationSlug)
         {
             return ApplicationError.Conflict("ORGANIZATION_SLUG_EXISTS", "Organization slug already exists.");
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_user_invites_active_org_email")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.UserInviteActiveOrganizationEmail)
         {
             return ApplicationError.Conflict("INVITE_ALREADY_PENDING", "An active invitation already exists for this email.");
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_idempotency_records_scope")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.IdempotencyScope)
         {
             return ApplicationError.Conflict("IDEMPOTENCY_KEY_REUSED", "The idempotency key is already being processed or was used previously.");
         }

@@ -21,6 +21,8 @@ public sealed class OutboxDispatcherService : BackgroundService
     private static readonly TimeSpan EmptyPollDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan ClaimLease = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan LeaseRenewalInterval = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan CompletionRetryDelay = TimeSpan.FromMilliseconds(250);
+    private const int CompletionRetryCount = 4;
     private const int BatchSize = 20;
     private const string RetiredProviderReconciliationEventType = "provider.reconciliation.requested";
 
@@ -241,6 +243,18 @@ public sealed class OutboxDispatcherService : BackgroundService
 
         try
         {
+            // Reconfirm ownership immediately before any external side effect. The background
+            // renewal loop protects long-running work, while this check closes the window where
+            // a queued batch item could have lost its lease before dispatch starts.
+            if (!await RenewClaimAsync(claim, cancellationToken))
+            {
+                _logger.LogWarning(
+                    "Skipping outbox message {OutboxMessageId} because lease {LeaseId} is no longer owned before dispatch",
+                    claim.MessageId,
+                    claim.LeaseId);
+                return;
+            }
+
             if (message.EventType == RetiredProviderReconciliationEventType)
             {
                 _logger.LogWarning(
@@ -264,10 +278,14 @@ public sealed class OutboxDispatcherService : BackgroundService
                 await publisher.PublishAsync(message.EventType, workerMessage, cancellationToken);
             }
 
-            if (!await MarkProcessedAsync(claim, cancellationToken))
+            // Once an external side effect succeeds, persist completion even if host shutdown has
+            // already cancelled the dispatch token; otherwise a graceful shutdown can manufacture
+            // an avoidable redelivery.
+            if (!await TryMarkProcessedAfterDeliveryAsync(claim, CancellationToken.None))
             {
                 _logger.LogWarning(
-                    "Outbox message {OutboxMessageId} was delivered but its lease {LeaseId} was lost before completion could be recorded",
+                    "Outbox message {OutboxMessageId} was delivered but completion could not be recorded for lease {LeaseId}; " +
+                    "the durable outbox remains the source of truth and may redeliver after lease expiry",
                     claim.MessageId,
                     claim.LeaseId);
             }
@@ -313,6 +331,44 @@ public sealed class OutboxDispatcherService : BackgroundService
                     message.Id);
             }
         }
+    }
+
+    private async Task<bool> TryMarkProcessedAfterDeliveryAsync(
+        OutboxClaim claim,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= CompletionRetryCount; attempt++)
+        {
+            try
+            {
+                return await MarkProcessedAsync(claim, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception) when (attempt < CompletionRetryCount)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Could not record completion for delivered outbox message {OutboxMessageId}; retrying completion write ({Attempt}/{MaxAttempts})",
+                    claim.MessageId,
+                    attempt,
+                    CompletionRetryCount);
+                await Task.Delay(CompletionRetryDelay, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Could not record completion for delivered outbox message {OutboxMessageId} after {AttemptCount} attempts",
+                    claim.MessageId,
+                    CompletionRetryCount);
+                return false;
+            }
+        }
+
+        return false;
     }
 
     private async Task<bool> MarkProcessedAsync(OutboxClaim claim, CancellationToken cancellationToken)

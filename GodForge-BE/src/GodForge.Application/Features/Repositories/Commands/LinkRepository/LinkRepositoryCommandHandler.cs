@@ -76,7 +76,18 @@ public sealed class LinkRepositoryCommandHandler : IRequestHandler<LinkRepositor
             request.CorrelationId,
             null,
             cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintConflictException exception)
+            when (exception.Constraint == UniqueConstraintKind.RepositoryProject)
+        {
+            _unitOfWork.ClearTrackedChanges();
+            return ApplicationError.Conflict(
+                "REPOSITORY_ALREADY_CONNECTED",
+                "A repository is already connected to this project.");
+        }
 
         return RepositoryDto.From(repository);
     }
