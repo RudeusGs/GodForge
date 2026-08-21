@@ -79,7 +79,7 @@ Anonymous user, authenticated user, SystemAdmin.
 
 Detailed contracts: `../05-api-contracts/auth.md`.
 
-- `POST /api/v1/auth/register/send-otp`
+- `POST /api/v1/auth/send-otp`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`

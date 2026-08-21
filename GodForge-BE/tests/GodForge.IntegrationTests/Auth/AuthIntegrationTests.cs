@@ -42,7 +42,7 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var command = new { Email = "test@domain.com" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v1/auth/register/send-otp", command);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/send-otp", command);
 
         // Assert
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);

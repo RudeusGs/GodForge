@@ -1,11 +1,11 @@
 using FluentValidation;
 using GodForge.Domain.Entities.Identity;
 
-namespace GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
+namespace GodForge.Application.Features.Auth.Commands.SendOtp;
 
-public sealed class SendRegisterOtpCommandValidator : AbstractValidator<SendRegisterOtpCommand>
+public sealed class SendOtpCommandValidator : AbstractValidator<SendOtpCommand>
 {
-    public SendRegisterOtpCommandValidator()
+    public SendOtpCommandValidator()
     {
         RuleFor(v => v.Email)
             .NotEmpty().WithMessage("Email is required.")

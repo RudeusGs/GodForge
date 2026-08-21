@@ -7,13 +7,12 @@ using GodForge.Application.Features.Auth.DTOs;
 using GodForge.Domain.Entities.Identity;
 using MediatR;
 
-namespace GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
+namespace GodForge.Application.Features.Auth.Commands.SendOtp;
 
-public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegisterOtpCommand, Result<ChallengeAcceptedDto>>
+public sealed class SendOtpCommandHandler : IRequestHandler<SendOtpCommand, Result<ChallengeAcceptedDto>>
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(60);
-    private readonly IUserRepository _users;
     private readonly IAuthChallengeRepository _challenges;
     private readonly ISecretHashService _secretHash;
     private readonly IEmailOutbox _emailOutbox;
@@ -21,8 +20,7 @@ public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegister
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
-    public SendRegisterOtpCommandHandler(
-        IUserRepository users,
+    public SendOtpCommandHandler(
         IAuthChallengeRepository challenges,
         ISecretHashService secretHash,
         IEmailOutbox emailOutbox,
@@ -30,7 +28,6 @@ public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegister
         IUnitOfWork unitOfWork,
         IClock clock)
     {
-        _users = users;
         _challenges = challenges;
         _secretHash = secretHash;
         _emailOutbox = emailOutbox;
@@ -39,11 +36,9 @@ public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegister
         _clock = clock;
     }
 
-    public async Task<Result<ChallengeAcceptedDto>> Handle(SendRegisterOtpCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ChallengeAcceptedDto>> Handle(SendOtpCommand request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim();
-        if (await _users.GetByEmailAsync(email, cancellationToken) is not null)
-            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
 
         var now = _clock.UtcNow;
         var normalizedEmail = User.NormalizeEmail(email);
@@ -79,7 +74,7 @@ public sealed class SendRegisterOtpCommandHandler : IRequestHandler<SendRegister
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (UniqueConstraintConflictException exception) when (exception.ConstraintName == "ux_auth_challenges_active_scope")
+        catch (UniqueConstraintConflictException exception) when (exception.Constraint == UniqueConstraintKind.AuthChallengeActiveScope)
         {
             _unitOfWork.ClearTrackedChanges();
             return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);

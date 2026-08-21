@@ -1,7 +1,7 @@
 using GodForge.Application.Features.Auth.Commands.ForgotPassword;
 using GodForge.Application.Features.Auth.Commands.Register;
 using GodForge.Application.Features.Auth.Commands.ResetPassword;
-using GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
+using GodForge.Application.Features.Auth.Commands.SendOtp;
 using GodForge.Domain.Entities.Identity;
 
 namespace GodForge.UnitTests.Application.Features.Auth;
@@ -59,8 +59,8 @@ public sealed class AuthBoundaryValidationTests
 
         var forgotResult = new ForgotPasswordCommandValidator()
             .Validate(new ForgotPasswordCommand(email, "correlation"));
-        var otpResult = new SendRegisterOtpCommandValidator()
-            .Validate(new SendRegisterOtpCommand(email, "correlation"));
+        var otpResult = new SendOtpCommandValidator()
+            .Validate(new SendOtpCommand(email, "correlation"));
 
         Assert.Contains(forgotResult.Errors, error => error.PropertyName == "Email");
         Assert.Contains(otpResult.Errors, error => error.PropertyName == "Email");

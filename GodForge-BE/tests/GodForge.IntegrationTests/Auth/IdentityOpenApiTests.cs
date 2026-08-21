@@ -16,7 +16,7 @@ public sealed class IdentityOpenApiTests : IClassFixture<CustomWebApplicationFac
         var document = scope.ServiceProvider.GetRequiredService<ISwaggerProvider>().GetSwagger("v1");
         var expectedPaths = new[]
         {
-            "/api/v1/auth/register/send-otp",
+            "/api/v1/auth/send-otp",
             "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",

@@ -45,7 +45,7 @@ Acceptance criteria: `AC-FR-01.*` in `../03-functional/auth.md`
 
 The raw refresh token is returned only as the `godforge_refresh` cookie. The cookie is `HttpOnly`, `SameSite=Strict`, scoped to `/api/v1/auth`, and `Secure` outside development. The JSON response never exposes the raw refresh token.
 
-## POST `/auth/register/send-otp`
+## POST `/auth/send-otp`
 
 - **Actor:** anonymous.
 - **Permission:** none.

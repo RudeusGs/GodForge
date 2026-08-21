@@ -8,7 +8,7 @@ using GodForge.Application.Features.Auth.Commands.Logout;
 using GodForge.Application.Features.Auth.Commands.RefreshToken;
 using GodForge.Application.Features.Auth.Commands.Register;
 using GodForge.Application.Features.Auth.Commands.ResetPassword;
-using GodForge.Application.Features.Auth.Commands.SendRegisterOtp;
+using GodForge.Application.Features.Auth.Commands.SendOtp;
 using GodForge.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -43,12 +43,12 @@ public sealed class AuthController : BaseApiController
         return HandleAuthResult(result);
     }
 
-    [HttpPost("register/send-otp")]
+    [HttpPost("send-otp")]
     [EnableRateLimiting("auth-otp")]
     [ProducesResponseType(typeof(ApiResponse<ChallengeAcceptedDto>), StatusCodes.Status202Accepted)]
-    public async Task<IActionResult> SendRegisterOtp([FromBody] SendRegisterOtpRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request, CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new SendRegisterOtpCommand(request.Email, CorrelationId), cancellationToken);
+        var result = await _mediator.Send(new SendOtpCommand(request.Email, CorrelationId), cancellationToken);
         if (!result.IsSuccess)
             return HandleResult(result);
         return Accepted(new ApiResponse<ChallengeAcceptedDto> { Data = result.Value, Meta = new ApiMeta { CorrelationId = CorrelationId } });

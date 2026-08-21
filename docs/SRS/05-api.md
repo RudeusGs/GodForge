@@ -15,7 +15,7 @@ Later milestone routes remain catalog entries until their detailed contract is a
 ## 5.2 Identity and sessions - M1
 
 ```http
-POST   /auth/register/send-otp
+POST   /auth/send-otp
 POST   /auth/register
 POST   /auth/login
 POST   /auth/refresh
