@@ -1,8 +1,12 @@
 # M1 API Contract - Authentication and Sessions
 
 Base path: `/api/v1`
-Requirements: `FR-01.1` to `FR-01.6`
+Requirements: `FR-01.1` to `FR-01.7`
 Acceptance criteria: `AC-FR-01.*` in `../03-functional/auth.md`
+
+## Distributed abuse-control policy
+
+Production/staging auth endpoints consume atomic Redis fixed-window counters for both effective client IP and a keyed-hash scope; raw email, OTP, reset token, refresh token and cookie values are not Redis keys. Login uses IP `10/minute` and account `5/15 minutes`; send-OTP and forgot-password use IP `3/5 minutes` and email `3/15 minutes`; register/reset use IP `5/5 minutes` and email+challenge `5/15 minutes`; refresh uses IP and presented-token scope `30/minute`. The PostgreSQL account lockout and challenge cooldown/attempt state remain durable controls. Redis failure is fail-closed with sanitized `503 DEPENDENCY_UNAVAILABLE`; limit rejection is `429 RATE_LIMIT_EXCEEDED` with `Retry-After`. Development/Testing may explicitly run without Redis and then uses a no-op distributed limiter plus durable database controls; that mode is for local functional tests only and must not be treated as abuse-control or multi-instance evidence.
 
 ## Common DTOs
 
@@ -53,6 +57,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Validation:** trim; normalize email; maximum 255 characters; reject malformed email.
 - **Response:** `202 Accepted` with `{ "requestAccepted": true, "resendAfterSeconds": 60 }` in standard envelope.
 - **Behavior:** create/reuse one active registration challenge within cooldown and enqueue email through outbox.
+- **Existing account:** return the same accepted response without creating a challenge or sending another registration email; bounded response equalization and rate limits reduce enumeration/mail-bomb abuse.
 - **Idempotency:** normalized email + purpose + cooldown window.
 - **Rate limit:** per IP and normalized email; configuration must satisfy `SEC-03`.
 - **Errors:** `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`, sanitized `DEPENDENCY_UNAVAILABLE` only when policy does not require uniform acceptance.
@@ -90,10 +95,11 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Request:** `{ "email": "user@example.com", "password": "secret", "deviceName": "Chrome on Windows" }`.
 - **Validation:** email required and limited to 255 characters; password required and limited to 256 characters; device name optional and bounded.
 - **Response:** `200 OK` with `AuthSessionResponse`.
-- **Transaction:** verify account and password; create session and first refresh token; record login outcome.
+- **Transaction:** verify account and password; serialize the per-user active-session quota check; create session and first refresh token; record login outcome.
 - **Idempotency:** none; each successful login creates a distinct session.
 - **Rate limit:** per IP/email with lockout policy.
-- **Errors:** `AUTH_INVALID_CREDENTIALS`, `AUTH_ACCOUNT_DISABLED`, `AUTH_ACCOUNT_LOCKED`, `RATE_LIMIT_EXCEEDED`.
+- **Errors:** `AUTH_INVALID_CREDENTIALS`, `AUTH_ACCOUNT_DISABLED`, `AUTH_ACCOUNT_LOCKED`, `AUTH_SESSION_LIMIT_REACHED`, `RATE_LIMIT_EXCEEDED`.
+- **Session limit:** configurable `M1Quotas:MaxActiveSessionsPerUser`, default 10 and minimum 2. Reaching the limit returns `409`; the service never silently revokes the oldest session.
 - **Audit/security:** success/failure login event with safe identifiers/IP hash.
 - **Tests:** `TC-AUTH-LOGIN-001` to `TC-AUTH-LOGIN-008`.
 
@@ -132,6 +138,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Validation:** normalized email, valid format, maximum 255 characters.
 - **Response:** always `202 Accepted` for syntactically valid email.
 - **Behavior:** create/reuse password-reset challenge only when eligible; enqueue email through outbox.
+- **Enumeration resistance:** eligible, unknown and disabled accounts use the same outward response plus a bounded minimum response duration; this is defense in depth with rate limiting, not a claim of exact timing equality.
 - **Idempotency:** normalized email + purpose + cooldown window.
 - **Rate limit:** strict per IP/email.
 - **Errors:** `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`.

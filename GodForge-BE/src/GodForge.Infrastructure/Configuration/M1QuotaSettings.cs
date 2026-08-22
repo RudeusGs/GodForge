@@ -14,4 +14,7 @@ public sealed class M1QuotaSettings
 
     [Range(1, 10000)]
     public int MaxPendingInvitationsPerOrganization { get; init; } = 100;
+
+    [Range(2, 1000)]
+    public int MaxActiveSessionsPerUser { get; init; } = 10;
 }

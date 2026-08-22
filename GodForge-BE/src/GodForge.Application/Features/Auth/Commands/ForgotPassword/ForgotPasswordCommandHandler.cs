@@ -47,6 +47,19 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
 
     public async Task<Result<ChallengeAcceptedDto>> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
     {
+        var startedAt = UniformAuthResponseDelay.Start();
+        try
+        {
+            return await HandleCoreAsync(request, cancellationToken);
+        }
+        finally
+        {
+            await UniformAuthResponseDelay.CompleteAsync(startedAt, cancellationToken);
+        }
+    }
+
+    private async Task<Result<ChallengeAcceptedDto>> HandleCoreAsync(ForgotPasswordCommand request, CancellationToken cancellationToken)
+    {
         var user = await _users.GetByEmailAsync(request.Email, cancellationToken);
         if (user is null || user.Status != UserStatus.Active)
             return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);

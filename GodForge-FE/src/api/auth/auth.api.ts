@@ -10,6 +10,7 @@ import type {
     UserDto,
     SessionDto,
 } from './auth.models';
+import { authRefreshCoordinator } from './authRefreshCoordinator';
 
 const API_PREFIX = '/auth';
 
@@ -19,15 +20,15 @@ export const authApi = {
     },
 
     sendOtp(email: string): Promise<ApiResponse<ChallengeAcceptedDto>> {
-        return baseApi.post<ApiResponse<ChallengeAcceptedDto>>(`${API_PREFIX}/register/send-otp`, { email });
+        return baseApi.post<ApiResponse<ChallengeAcceptedDto>>(`${API_PREFIX}/send-otp`, { email });
     },
 
     register(payload: RegisterPayload): Promise<ApiResponse<UserDto>> {
         return baseApi.post<ApiResponse<UserDto>>(`${API_PREFIX}/register`, payload);
     },
 
-    refresh(): Promise<ApiResponse<AuthResponseDto>> {
-        return baseApi.post<ApiResponse<AuthResponseDto>>(`${API_PREFIX}/refresh`);
+    refresh(): Promise<AuthResponseDto> {
+        return authRefreshCoordinator.refreshAccessToken();
     },
 
     logout(): Promise<void> {

@@ -5,4 +5,5 @@ public interface IM1QuotaPolicy
     int MaxOrganizationsPerUser { get; }
     int MaxProjectsPerOrganization { get; }
     int MaxPendingInvitationsPerOrganization { get; }
+    int MaxActiveSessionsPerUser { get; }
 }

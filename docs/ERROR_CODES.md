@@ -29,6 +29,7 @@ Public errors use stable `SCREAMING_SNAKE_CASE`, safe messages and correlation I
 | `AUTH_TOKEN_REVOKED` | 401 | Session/token revoked. |
 | `AUTH_REFRESH_REUSED` | 401 | Rotated refresh token replay detected. |
 | `AUTH_RESET_TOKEN_INVALID` | 400 | Reset token invalid/expired. |
+| `AUTH_SESSION_LIMIT_REACHED` | 409 | Active-session limit reached; revoke an existing session before signing in again. |
 | `ORGANIZATION_NOT_FOUND` | 404 | Organization absent/inaccessible. |
 | `ORGANIZATION_SLUG_EXISTS` | 409 | Slug already exists. |
 | `ORGANIZATION_SLUG_RESERVED` | 400 | Organization slug is reserved for platform routing or administration. |

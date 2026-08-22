@@ -11,6 +11,7 @@ namespace GodForge.UnitTests.Application.Features.Auth.Commands.SendOtp;
 public class SendOtpCommandHandlerTests
 {
     private readonly Mock<IAuthChallengeRepository> _challenges = new();
+    private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<ISecretHashService> _secretHash = new();
     private readonly Mock<IEmailOutbox> _emailOutbox = new();
     private readonly Mock<IAuditWriter> _auditWriter = new();
@@ -21,12 +22,33 @@ public class SendOtpCommandHandlerTests
     public SendOtpCommandHandlerTests()
     {
         _handler = new SendOtpCommandHandler(
+            _users.Object,
             _challenges.Object,
             _secretHash.Object,
             _emailOutbox.Object,
             _auditWriter.Object,
             _unitOfWork.Object,
             _clock.Object);
+    }
+
+    [Fact]
+    public async Task Handle_ExistingAccount_ReturnsGenericAcceptedWithoutSendingRegistrationEmail()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new SendOtpCommand("existing@example.com", "correlation-id");
+        var user = User.Create(command.Email, "Existing", "hash", now);
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value?.RequestAccepted);
+        Assert.Equal(60, result.Value?.ResendAfterSeconds);
+        _challenges.Verify(x => x.AddAsync(It.IsAny<AuthChallenge>(), It.IsAny<CancellationToken>()), Times.Never);
+        _emailOutbox.Verify(x => x.EnqueueAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

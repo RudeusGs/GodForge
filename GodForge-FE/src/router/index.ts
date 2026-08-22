@@ -6,7 +6,8 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            redirect: '/dashboard' // Default redirect
+            name: 'landing',
+            component: () => import('../views/LandingView.vue')
         },
         {
             path: '/dashboard',
@@ -41,8 +42,7 @@ const router = createRouter({
         {
             path: '/reset-password',
             name: 'resetPassword',
-            component: () => import('../views/ResetPasswordView.vue'),
-            meta: { requiresGuest: true }
+            component: () => import('../views/ResetPasswordView.vue')
         }
     ]
 });
@@ -51,10 +51,17 @@ const router = createRouter({
 router.beforeEach(async (to) => {
     const authStore = useAuthStore();
     await authStore.initialize();
+
+    if (!authStore.initialized) {
+        // Authentication status is unknown due to a transient failure.
+        // Do not convert dependency failure into logout.
+        return true;
+    }
+
     const isAuthenticated = authStore.isAuthenticated;
 
     if (to.meta.requiresAuth && !isAuthenticated) {
-        return { name: 'login' };
+        return { name: 'login', query: { returnTo: to.fullPath } };
     } else if (to.meta.requiresGuest && isAuthenticated) {
         // Redirect away from login/register if already logged in
         return { name: 'dashboard' };

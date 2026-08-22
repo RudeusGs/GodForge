@@ -57,6 +57,8 @@ describe('AccountSessionsView', () => {
         expect(wrapper.text()).toContain('Chrome on Windows');
         expect(wrapper.text()).toContain('Firefox on Linux');
         expect(wrapper.text()).toContain('Current');
+        expect(wrapper.text()).toContain('Last refreshed:');
+        expect(wrapper.text()).toContain('Created:');
     });
 
     it('revokes another session and refreshes authoritative server state', async () => {

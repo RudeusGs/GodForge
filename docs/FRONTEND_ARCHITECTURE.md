@@ -32,6 +32,16 @@ src/
 - Tokens are handled according to the chosen session strategy; never log or expose them in URLs.
 - Project context includes organization ID, project ID and current revision.
 
+## Authentication coordination
+
+- Access tokens remain tab/runtime memory only; refresh tokens remain in the server-managed HttpOnly cookie.
+- All silent refresh entry points use one coordinator. Same-tab calls share one promise.
+- Cross-tab refresh prefers Web Locks and propagates authentication/invalidation with BroadcastChannel.
+- If Web Locks are unavailable, the coordinator may use an atomic IndexedDB lease containing only owner/expiry metadata. A non-atomic localStorage lease is not an acceptable mutual-exclusion primitive for refresh rotation.
+- Lease ownership is bounded and renewed while a leader is active so a crashed leader cannot deadlock other tabs indefinitely.
+- A leader refresh failure is propagated to tabs already waiting on that attempt; waiters do not immediately create a sequential refresh storm.
+- Logout/password reset/current-session revocation invalidation must win over an in-flight stale refresh result.
+
 ## Required UI states
 
 Every screen must implement:

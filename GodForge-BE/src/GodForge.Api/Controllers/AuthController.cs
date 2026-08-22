@@ -1,4 +1,5 @@
 using GodForge.Api.Contracts.Auth;
+using GodForge.Api.Filters;
 using GodForge.Api.Models;
 using GodForge.Api.Services;
 using GodForge.Application.Common.Models;
@@ -13,7 +14,6 @@ using GodForge.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace GodForge.Api.Controllers;
 
@@ -29,7 +29,7 @@ public sealed class AuthController : BaseApiController
     }
 
     [HttpPost("login")]
-    [EnableRateLimiting("auth-sensitive")]
+    [DistributedAuthRateLimit("login")]
     [ProducesResponseType(typeof(ApiResponse<AuthSessionResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
@@ -44,7 +44,7 @@ public sealed class AuthController : BaseApiController
     }
 
     [HttpPost("send-otp")]
-    [EnableRateLimiting("auth-otp")]
+    [DistributedAuthRateLimit("send-otp")]
     [ProducesResponseType(typeof(ApiResponse<ChallengeAcceptedDto>), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request, CancellationToken cancellationToken)
     {
@@ -55,7 +55,7 @@ public sealed class AuthController : BaseApiController
     }
 
     [HttpPost("register")]
-    [EnableRateLimiting("auth-sensitive")]
+    [DistributedAuthRateLimit("register")]
     [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status201Created)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
@@ -66,7 +66,7 @@ public sealed class AuthController : BaseApiController
     }
 
     [HttpPost("forgot-password")]
-    [EnableRateLimiting("auth-otp")]
+    [DistributedAuthRateLimit("forgot-password")]
     [ProducesResponseType(typeof(ApiResponse<ChallengeAcceptedDto>), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
@@ -85,12 +85,11 @@ public sealed class AuthController : BaseApiController
         if (!result.IsSuccess)
             return HandleResult(result);
 
-        _refreshTokenCookie.Delete(Response);
         return NoContent();
     }
 
     [HttpPost("reset-password")]
-    [EnableRateLimiting("auth-sensitive")]
+    [DistributedAuthRateLimit("reset-password")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
@@ -99,7 +98,7 @@ public sealed class AuthController : BaseApiController
     }
 
     [HttpPost("refresh")]
-    [EnableRateLimiting("auth-sensitive")]
+    [DistributedAuthRateLimit("refresh")]
     [ProducesResponseType(typeof(ApiResponse<AuthSessionResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {

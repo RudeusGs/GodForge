@@ -59,6 +59,11 @@ public sealed class UserSessionRepository : IUserSessionRepository
     public Task AddAsync(UserSession session, CancellationToken cancellationToken = default)
         => _context.UserSessions.AddAsync(session, cancellationToken).AsTask();
 
+    public Task<int> CountActiveForUserAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken = default)
+        => _context.UserSessions.CountAsync(
+            session => session.UserId == userId && session.RevokedAt == null && session.ExpiresAt > now,
+            cancellationToken);
+
     public async Task<IReadOnlyList<Guid>> RevokeAllForUserAsync(
         Guid userId,
         string reason,

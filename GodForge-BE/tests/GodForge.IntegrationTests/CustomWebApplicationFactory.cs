@@ -1,3 +1,4 @@
+using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Domain.Entities.Identity;
@@ -32,11 +33,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:Audience"] = "GodForge.IntegrationTests",
                 ["OutboxEncryption:Key"] = "integration-test-only-outbox-encryption-key-64-characters-0000000000",
                 ["SecretHashing:Key"] = "integration-test-only-secret-hash-key-64-characters-0000000000000",
-                ["Frontend:BaseUrl"] = "https://frontend.integration.test"
+                ["Frontend:BaseUrl"] = "https://frontend.integration.test",
+                ["ConnectionStrings:Redis"] = string.Empty
             });
         });
         builder.ConfigureServices(services =>
         {
+            RemoveService<IDistributedAuthRateLimiter>(services);
+            services.AddSingleton<IDistributedAuthRateLimiter, DevelopmentAuthRateLimiter>();
+
             services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;

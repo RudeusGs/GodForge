@@ -1,6 +1,7 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
+using GodForge.Application.Features.Auth.Commands.Login;
 using GodForge.Application.Features.Projects;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Identity;
@@ -22,6 +23,67 @@ public sealed class ConcurrencyPersistenceTests
     public ConcurrencyPersistenceTests(PostgresPersistenceFixture fixture)
     {
         _fixture = fixture;
+    }
+
+    [Fact]
+    public async Task Login_ConcurrentBoundary_DoesNotExceedConfiguredActiveSessionLimit()
+    {
+        Guid userId;
+        const string email = "session-limit-concurrency@example.com";
+        await using (var seedContext = _fixture.CreateContext())
+        {
+            var user = User.Create(email, "Session Limit", "hash", _now);
+            var existing = UserSession.Create(user.Id, "existing", null, null, _now.AddDays(30), _now);
+            seedContext.AddRange(user, existing);
+            await seedContext.SaveChangesAsync();
+            userId = user.Id;
+        }
+
+        await using var firstContext = _fixture.CreateContext();
+        await using var secondContext = _fixture.CreateContext();
+        var firstHandler = CreateLoginHandler(firstContext, 2, "refresh-a");
+        var secondHandler = CreateLoginHandler(secondContext, 2, "refresh-b");
+
+        var results = await Task.WhenAll(
+            firstHandler.Handle(new LoginCommand(email, "password", "Chrome", null, null), CancellationToken.None),
+            secondHandler.Handle(new LoginCommand(email, "password", "Firefox", null, null), CancellationToken.None));
+
+        Assert.Single(results, result => result.IsSuccess);
+        var rejected = Assert.Single(results, result => !result.IsSuccess);
+        Assert.Equal("AUTH_SESSION_LIMIT_REACHED", rejected.Error?.Code);
+        await using var verificationContext = _fixture.CreateContext();
+        Assert.Equal(2, await verificationContext.UserSessions.CountAsync(session =>
+            session.UserId == userId && session.RevokedAt == null && session.ExpiresAt > _now));
+    }
+
+    [Fact]
+    public async Task Login_TwoConcurrentRequestsBelowLimit_CreateIndependentSessions()
+    {
+        const string email = "multi-device-concurrency@example.com";
+        await using (var seedContext = _fixture.CreateContext())
+        {
+            seedContext.Users.Add(User.Create(email, "Multi Device", "hash", _now));
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var firstContext = _fixture.CreateContext();
+        await using var secondContext = _fixture.CreateContext();
+        var results = await Task.WhenAll(
+            CreateLoginHandler(firstContext, 10, "device-a-refresh").Handle(
+                new LoginCommand(email, "password", "Chrome", null, null), CancellationToken.None),
+            CreateLoginHandler(secondContext, 10, "device-b-refresh").Handle(
+                new LoginCommand(email, "password", "Firefox", null, null), CancellationToken.None));
+
+        Assert.All(results, result => Assert.True(result.IsSuccess));
+        Assert.NotEqual(results[0].Value!.Session.Id, results[1].Value!.Session.Id);
+        await using var verificationContext = _fixture.CreateContext();
+        Assert.Equal(2, await verificationContext.UserSessions.CountAsync(session =>
+            session.UserId == results[0].Value.User.Id && session.RevokedAt == null));
+        Assert.Equal(2, await verificationContext.RefreshTokens
+            .Where(token => token.UserId == results[0].Value.User.Id)
+            .Select(token => token.FamilyId)
+            .Distinct()
+            .CountAsync());
     }
 
     [Fact]
@@ -373,6 +435,34 @@ public sealed class ConcurrencyPersistenceTests
             clock.Object,
             unitOfWork);
         return new ProjectServiceScope(context, lifecycle, membership);
+    }
+
+    private LoginCommandHandler CreateLoginHandler(GodForgeDbContext context, int maxSessions, string rawRefreshToken)
+    {
+        var passwordHasher = new Mock<IPasswordHasher>();
+        passwordHasher.Setup(hasher => hasher.VerifyPassword(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        var tokens = new Mock<ITokenService>();
+        tokens.SetupGet(service => service.RefreshTokenLifetime).Returns(TimeSpan.FromDays(30));
+        tokens.Setup(service => service.GenerateRefreshToken()).Returns(rawRefreshToken);
+        tokens.Setup(service => service.HashRefreshToken(rawRefreshToken)).Returns($"hash-{rawRefreshToken}");
+        tokens.Setup(service => service.GenerateAccessToken(It.IsAny<User>(), It.IsAny<Guid>(), _now))
+            .Returns(new AccessTokenResult($"access-{rawRefreshToken}", _now.AddMinutes(15)));
+        var quota = new Mock<IM1QuotaPolicy>();
+        quota.SetupGet(policy => policy.MaxActiveSessionsPerUser).Returns(maxSessions);
+        var clock = new Mock<IClock>();
+        clock.SetupGet(value => value.UtcNow).Returns(_now);
+
+        return new LoginCommandHandler(
+            new UserRepository(context),
+            new UserSessionRepository(context),
+            new RefreshTokenRepository(context),
+            passwordHasher.Object,
+            tokens.Object,
+            Mock.Of<ISecretHashService>(),
+            Mock.Of<IAuditWriter>(),
+            quota.Object,
+            clock.Object,
+            new UnitOfWork(context));
     }
 
     private sealed record SeededProject(Guid OwnerId, Guid TargetId, Guid OrganizationId, Guid ProjectId);

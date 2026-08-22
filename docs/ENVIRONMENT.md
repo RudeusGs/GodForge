@@ -21,8 +21,9 @@
 | `Jwt__` | API issuer, audience, expiry and signing secret. |
 | `SecretHashing__` | HMAC key for OTP, invitation and password-reset challenge tokens. |
 | `OutboxEncryption__` | Encryption key for protected outbox payloads; shared by API and Worker. |
-| `M1Quotas__` | Current M1 limits for organizations, projects and pending invitations. |
+| `M1Quotas__` | Current M1 limits for organizations, projects, pending invitations and concurrent active user sessions (`MaxActiveSessionsPerUser`, default `10`, minimum `2`). |
 | `Frontend__` | Trusted frontend URL. |
+| `ReverseProxy__KnownProxies` / `ReverseProxy__KnownNetworks` | Explicit trusted proxy IPs/CIDRs used for forwarded client IP/proto; never configure an unrestricted network. |
 | `Storage__` or `MinIO__` | Buckets, endpoint and credentials. |
 | `Observability__` | OTLP endpoint, service name and sampling. |
 
@@ -39,6 +40,8 @@
 ## Production validation
 
 Startup must fail safely when a mandatory production secret is missing, default, too short or obviously copied from examples. Gemini and Forgejo may be disabled explicitly; silent partial configuration is not allowed. Enabled Forgejo endpoints must use HTTPS, except loopback HTTP endpoints used for local development. SMTP configuration must be omitted completely or provide a valid host and sender identity.
+
+Redis is mandatory for API startup outside Development/Testing because authentication abuse counters must be shared by all API instances. A runtime Redis failure causes auth-sensitive endpoints to fail closed with `503 DEPENDENCY_UNAVAILABLE`; operators must alert on this condition. Configure only the immediate reverse proxy addresses/networks under `ReverseProxy__KnownProxies` / `ReverseProxy__KnownNetworks`; untrusted `X-Forwarded-For` input is ignored.
 ## Outbox encryption key migration
 
 - Configure the same `OutboxEncryption__Key` value for API and Worker.

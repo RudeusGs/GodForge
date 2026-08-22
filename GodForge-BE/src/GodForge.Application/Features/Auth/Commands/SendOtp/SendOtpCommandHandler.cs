@@ -14,6 +14,7 @@ public sealed class SendOtpCommandHandler : IRequestHandler<SendOtpCommand, Resu
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(60);
     private readonly IAuthChallengeRepository _challenges;
+    private readonly IUserRepository _users;
     private readonly ISecretHashService _secretHash;
     private readonly IEmailOutbox _emailOutbox;
     private readonly IAuditWriter _auditWriter;
@@ -21,6 +22,7 @@ public sealed class SendOtpCommandHandler : IRequestHandler<SendOtpCommand, Resu
     private readonly IClock _clock;
 
     public SendOtpCommandHandler(
+        IUserRepository users,
         IAuthChallengeRepository challenges,
         ISecretHashService secretHash,
         IEmailOutbox emailOutbox,
@@ -28,6 +30,7 @@ public sealed class SendOtpCommandHandler : IRequestHandler<SendOtpCommand, Resu
         IUnitOfWork unitOfWork,
         IClock clock)
     {
+        _users = users;
         _challenges = challenges;
         _secretHash = secretHash;
         _emailOutbox = emailOutbox;
@@ -38,10 +41,36 @@ public sealed class SendOtpCommandHandler : IRequestHandler<SendOtpCommand, Resu
 
     public async Task<Result<ChallengeAcceptedDto>> Handle(SendOtpCommand request, CancellationToken cancellationToken)
     {
+        var startedAt = UniformAuthResponseDelay.Start();
+        try
+        {
+            return await HandleCoreAsync(request, cancellationToken);
+        }
+        finally
+        {
+            await UniformAuthResponseDelay.CompleteAsync(startedAt, cancellationToken);
+        }
+    }
+
+    private async Task<Result<ChallengeAcceptedDto>> HandleCoreAsync(SendOtpCommand request, CancellationToken cancellationToken)
+    {
         var email = request.Email.Trim();
 
         var now = _clock.UtcNow;
         var normalizedEmail = User.NormalizeEmail(email);
+        var existingUser = await _users.GetByEmailAsync(email, cancellationToken);
+        if (existingUser is not null)
+        {
+            await _auditWriter.WriteSecurityAsync(
+                existingUser.Id,
+                "auth.registration_challenge_suppressed",
+                "informational",
+                new { Reason = "account-exists" },
+                cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return new ChallengeAcceptedDto(true, (int)Cooldown.TotalSeconds);
+        }
+
         var challenge = await _challenges.GetActiveAsync(normalizedEmail, AuthChallengePurposes.Registration, cancellationToken);
         if (challenge is not null && challenge.IsInCooldown(now))
         {

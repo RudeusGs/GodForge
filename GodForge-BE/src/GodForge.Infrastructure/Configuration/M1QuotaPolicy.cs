@@ -12,4 +12,5 @@ public sealed class M1QuotaPolicy : IM1QuotaPolicy
     public int MaxOrganizationsPerUser => _settings.MaxOrganizationsPerUser;
     public int MaxProjectsPerOrganization => _settings.MaxProjectsPerOrganization;
     public int MaxPendingInvitationsPerOrganization => _settings.MaxPendingInvitationsPerOrganization;
+    public int MaxActiveSessionsPerUser => _settings.MaxActiveSessionsPerUser;
 }

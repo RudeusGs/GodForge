@@ -18,6 +18,7 @@ Anonymous user, authenticated user, SystemAdmin.
 | FR-01.4 | Logout, session listing and revocation | Must |
 | FR-01.5 | Password reset and security-event recording | Must |
 | FR-01.6 | Optional MFA for privileged roles | Should |
+| FR-01.7 | Configurable concurrent active-session limit without implicit session eviction | Must |
 
 ## Main flow
 
@@ -74,6 +75,8 @@ Anonymous user, authenticated user, SystemAdmin.
 - `AC-FR-01.5-01`: A valid password-reset challenge changes the password, consumes the challenge and revokes configured existing sessions atomically.
 - `AC-FR-01.5-02`: Public responses never expose password hashes, raw token values, internal exception details or user-enumeration metadata.
 - `AC-FR-01.6-01`: When MFA is enabled for a privileged account, password-only login cannot complete an authenticated session.
+- `AC-FR-01.7-01`: At least two independent sessions are supported; the default maximum is 10 and is configurable to no less than 2.
+- `AC-FR-01.7-02`: Login at the configured limit is rejected with `AUTH_SESSION_LIMIT_REACHED` and does not revoke an existing session; concurrent boundary logins cannot exceed the limit.
 
 ## Related API
 

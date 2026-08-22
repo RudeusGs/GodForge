@@ -31,7 +31,7 @@ const revokeSession = async (session: SessionDto) => {
     try {
         await authApi.revokeSession(session.id);
         if (session.current) {
-            authStore.clearAuthData();
+            authStore.invalidateAuthentication('session-revoked');
             await router.push({ name: 'login' });
             return;
         }
@@ -88,7 +88,8 @@ onMounted(loadSessions);
                                 <span v-else-if="session.revokedAt" class="rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-400">Revoked</span>
                             </div>
                             <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm text-slate-400 sm:grid-cols-2">
-                                <div><dt class="inline text-slate-500">Last active:</dt> <dd class="inline">{{ formatDate(session.lastSeenAt) }}</dd></div>
+                                <div><dt class="inline text-slate-500">Created:</dt> <dd class="inline">{{ formatDate(session.createdAt) }}</dd></div>
+                                <div><dt class="inline text-slate-500">Last refreshed:</dt> <dd class="inline">{{ formatDate(session.lastSeenAt) }}</dd></div>
                                 <div><dt class="inline text-slate-500">Expires:</dt> <dd class="inline">{{ formatDate(session.expiresAt) }}</dd></div>
                             </dl>
                         </div>

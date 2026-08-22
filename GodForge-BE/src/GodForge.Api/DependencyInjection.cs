@@ -1,15 +1,16 @@
+using System.Net;
 using System.Text;
-using System.Threading.RateLimiting;
 using GodForge.Api.Routing;
 using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 
 namespace GodForge.Api;
 
@@ -49,6 +50,39 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IRequestContext, HttpRequestContext>();
         services.AddSingleton<RefreshTokenCookieService>();
+
+        var redisConnection = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConnection))
+        {
+            services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnection));
+            services.AddSingleton<IDistributedAuthRateLimiter, RedisDistributedAuthRateLimiter>();
+        }
+        else
+        {
+            if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
+                throw new InvalidOperationException("A Redis connection is required for distributed authentication rate limiting outside Development/Testing.");
+            services.AddSingleton<IDistributedAuthRateLimiter, DevelopmentAuthRateLimiter>();
+        }
+
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = 1;
+
+            foreach (var configuredProxy in configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+            {
+                if (!IPAddress.TryParse(configuredProxy, out var proxy))
+                    throw new InvalidOperationException($"ReverseProxy:KnownProxies contains invalid IP address '{configuredProxy}'.");
+                options.KnownProxies.Add(proxy);
+            }
+
+            foreach (var configuredNetwork in configuration.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [])
+            {
+                if (!System.Net.IPNetwork.TryParse(configuredNetwork, out var network))
+                    throw new InvalidOperationException($"ReverseProxy:KnownNetworks contains invalid CIDR '{configuredNetwork}'.");
+                options.KnownIPNetworks.Add(network);
+            }
+        });
 
         services.AddSwaggerGen(c =>
         {
@@ -106,6 +140,9 @@ public static class DependencyInjection
         })
         .AddJwtBearer(x =>
         {
+            // Keep claim names stable across framework versions; authorization explicitly
+            // consumes JWT `sub`, `sid`, `security_stamp`, `role`, and `jti` names.
+            x.MapInboundClaims = false;
             x.RequireHttpsMetadata = !environment.IsDevelopment();
             x.SaveToken = true;
             x.TokenValidationParameters = new TokenValidationParameters
@@ -179,38 +216,6 @@ public static class DependencyInjection
 
         services.AddAuthorization();
 
-        services.AddRateLimiter(options =>
-        {
-            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.OnRejected = (context, cancellationToken) => new ValueTask(
-                ApiErrorResponseWriter.WriteAsync(
-                    context.HttpContext,
-                    StatusCodes.Status429TooManyRequests,
-                    "RATE_LIMIT_EXCEEDED",
-                    "Too many requests. Please try again later.",
-                    cancellationToken));
-            options.AddPolicy("auth-sensitive", httpContext =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    static _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 10,
-                        Window = TimeSpan.FromMinutes(1),
-                        QueueLimit = 0,
-                        AutoReplenishment = true
-                    }));
-            options.AddPolicy("auth-otp", httpContext =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    static _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 3,
-                        Window = TimeSpan.FromMinutes(5),
-                        QueueLimit = 0,
-                        AutoReplenishment = true
-                    }));
-        });
-
         var frontendBaseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
         var frontendOrigin = Uri.TryCreate(frontendBaseUrl, UriKind.Absolute, out var frontendUri)
             ? frontendUri.GetLeftPart(UriPartial.Authority)
@@ -229,4 +234,5 @@ public static class DependencyInjection
 
         return services;
     }
+
 }

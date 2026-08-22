@@ -102,6 +102,28 @@ public sealed class SessionValidationServiceTests
         Assert.Contains("safely published", exception.Message);
     }
 
+    [Fact]
+    public async Task IsValidAsync_WhenRedisIsUnavailable_UsesDatabaseAuthorityAndRecoversWithoutStaleAuthorization()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sessionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessions = new Mock<IUserSessionRepository>();
+        sessions.SetupSequence(x => x.GetValidUntilAsync(sessionId, userId, "stamp", now, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(now.AddMinutes(5))
+            .ReturnsAsync((DateTimeOffset?)null)
+            .ReturnsAsync((DateTimeOffset?)null);
+        var cache = new TestDistributedCache { FailReads = true };
+        var service = CreateService(sessions.Object, cache);
+
+        Assert.True(await service.IsValidAsync(sessionId, userId, "stamp", now));
+        Assert.False(await service.IsValidAsync(sessionId, userId, "stamp", now));
+        cache.FailReads = false;
+        Assert.False(await service.IsValidAsync(sessionId, userId, "stamp", now));
+
+        sessions.Verify(x => x.GetValidUntilAsync(sessionId, userId, "stamp", now, It.IsAny<CancellationToken>()), Times.Exactly(3));
+    }
+
     private static SessionValidationService CreateService(IUserSessionRepository sessions, IDistributedCache cache)
         => new(
             sessions,
@@ -117,13 +139,19 @@ public sealed class SessionValidationServiceTests
     {
         private readonly Dictionary<string, byte[]> _values = new(StringComparer.Ordinal);
         private readonly Func<string, bool>? _failSet;
+        public bool FailReads { get; set; }
 
         public TestDistributedCache(Func<string, bool>? failSet = null)
         {
             _failSet = failSet;
         }
 
-        public byte[]? Get(string key) => _values.TryGetValue(key, out var value) ? value : null;
+        public byte[]? Get(string key)
+        {
+            if (FailReads)
+                throw new InvalidOperationException("simulated cache read failure");
+            return _values.TryGetValue(key, out var value) ? value : null;
+        }
 
         public Task<byte[]?> GetAsync(string key, CancellationToken token = default)
             => Task.FromResult(Get(key));

@@ -82,4 +82,22 @@ public class LogoutCommandHandlerTests
         Assert.Null(foreignSession.RevokedAt);
         _refreshTokens.Verify(x => x.RevokeAllForSessionAsync(foreignSession.Id, "logout", now, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenRedisInvalidationBarrierFails_DoesNotCommitRevocation()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var userId = Guid.NewGuid();
+        var session = UserSession.Create(userId, "browser", null, null, now.AddDays(30), now);
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _currentUser.Setup(x => x.GetId()).Returns(userId);
+        _currentUser.Setup(x => x.GetSessionId()).Returns(session.Id);
+        _sessions.Setup(x => x.GetByIdAsync(session.Id, It.IsAny<CancellationToken>())).ReturnsAsync(session);
+        _sessionValidation.Setup(x => x.InvalidateSessionAsync(session.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("redis unavailable"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _handler.Handle(new LogoutCommand(), CancellationToken.None));
+
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

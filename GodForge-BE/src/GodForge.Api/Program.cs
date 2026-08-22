@@ -28,6 +28,10 @@ if (app.Environment.IsDevelopment())
 }
 
 // Configure the HTTP request pipeline.
+// Resolve the effective client address before authentication metadata and rate limiting.
+// ForwardedHeadersOptions trusts only explicitly configured proxies/networks (plus the
+// framework loopback defaults); arbitrary client-supplied X-Forwarded-For is ignored.
+app.UseForwardedHeaders();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -38,6 +42,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// This wrapper must remain outside exception handling so logout cookie cleanup is
+// applied after both success and sanitized failure responses are constructed.
+app.UseMiddleware<AuthLogoutCookieCleanupMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
@@ -48,7 +55,6 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors("CorsPolicy");
-app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

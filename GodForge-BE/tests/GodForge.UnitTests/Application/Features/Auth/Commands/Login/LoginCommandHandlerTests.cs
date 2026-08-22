@@ -17,12 +17,18 @@ public class LoginCommandHandlerTests
     private readonly Mock<ITokenService> _tokenService = new();
     private readonly Mock<ISecretHashService> _secretHash = new();
     private readonly Mock<IAuditWriter> _auditWriter = new();
+    private readonly Mock<IM1QuotaPolicy> _quotaPolicy = new();
     private readonly Mock<IClock> _clock = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
     {
+        _quotaPolicy.SetupGet(x => x.MaxActiveSessionsPerUser).Returns(10);
+        _unitOfWork.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _unitOfWork.Setup(x => x.AcquireResourceLockAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _unitOfWork.Setup(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _unitOfWork.Setup(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _handler = new LoginCommandHandler(
             _users.Object,
             _sessions.Object,
@@ -31,6 +37,7 @@ public class LoginCommandHandlerTests
             _tokenService.Object,
             _secretHash.Object,
             _auditWriter.Object,
+            _quotaPolicy.Object,
             _clock.Object,
             _unitOfWork.Object);
     }
@@ -44,6 +51,7 @@ public class LoginCommandHandlerTests
 
         _clock.SetupGet(x => x.UtcNow).Returns(now);
         _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _users.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         _passwordHasher.Setup(x => x.VerifyPassword(command.Password, user.PasswordHash)).Returns(true);
         _tokenService.SetupGet(x => x.RefreshTokenLifetime).Returns(TimeSpan.FromDays(30));
         _tokenService.Setup(x => x.GenerateRefreshToken()).Returns("refresh_token");
@@ -53,6 +61,7 @@ public class LoginCommandHandlerTests
         _tokenService
             .Setup(x => x.GenerateAccessToken(user, It.IsAny<Guid>(), now))
             .Returns(new AccessTokenResult("access_token", now.AddMinutes(15)));
+        _sessions.Setup(x => x.CountActiveForUserAsync(user.Id, now, It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -73,6 +82,29 @@ public class LoginCommandHandlerTests
             It.Is<GodForge.Domain.Entities.Identity.RefreshToken>(t => t.UserId == user.Id),
             It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_AtActiveSessionLimit_ReturnsConflictWithoutRevokingOrCreatingSession()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var command = new LoginCommand("limit@example.com", "password123", "Chrome", null, null);
+        var user = User.Create(command.Email, "Limit User", "hashed_password", now);
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _users.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _passwordHasher.Setup(x => x.VerifyPassword(command.Password, user.PasswordHash)).Returns(true);
+        _sessions.Setup(x => x.CountActiveForUserAsync(user.Id, now, It.IsAny<CancellationToken>())).ReturnsAsync(10);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("AUTH_SESSION_LIMIT_REACHED", result.Error?.Code);
+        Assert.Equal(ErrorType.Conflict, result.Error?.Type);
+        _sessions.Verify(x => x.AddAsync(It.IsAny<UserSession>(), It.IsAny<CancellationToken>()), Times.Never);
+        _refreshTokens.Verify(x => x.RevokeAllForUserAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -98,6 +130,7 @@ public class LoginCommandHandlerTests
 
         _clock.SetupGet(x => x.UtcNow).Returns(now);
         _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _users.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         _passwordHasher.Setup(x => x.VerifyPassword(command.Password, user.PasswordHash)).Returns(false);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -118,6 +151,7 @@ public class LoginCommandHandlerTests
 
         _clock.SetupGet(x => x.UtcNow).Returns(now);
         _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _users.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         _passwordHasher.Setup(x => x.VerifyPassword(command.Password, user.PasswordHash)).Returns(true);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -126,7 +160,7 @@ public class LoginCommandHandlerTests
         Assert.Equal("AUTH_INVALID_CREDENTIALS", result.Error?.Code);
         _passwordHasher.Verify(
             x => x.VerifyPassword(command.Password, user.PasswordHash),
-            Times.Once);
+            Times.Exactly(2));
     }
 
     [Fact]
@@ -140,6 +174,7 @@ public class LoginCommandHandlerTests
 
         _clock.SetupGet(x => x.UtcNow).Returns(now);
         _users.Setup(x => x.GetByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _users.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         _passwordHasher.Setup(x => x.VerifyPassword(command.Password, user.PasswordHash)).Returns(true);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -147,7 +182,7 @@ public class LoginCommandHandlerTests
         Assert.False(result.IsSuccess);
         Assert.Equal("AUTH_INVALID_CREDENTIALS", result.Error?.Code);
         Assert.Equal(ErrorType.Unauthorized, result.Error?.Type);
-        _passwordHasher.Verify(x => x.VerifyPassword(command.Password, user.PasswordHash), Times.Once);
+        _passwordHasher.Verify(x => x.VerifyPassword(command.Password, user.PasswordHash), Times.Exactly(2));
     }
 
 }

@@ -4,10 +4,37 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
     <title>GodForge</title>
+    <style>
+      html, body, #app { min-width: 320px; min-height: 100%; margin: 0; background: #f3f3ef; }
+      .boot-loader { position: fixed; inset: 0; display: grid; place-items: center; color: #111827; background: #f3f3ef; font-family: Inter, system-ui, sans-serif; }
+      .boot-loader__content { width: 13rem; text-align: center; }
+      .boot-loader svg { width: 3rem; height: 3rem; color: #3157f6; animation: boot-mark 1.8s ease-in-out infinite; }
+      .boot-loader strong { display: block; margin-top: .7rem; font-size: 1.05rem; letter-spacing: -.04em; }
+      .boot-loader p { margin: .45rem 0 1rem; color: #838b98; font-size: .65rem; }
+      .boot-loader__track { height: 2px; overflow: hidden; border-radius: 1rem; background: #dfe2e8; }
+      .boot-loader__track span { display: block; width: 45%; height: 100%; background: #3157f6; animation: boot-progress 1.15s ease-in-out infinite; }
+      @keyframes boot-progress { from { transform: translateX(-110%); } to { transform: translateX(330%); } }
+      @keyframes boot-mark { 50% { opacity: .72; transform: translateY(-4px) rotate(2deg); } }
+      @media (prefers-reduced-motion: reduce) { .boot-loader svg, .boot-loader__track span { animation: none; }.boot-loader__track span { width: 100%; } }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <main class="boot-loader" role="status" aria-label="Loading GodForge">
+        <div class="boot-loader__content">
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M8 7.5 16 3l8 4.5v9L16 21l-8-4.5v-9Z" fill="currentColor" />
+            <path d="M8 16.5V25l8 4 8-4v-8.5L16 21l-8-4.5Z" fill="currentColor" opacity=".44" />
+            <path d="m16 9 4 2.2v4.6L16 18l-4-2.2v-4.6L16 9Z" fill="white" />
+          </svg>
+          <strong>GodForge</strong>
+          <p>Preparing your workspace</p>
+          <div class="boot-loader__track" aria-hidden="true"><span></span></div>
+        </div>
+      </main>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

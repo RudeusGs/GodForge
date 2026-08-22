@@ -12,6 +12,7 @@ This matrix maps stable requirements to acceptance criteria, API contracts, perm
 | `FR-01.4` | `AC-FR-01.4-01`, `AC-FR-01.4-02` | logout/session list/revoke | own active session | sessions, refresh_tokens, audit | `TC-AUTH-SESSION-*` |
 | `FR-01.5` | `AC-FR-01.5-01`, `AC-FR-01.5-02` | forgot/reset password | valid challenge | auth_challenges, users, sessions, security_events | `TC-AUTH-RESET-*` |
 | `FR-01.6` | `AC-FR-01.6-01` | future MFA extension in auth contract | privileged account policy | future MFA tables | `TC-AUTH-MFA-*` |
+| `FR-01.7` | `AC-FR-01.7-01`, `AC-FR-01.7-02` | login/session list/revoke | authenticated account session policy | user_sessions | `TC-AUTH-LOGIN-*`, PostgreSQL concurrency tests |
 | `FR-27` | `AC-FR-27-01`, `AC-FR-27-02` | `05-api-contracts/organizations.md` | organization membership/role | organizations, organization_members, invitations | `TC-ORG-*`, `TC-TENANT-*` |
 | `FR-27.1` | `AC-FR-27.1-01`, `AC-FR-27.1-02` | project member add/update | `projectMembers.add/updateRole` | project_members composite tenant FKs | `TC-RBAC-MEMBERSHIP-*` |
 | `FR-27.2` | `AC-FR-27.2-01`, `AC-FR-27.2-02` | organization member suspend/remove | `organizationMembers.remove/updateRole` | organization_members, project_members, audit, outbox | `TC-ORG-MEMBER-REMOVE-*` |
