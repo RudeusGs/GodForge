@@ -18,7 +18,7 @@ describe('authentication routes', () => {
             initialized: true,
             isAuthenticated: false,
         };
-        vi.mocked(useAuthStore).mockReturnValue(mockAuthStore as any);
+        vi.mocked(useAuthStore).mockReturnValue(mockAuthStore as unknown as ReturnType<typeof useAuthStore>);
     });
 
     it('allows reset-password while a user is already authenticated', () => {
