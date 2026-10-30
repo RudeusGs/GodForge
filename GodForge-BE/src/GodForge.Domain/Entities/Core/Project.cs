@@ -80,6 +80,13 @@ public sealed class Project : BaseAuditableEntity, ISoftDeletable
         UpdatedAt = now;
     }
 
+    public void RecordOwnershipTransfer(long expectedVersion, DateTimeOffset now)
+    {
+        EnsureMutable(expectedVersion);
+        Version++;
+        UpdatedAt = now;
+    }
+
     public void Restore(long expectedVersion, DateTimeOffset now)
     {
         EnsureVersion(expectedVersion);

@@ -31,7 +31,7 @@ axiosClient.interceptors.request.use(
 );
 
 axiosClient.interceptors.response.use(
-    (response: AxiosResponse) => response.data,
+    (response: AxiosResponse) => response,
     async (error: AxiosError) => {
         const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
         const isRefreshRequest = originalRequest?.url?.endsWith('/auth/refresh') ?? false;

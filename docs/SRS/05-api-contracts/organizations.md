@@ -64,6 +64,7 @@ Acceptance criteria: `AC-FR-27-*` in `../03-functional/project.md`
 - **Headers:** optional `Idempotency-Key`.
 - **Request:** `{ "name": "Studio Name", "slug": "studio-name" }`.
 - **Validation:** name bounded; slug lower-case, normalized and reserved-word checked.
+- **Workspace form bounds:** name 1–160 characters after trim; slug 1–80 lowercase letters/digits with single interior hyphens. The server remains authoritative for reserved slugs, quotas and membership.
 - **Response:** `201 Created` with `OrganizationSummary` and `Location`.
 - **Transaction:** create organization, creator OrganizationOwner membership, audit log and optional outbox event atomically.
 - **Idempotency:** key scoped to actor + operation; unique slug remains authoritative.
@@ -84,11 +85,11 @@ Acceptance criteria: `AC-FR-27-*` in `../03-functional/project.md`
 
 - **Actor:** authenticated user.
 - **Permission:** `organizations.update`.
-- **Request:** `{ "name": "New Name", "slug": "new-slug", "version": 3 }`; omitted fields unchanged.
-- **Validation:** same normalization as create; status is not changed through this endpoint.
+- **Request:** `{ "name": "New Name", "slug": "new-slug", "version": 3 }`; omitted fields unchanged; at least one of `name` or `slug` must be provided.
+- **Validation:** name 1–160 characters after trim; slug 1–80 lowercase letters/digits with single interior hyphens, reserved-word checked, and globally unique; `version >= 1`; status is not changed through this endpoint.
 - **Response:** `200 OK` with updated `OrganizationSummary`.
 - **Concurrency:** `version` required; stale version returns conflict.
-- **Errors:** `ORGANIZATION_NOT_FOUND`, `ORGANIZATION_SLUG_EXISTS`, `CONCURRENCY_CONFLICT`, `SECURITY_FORBIDDEN`, `VALIDATION_ERROR`.
+- **Errors:** `ORGANIZATION_NOT_FOUND`, `ORGANIZATION_SLUG_EXISTS`, `ORGANIZATION_SLUG_RESERVED`, `ORGANIZATION_NOT_ACTIVE`, `CONCURRENCY_CONFLICT`, `SECURITY_FORBIDDEN`, `VALIDATION_ERROR`.
 - **Audit:** `organization.updated` with safe changed-field list.
 - **Tests:** `TC-ORG-UPDATE-001` to `TC-ORG-UPDATE-006`.
 
@@ -97,9 +98,9 @@ Acceptance criteria: `AC-FR-27-*` in `../03-functional/project.md`
 - **Actor:** OrganizationOwner.
 - **Permission:** `organizations.delete`.
 - **Request:** `{ "version": 3, "confirmationSlug": "studio-name" }`.
-- **Response:** `202 Accepted` if deletion/purge workflow is asynchronous; returns durable job summary. A thesis-only implementation may first transition to `deleting` and perform retained cleanup later.
-- **Transaction:** validate last-owner/hold/state, mark organization deleting, block mutations, write audit and outbox/job atomically.
-- **Idempotency:** repeated request returns the existing deletion job/state.
+- **Response:** `202 Accepted` if deletion/purge workflow is asynchronous; returns durable job summary or updated `OrganizationSummary` in `deleting` status. The M1 implementation transitions the organization to the retained `deleting` lifecycle state and blocks further mutations while retention/purge workflows remain deferred.
+- **Transaction:** validate last-owner/hold/state and `version >= 1` inside serialized membership lock, mark organization `deleting`, block mutations, and write audit atomically.
+- **Idempotency:** repeated request by an authorized owner with matching `confirmationSlug` when already `deleting` returns the existing `deleting` state without writing duplicate audit entries.
 - **Errors:** `ORGANIZATION_NOT_FOUND`, `CONCURRENCY_CONFLICT`, `SECURITY_FORBIDDEN`, `VALIDATION_ERROR`.
 - **Audit:** `organization.deletionRequested` with explicit actor confirmation.
 - **Tests:** `TC-ORG-DELETE-001` to `TC-ORG-DELETE-005`.
@@ -109,18 +110,18 @@ Acceptance criteria: `AC-FR-27-*` in `../03-functional/project.md`
 - **Actor:** OrganizationOwner.
 - **Permission:** `organizations.transferOwnership`.
 - **Request:** `{ "newOwnerUserId": "uuid", "retainCurrentOwnerAs": "organizationAdmin", "version": 3 }`.
-- **Validation:** target is an active organization member; retained role is allowed.
-- **Response:** `200 OK` with updated current/target membership summaries.
-- **Transaction:** promote target and optionally demote actor atomically; at least one Owner remains.
-- **Errors:** `ORGANIZATION_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, `LAST_OWNER_REQUIRED`, `CONCURRENCY_CONFLICT`, `SECURITY_FORBIDDEN`.
+- **Validation:** target is an active organization member with an active user account; retained role is `organizationAdmin` or `organizationMember`; `version >= 1`.
+- **Response:** `200 OK` with updated current/target membership summaries (`previousOwner`, `newOwner`, `organizationVersion`).
+- **Transaction:** promote target and demote actor atomically inside serialized membership lock; at least one Owner remains; organization aggregate version is incremented.
+- **Errors:** `ORGANIZATION_NOT_FOUND`, `ORGANIZATION_NOT_ACTIVE`, `MEMBERSHIP_NOT_FOUND`, `LAST_OWNER_REQUIRED`, `CONCURRENCY_CONFLICT`, `SECURITY_FORBIDDEN`, `VALIDATION_ERROR`.
 - **Audit:** high-value `organization.ownershipTransferred`.
 - **Tests:** `TC-ORG-OWNER-001` to `TC-ORG-OWNER-006`.
 
 ## GET `/organizations/{organizationId}/members`
 
-- **Actor:** active organization member.
-- **Permission:** `organizationMembers.read`; OrganizationMember access may be restricted by policy.
-- **Query:** `page`, `pageSize`, optional `role`, `status`, `search`.
+- **Actor:** active organization member (`OrganizationOwner`, `OrganizationAdmin`, `OrganizationMember`).
+- **Permission:** `organizationMembers.read`.
+- **Query:** `page`, `pageSize`, optional `role`, `status`, `search`. When `status` is omitted, `removed` memberships are excluded by default (`status=removed` returns removed rows explicitly).
 - **Response:** paged `OrganizationMemberSummary[]`.
 - **Security:** email/display fields follow organization-directory policy; no session/security data.
 - **Errors:** masked `ORGANIZATION_NOT_FOUND`, `SECURITY_FORBIDDEN`, `VALIDATION_ERROR`.
@@ -161,14 +162,14 @@ Acceptance criteria: `AC-FR-27-*` in `../03-functional/project.md`
 ## POST `/organizations/{organizationId}/invitations`
 
 - **Actor:** OrganizationOwner/Admin.
-- **Permission:** `organizationMembers.invite`; only Owner may invite an Admin if policy requires.
-- **Headers:** optional `Idempotency-Key`.
+- **Permission:** `organizationMembers.invite`; only Owner may invite an Admin (`organizationAdmins.manage`).
+- **Headers:** optional `Idempotency-Key` (scope `organization.invitation.create`).
 - **Request:** `{ "email": "invitee@example.com", "role": "organizationMember" }`.
-- **Validation:** normalized email; role grant boundary; organization active; quota.
+- **Validation:** normalized email; role grant boundary; organization active; target not already an active member; pending-invitation quota.
 - **Response:** `201 Created` with `OrganizationInvitationSummary`.
-- **Transaction:** revoke/replace an existing pending invite according to policy, create hashed-token invitation, audit and email outbox atomically.
-- **Idempotency:** key and unique active invite per organization/email.
-- **Errors:** `INVITE_INVALID_OR_EXPIRED`, `ORGANIZATION_QUOTA_EXCEEDED`, `SECURITY_FORBIDDEN`, `VALIDATION_ERROR`, `CONCURRENCY_CONFLICT`.
+- **Transaction:** create hashed-token invitation, audit and encrypted email outbox atomically inside serialized invitation lock.
+- **Idempotency:** same `Idempotency-Key` and identical payload returns the existing `OrganizationInvitationSummary` without sending a duplicate email; same key with different payload returns `409 IDEMPOTENCY_KEY_REUSED`; unique active pending invite per organization/email returns `409 INVITE_ALREADY_PENDING`.
+- **Errors:** `INVITE_ALREADY_PENDING`, `IDEMPOTENCY_KEY_REUSED`, `ORGANIZATION_INVITATION_QUOTA_EXCEEDED`, `ORGANIZATION_NOT_ACTIVE`, `SECURITY_FORBIDDEN`, `VALIDATION_ERROR`, `CONCURRENCY_CONFLICT`.
 - **Audit:** `organization.invitationCreated` without raw token.
 - **Tests:** `TC-ORG-INVITE-CREATE-001` to `TC-ORG-INVITE-CREATE-007`.
 
@@ -177,19 +178,24 @@ Acceptance criteria: `AC-FR-27-*` in `../03-functional/project.md`
 - **Actor:** OrganizationOwner/Admin.
 - **Permission:** `organizationMembers.invite`.
 - **Response:** `204 No Content`.
-- **Behavior:** revoke pending invitation; repeated revocation is safe.
-- **Errors:** masked `RESOURCE_NOT_FOUND`, `SECURITY_FORBIDDEN`.
+- **Behavior:** revoke pending invitation inside serialized invitation lock; repeated revocation on a non-pending invitation is idempotent and does not write duplicate audit logs.
+- **Errors:** masked `RESOURCE_NOT_FOUND`, `ORGANIZATION_NOT_ACTIVE`, `SECURITY_FORBIDDEN`.
 - **Audit:** `organization.invitationRevoked`.
 - **Tests:** `TC-ORG-INVITE-REVOKE-001` to `TC-ORG-INVITE-REVOKE-004`.
 
 ## POST `/organization-invitations/accept`
 
-- **Actor:** authenticated verified user.
+- **Actor:** authenticated verified user (`Active` status, verified email).
 - **Permission:** invitation email matches current normalized verified email.
 - **Request:** `{ "token": "one-time-secret" }`.
 - **Response:** `200 OK` with `OrganizationSummary` and current `OrganizationMemberSummary`.
-- **Transaction:** lock invitation, verify token hash/email/expiry, create/reactivate membership and consume invitation atomically.
-- **Idempotency:** repeated consumed token returns `INVITE_INVALID_OR_EXPIRED`; it never creates a duplicate membership.
-- **Errors:** `INVITE_INVALID_OR_EXPIRED`, `CONCURRENCY_CONFLICT`, `SECURITY_FORBIDDEN`.
+- **Transaction:** acquire serialized organization-membership lock, re-read invitation, verify token hash/email/expiry/active organization, create or reactivate membership without downgrading an existing active higher role, and consume invitation atomically.
+- **Idempotency:** repeated or concurrent consumed token returns `INVITE_INVALID_OR_EXPIRED`; it never creates a duplicate membership or race corruption.
+- **Errors:** `INVITE_INVALID_OR_EXPIRED`, `ORGANIZATION_NOT_ACTIVE`, `CONCURRENCY_CONFLICT`, `SECURITY_FORBIDDEN`.
 - **Audit:** `organization.invitationAccepted`.
 - **Tests:** `TC-ORG-INVITE-ACCEPT-001` to `TC-ORG-INVITE-ACCEPT-008`.
+
+
+## Project candidate compatibility — 2026-10-30
+
+Organization member summaries additionally expose accountStatus derived from the account. Existing role/status/joinedAt/version are retained. Authorized readers can exclude inactive accounts from project candidate pages; assignment rechecks eligibility server-side. Pagination now ends with a unique ID tiebreaker. [Project evidence](../../PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md).

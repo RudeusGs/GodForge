@@ -51,7 +51,7 @@ A higher-level policy may reduce permissions. It must not silently increase a pr
 | `organizations.update` | ✓ | ✓ |  |
 | `organizations.delete` | ✓ |  |  |
 | `organizations.transferOwnership` | ✓ |  |  |
-| `organizationMembers.read` | ✓ | ✓ | policy |
+| `organizationMembers.read` | ✓ | ✓ | ✓ |
 | `organizationMembers.invite` | ✓ | ✓ |  |
 | `organizationMembers.updateRole` | ✓ | limited |  |
 | `organizationMembers.remove` | ✓ | limited |  |
@@ -113,3 +113,8 @@ For project membership changes, `limited` means Maintainer cannot add, promote, 
 - Webhooks authenticate as providers, not users.
 - Worker jobs carry actor, organization and project context but revalidate current state before publishing results.
 - SystemAdmin break-glass access requires reason capture and separate audit records.
+
+
+## Project browser permission projection — 2026-10-30
+
+The UI projects RolePermissions: active ProjectOwner/Maintainer see metadata, membership administration and settings; ProjectOwner additionally sees ownership/deletion. Maintainer cannot manage/grant ProjectOwner. All active project roles can read the member directory and self-leave subject to backend owner protection. Archived reads and authorized restore remain available. Organization catalog administration does not enable project content/navigation. Backend authorization remains authoritative, including existing documented organization lifecycle administration exceptions. Ownership/assignment targets require active accounts and membership intersection. [Role and race evidence](PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md).

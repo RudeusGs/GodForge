@@ -5,6 +5,7 @@ using GodForge.Application.Common.Security;
 using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Entities.Core;
+using GodForge.Domain.Entities.Identity;
 using GodForge.Domain.Enums;
 using MediatR;
 
@@ -32,6 +33,8 @@ public sealed class TransferOrganizationOwnershipCommandHandler : OrganizationCo
 
     public async Task<Result<OrganizationOwnershipTransferDto>> Handle(TransferOrganizationOwnershipCommand request, CancellationToken cancellationToken)
     {
+        if (request.Version <= 0)
+            return ApplicationError.Validation("VALIDATION_ERROR", "Organization version must be positive.");
         if (request.ActorId == request.NewOwnerUserId)
             return ApplicationError.Validation("VALIDATION_ERROR", "The target user is already the current owner.");
         if (!EnumText.TryParseDefined<OrganizationRole>(request.RetainCurrentOwnerAs, out var retainedRole) || retainedRole == OrganizationRole.OrganizationOwner)
@@ -53,6 +56,7 @@ public sealed class TransferOrganizationOwnershipCommandHandler : OrganizationCo
             var usersById = users.ToDictionary(user => user.Id);
             if (target is not { Status: MembershipStatus.Active } ||
                 !usersById.TryGetValue(request.NewOwnerUserId, out var targetUser) ||
+                targetUser.Status != UserStatus.Active ||
                 !usersById.TryGetValue(request.ActorId, out var actorUser))
             {
                 return await RollbackAsync<OrganizationOwnershipTransferDto>(
@@ -64,6 +68,7 @@ public sealed class TransferOrganizationOwnershipCommandHandler : OrganizationCo
             var previousOwner = access.Membership!;
             target.Change(OrganizationRole.OrganizationOwner, MembershipStatus.Active, request.ActorId, target.Version, now);
             previousOwner.Change(retainedRole, MembershipStatus.Active, request.ActorId, previousOwner.Version, now);
+            access.Organization.RecordOwnershipTransfer(request.Version, now);
 
             await _auditWriter.WriteAuditAsync(
                 request.ActorId, null, "organization.ownership_transferred", "organization", request.OrganizationId, "succeeded",

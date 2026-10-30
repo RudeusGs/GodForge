@@ -3,6 +3,7 @@ using GodForge.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -14,6 +15,7 @@ namespace GodForge.IntegrationTests.Infrastructure;
 
 public sealed class AuthPostgresWebApplicationFactory(string connectionString) : WebApplicationFactory<Program>
 {
+    private static string TestRedisConnection => Environment.GetEnvironmentVariable("GODFORGE_TEST_REDIS") ?? "localhost:16379";
     private const string JwtSecret = "auth-http-test-signing-key-64-characters-minimum-000000000000000";
     private const string JwtIssuer = "GodForge.AuthHttpTests";
 
@@ -30,7 +32,7 @@ public sealed class AuthPostgresWebApplicationFactory(string connectionString) :
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = connectionString,
-                ["ConnectionStrings:Redis"] = string.Empty,
+                ["ConnectionStrings:Redis"] = TestRedisConnection,
                 ["Jwt:Secret"] = JwtSecret,
                 ["Jwt:Issuer"] = JwtIssuer,
                 ["Jwt:Audience"] = JwtIssuer,
@@ -43,6 +45,10 @@ public sealed class AuthPostgresWebApplicationFactory(string connectionString) :
         });
         builder.ConfigureServices(services =>
         {
+            // Infrastructure captures the Redis endpoint during minimal-host registration,
+            // before this factory's application configuration is applied. Override the cache
+            // options explicitly so revocation tests use isolated Redis, never localhost:6379.
+            services.PostConfigure<RedisCacheOptions>(options => options.Configuration = TestRedisConnection);
             services.RemoveAll<IDistributedAuthRateLimiter>();
             services.AddSingleton<IDistributedAuthRateLimiter, DevelopmentAuthRateLimiter>();
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>

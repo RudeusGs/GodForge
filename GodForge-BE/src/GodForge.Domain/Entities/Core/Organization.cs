@@ -65,6 +65,15 @@ public sealed class Organization : BaseAuditableEntity, ISoftDeletable
         UpdatedAt = now;
     }
 
+    public void RecordOwnershipTransfer(long expectedVersion, DateTimeOffset now)
+    {
+        EnsureVersion(expectedVersion);
+        if (Status != OrganizationStatus.Active)
+            throw new InvalidOperationException("Only active organizations can transfer ownership.");
+        Version++;
+        UpdatedAt = now;
+    }
+
     public void SoftDelete(DateTimeOffset now)
     {
         Status = OrganizationStatus.Deleted;

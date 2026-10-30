@@ -9,36 +9,36 @@ export const baseApi = {
     /**
      * Perform a GET request
      */
-    get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-        return axiosClient.get<T, T>(url, config);
+    async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
+        return (await axiosClient.get<T>(url, config)).data;
     },
 
     /**
      * Perform a POST request
      */
-    post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-        return axiosClient.post<T, T>(url, data, config);
+    async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+        return (await axiosClient.post<T>(url, data, config)).data;
     },
 
     /**
      * Perform a PUT request
      */
-    put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-        return axiosClient.put<T, T>(url, data, config);
+    async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+        return (await axiosClient.put<T>(url, data, config)).data;
     },
 
     /**
      * Perform a PATCH request
      */
-    patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-        return axiosClient.patch<T, T>(url, data, config);
+    async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+        return (await axiosClient.patch<T>(url, data, config)).data;
     },
 
     /**
      * Perform a DELETE request
      */
-    delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-        return axiosClient.delete<T, T>(url, config);
+    async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
+        return (await axiosClient.delete<T>(url, config)).data;
     }
 };
 

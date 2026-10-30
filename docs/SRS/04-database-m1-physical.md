@@ -324,7 +324,7 @@ Implement one active invitation per organization/email with a partial unique ind
 | `id` | uuid | no | PK |
 | `organization_id` | uuid | no | FK organizations, restrict |
 | `slug` | varchar(80) | no | unique within organization |
-| `name` | varchar(160) | no | |
+| `name` | varchar(80) | no | Project.MaxNameLength; project metadata name |
 | `description` | varchar(2000) | yes | |
 | `visibility` | varchar(24) | no | private/internal/public policy |
 | `status` | varchar(24) | no | ProjectStatus |

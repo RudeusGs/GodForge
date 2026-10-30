@@ -1,6 +1,6 @@
 # GodForge Backend
 
-ASP.NET Core .NET 9 backend and worker for the Git-first GodForge blueprint.
+ASP.NET Core .NET 10 backend and worker for GodForge.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ dotnet tool restore
 dotnet run --project src/GodForge.Api
 ```
 
-The API initializes an empty database from the current EF model and applies pending migrations for an existing database.
+Development startup initializes the local database. Production migrations run as a controlled release step; API replicas must not migrate automatically.
 
 Worker in a second terminal:
 
@@ -49,3 +49,5 @@ dotnet list package --vulnerable --include-transitive
 ```
 
 See `../docs/SRS/02-architecture.md`, `../docs/MILESTONES.md`, and `../docs/STABILIZATION_REPORT.md` before adding repository, parser, worker or AI features.
+
+Node-based repository tooling and Git hooks are configured at the repository root. Install them there with `npm ci`; the backend does not need a separate npm dependency tree. Run root `npm run verify` for the isolated combined gate.

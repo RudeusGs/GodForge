@@ -1,0 +1,11 @@
+# Use with docker-compose.backend.yml and project godforge-workspace-acceptance.
+# Separate ports and project-scoped volumes keep development data isolated.
+services:
+  api:
+    ports: !override ["127.0.0.1:25072:8080"]
+    environment:
+      Frontend__BaseUrl: http://127.0.0.1:25173
+      Frontend__AllowedOrigins__0: http://127.0.0.1:25173
+      Frontend__AllowedOrigins__1: http://127.0.0.1:25173
+  mailpit:
+    ports: !override ["127.0.0.1:28025:8025"]

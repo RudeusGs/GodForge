@@ -23,7 +23,7 @@ public sealed class SecretHashServiceTests
     [Fact]
     public void Verify_AcceptsLegacyHashDuringKeyMigration()
     {
-        const string legacyKey = "legacy-jwt-key-with-at-least-32-characters";
+        const string legacyKey = "legacy-jwt-key-with-at-least-32-characters"; // gitleaks:allow -- synthetic security-test fixture, never a live credential.
         var legacyService = CreateService(legacyKey);
         var migratedService = CreateService(
             "new-secret-hash-key-with-at-least-32-characters",

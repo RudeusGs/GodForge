@@ -98,7 +98,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Transaction:** verify account and password; serialize the per-user active-session quota check; create session and first refresh token; record login outcome.
 - **Idempotency:** none; each successful login creates a distinct session.
 - **Rate limit:** per IP/email with lockout policy.
-- **Errors:** `AUTH_INVALID_CREDENTIALS`, `AUTH_ACCOUNT_DISABLED`, `AUTH_ACCOUNT_LOCKED`, `AUTH_SESSION_LIMIT_REACHED`, `RATE_LIMIT_EXCEEDED`.
+- **Errors:** `AUTH_INVALID_CREDENTIALS`, `AUTH_SESSION_LIMIT_REACHED`, `RATE_LIMIT_EXCEEDED`.
 - **Session limit:** configurable `M1Quotas:MaxActiveSessionsPerUser`, default 10 and minimum 2. Reaching the limit returns `409`; the service never silently revokes the oldest session.
 - **Audit/security:** success/failure login event with safe identifiers/IP hash.
 - **Tests:** `TC-AUTH-LOGIN-001` to `TC-AUTH-LOGIN-008`.
@@ -129,6 +129,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Errors:** `UNAUTHORIZED`.
 - **Audit/security:** `identity.session.revoked` with current-session reason.
 - **Tests:** `TC-AUTH-SESSION-001`, `TC-AUTH-SESSION-002`.
+- **Browser behavior:** runtime credentials are cleared on both success and failure. A non-secret logout-intent marker blocks silent restoration until explicit sign-in; failure redirects to sign-in with a safe explanation that server revocation was not confirmed. `TC-AUTH-BROWSER-003` to `TC-AUTH-BROWSER-005` exercise this behavior. No API response or database schema change is required.
 
 ## POST `/auth/forgot-password`
 
@@ -154,6 +155,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Response:** `204 No Content`.
 - **Transaction:** consume challenge, update password/security stamp, revoke configured active sessions/tokens and record security event atomically.
 - **Idempotency:** consumed token cannot be reused.
+- **Concurrency:** reset re-reads and revalidates the challenge after an optimistic conflict with refresh (at most three attempts). A competing successful reset still consumes the challenge exactly once; cache-barrier failures are not treated as success.
 - **Rate limit:** per IP/email/challenge.
 - **Errors:** `AUTH_RESET_TOKEN_INVALID`, `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`.
 - **Tests:** `TC-AUTH-RESET-004` to `TC-AUTH-RESET-008`.

@@ -8,4 +8,5 @@ public sealed record CreateOrganizationInvitationCommand(
     Guid ActorId,
     Guid OrganizationId,
     string Email,
-    string Role) : IRequest<Result<OrganizationInvitationDto>>;
+    string Role,
+    string? IdempotencyKey = null) : IRequest<Result<OrganizationInvitationDto>>;

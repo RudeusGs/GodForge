@@ -35,8 +35,28 @@ public abstract class ProjectOperationServiceBase
     protected async Task BeginSerializedMutationAsync(string resourceType, Guid resourceId, CancellationToken cancellationToken)
     {
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
-        await _unitOfWork.AcquireResourceLockAsync(resourceType, resourceId, cancellationToken);
-        _unitOfWork.ClearTrackedChanges();
+        try
+        {
+            var organizationId = resourceType == "organization-project-catalog"
+                ? resourceId
+                : (await _projects.GetByIdAsync(resourceId, cancellationToken))?.OrganizationId;
+            if (organizationId is { } tenantId)
+            {
+                // The same first lock is used by organization membership revocation.
+                // Re-read access after acquiring it; an earlier read is not authorization.
+                await _unitOfWork.AcquireResourceLockAsync("organization-membership", tenantId, cancellationToken);
+                await _unitOfWork.AcquireResourceLockAsync("organization-project-catalog", tenantId, cancellationToken);
+            }
+            if (resourceType != "organization-project-catalog")
+                await _unitOfWork.AcquireResourceLockAsync("project-membership", resourceId, cancellationToken);
+            _unitOfWork.ClearTrackedChanges();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            _unitOfWork.ClearTrackedChanges();
+            throw;
+        }
     }
 
     protected async Task<Result<T>> RollbackAsync<T>(ApplicationError error, CancellationToken cancellationToken)
@@ -63,12 +83,22 @@ public abstract class ProjectOperationServiceBase
         if (organizationMembership is not { Status: MembershipStatus.Active })
             return (null, null, null, ApplicationError.NotFound("PROJECT_NOT_FOUND", "Project was not found."));
         var projectMembership = await _members.GetMembershipAsync(projectId, actorId, cancellationToken);
-        if (projectMembership is not null && RolePermissions.GetPermissionsForRole(projectMembership.Role).Contains(permission))
-            return (project, projectMembership, organizationMembership, null);
-        if (allowOrganizationAdministration && organizationMembership.Role is OrganizationRole.OrganizationOwner or OrganizationRole.OrganizationAdmin)
-            return (project, projectMembership, organizationMembership, null);
-        return (null, null, null, ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission for this project operation."));
+        var projectAccess = projectMembership is not null && RolePermissions.GetPermissionsForRole(projectMembership.Role).Contains(permission);
+        var organizationAccess = allowOrganizationAdministration && organizationMembership.Role is OrganizationRole.OrganizationOwner or OrganizationRole.OrganizationAdmin;
+        if (!projectAccess && !organizationAccess)
+            return (null, null, null, ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission for this project operation."));
+        if (permission is not (Permissions.ProjectsRead or Permissions.ProjectMembersRead or Permissions.ProjectsRestore or Permissions.ProjectsDelete))
+        {
+            var mutationError = GetMutationError(project);
+            if (mutationError is not null) return (null, null, null, mutationError);
+        }
+        return (project, projectMembership, organizationMembership, null);
     }
+
+    protected static ApplicationError? GetMutationError(Project project)
+        => project.Status == ProjectStatus.Active ? null
+            : ApplicationError.Conflict(project.Status == ProjectStatus.Archived ? "PROJECT_ARCHIVED" : "PROJECT_NOT_ACTIVE",
+                "Only an active project can be changed.");
 
     protected async Task<ApplicationError?> SaveAsync(CancellationToken cancellationToken)
     {

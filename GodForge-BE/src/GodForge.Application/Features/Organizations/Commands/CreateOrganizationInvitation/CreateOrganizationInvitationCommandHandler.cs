@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using System.Security.Cryptography;
+using GodForge.Application.Common.Idempotency;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
@@ -7,6 +8,7 @@ using GodForge.Application.Common.Security;
 using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Enums;
 using MediatR;
 
@@ -14,7 +16,10 @@ namespace GodForge.Application.Features.Organizations.Commands.CreateOrganizatio
 
 public sealed class CreateOrganizationInvitationCommandHandler : OrganizationCommandHandlerBase, IRequestHandler<CreateOrganizationInvitationCommand, Result<OrganizationInvitationDto>>
 {
+    private const string IdempotencyScope = "organization.invitation.create";
+
     private readonly IUserInviteRepository _invitations;
+    private readonly IIdempotencyRepository _idempotency;
     private readonly ISecretHashService _secretHash;
     private readonly IFrontendUrlBuilder _frontendUrls;
     private readonly IEmailOutbox _emailOutbox;
@@ -28,6 +33,7 @@ public sealed class CreateOrganizationInvitationCommandHandler : OrganizationCom
         IProjectMemberRepository projectMembers,
         IUnitOfWork unitOfWork,
         IUserInviteRepository invitations,
+        IIdempotencyRepository idempotency,
         ISecretHashService secretHash,
         IFrontendUrlBuilder frontendUrls,
         IEmailOutbox emailOutbox,
@@ -36,6 +42,7 @@ public sealed class CreateOrganizationInvitationCommandHandler : OrganizationCom
         IClock clock) : base(organizations, members, projectMembers, unitOfWork)
     {
         _invitations = invitations;
+        _idempotency = idempotency;
         _secretHash = secretHash;
         _frontendUrls = frontendUrls;
         _emailOutbox = emailOutbox;
@@ -51,6 +58,12 @@ public sealed class CreateOrganizationInvitationCommandHandler : OrganizationCom
         if (!TryNormalizeEmail(request.Email, out var email, out var normalizedEmail))
             return ApplicationError.Validation("VALIDATION_ERROR", "A valid email is required.");
 
+        var idempotencyError = IdempotencyRequest.Normalize(request.IdempotencyKey, out var normalizedIdempotencyKey);
+        if (idempotencyError is not null)
+            return idempotencyError;
+
+        var requestHash = IdempotencyRequest.Hash($"{request.OrganizationId:N}\n{normalizedEmail}\n{invitationRole}");
+
         await BeginMembershipMutationAsync("organization-invitations", request.OrganizationId, cancellationToken);
         try
         {
@@ -65,6 +78,22 @@ public sealed class CreateOrganizationInvitationCommandHandler : OrganizationCom
                 return await RollbackAsync<OrganizationInvitationDto>(
                     ApplicationError.Forbidden("SECURITY_FORBIDDEN", "Only an organization owner may invite an administrator."),
                     cancellationToken);
+
+            if (normalizedIdempotencyKey is not null)
+            {
+                var existingResult = await GetExistingInvitationResultAsync(
+                    request.ActorId,
+                    request.OrganizationId,
+                    normalizedIdempotencyKey,
+                    requestHash,
+                    cancellationToken);
+                if (existingResult is not null)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    _unitOfWork.ClearTrackedChanges();
+                    return existingResult;
+                }
+            }
 
             var now = _clock.UtcNow;
             var existing = await _invitations.GetPendingAsync(request.OrganizationId, normalizedEmail, cancellationToken);
@@ -99,6 +128,18 @@ public sealed class CreateOrganizationInvitationCommandHandler : OrganizationCom
             {
                 invitation = existing;
                 invitation.Replace(invitationRole, tokenHash, request.ActorId, now.AddDays(7), now);
+            }
+
+            if (normalizedIdempotencyKey is not null)
+            {
+                await _idempotency.AddAsync(IdempotencyRecord.Create(
+                    request.ActorId,
+                    IdempotencyScope,
+                    normalizedIdempotencyKey,
+                    requestHash,
+                    "organization-invitation",
+                    invitation.Id,
+                    now), cancellationToken);
             }
 
             var url = _frontendUrls.BuildOrganizationInvitationUrl(rawToken);
@@ -138,6 +179,35 @@ public sealed class CreateOrganizationInvitationCommandHandler : OrganizationCom
             _unitOfWork.ClearTrackedChanges();
             throw;
         }
+    }
+
+    private async Task<Result<OrganizationInvitationDto>?> GetExistingInvitationResultAsync(
+        Guid actorId,
+        Guid organizationId,
+        string idempotencyKey,
+        string requestHash,
+        CancellationToken cancellationToken)
+    {
+        var existingRecord = await _idempotency.GetAsync(
+            actorId,
+            IdempotencyScope,
+            idempotencyKey,
+            cancellationToken);
+        if (existingRecord is null)
+            return null;
+
+        if (!string.Equals(existingRecord.RequestHash, requestHash, StringComparison.Ordinal))
+            return ApplicationError.Conflict(
+                "IDEMPOTENCY_KEY_REUSED",
+                "The idempotency key was already used with a different request.");
+
+        var existingInvitation = await _invitations.GetByIdAsync(organizationId, existingRecord.ResourceId, cancellationToken);
+        if (existingInvitation is not null)
+            return OrganizationInvitationDto.From(existingInvitation);
+
+        return ApplicationError.Conflict(
+            "IDEMPOTENCY_RESOURCE_UNAVAILABLE",
+            "The resource recorded for this idempotency key is unavailable.");
     }
 
     private static bool TryNormalizeEmail(string? value, out string email, out string normalizedEmail)

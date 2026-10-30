@@ -1,3 +1,4 @@
+using GodForge.Application.Common.Idempotency;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
@@ -5,6 +6,7 @@ using GodForge.Application.Common.Security;
 using GodForge.Application.Common.Text;
 using GodForge.Application.Features.Projects.DTOs;
 using GodForge.Domain.Entities.Core;
+using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Enums;
 
 namespace GodForge.Application.Features.Projects;
@@ -12,6 +14,7 @@ namespace GodForge.Application.Features.Projects;
 public sealed class ProjectMembershipService : ProjectOperationServiceBase, IProjectMembershipService
 {
     private readonly IUserRepository _users;
+    private readonly IIdempotencyRepository _idempotency;
 
     public ProjectMembershipService(
         IProjectRepository projects,
@@ -20,10 +23,12 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
         IUserRepository users,
         IAuditWriter auditWriter,
         IClock clock,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IIdempotencyRepository idempotency)
         : base(projects, members, organizationMembers, auditWriter, clock, unitOfWork)
     {
         _users = users;
+        _idempotency = idempotency;
     }
 
     public async Task<Result<ProjectOwnershipTransferDto>> TransferOwnershipAsync(Guid actorId, Guid projectId, Guid newOwnerUserId, string retainCurrentOwnerAs, long version, CancellationToken cancellationToken)
@@ -48,7 +53,7 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
             var targetOrganizationMembership = await _organizationMembers.GetAsync(access.Project.OrganizationId, newOwnerUserId, cancellationToken);
             var users = await _users.GetByIdsAsync(new[] { actorId, newOwnerUserId }, cancellationToken);
             var usersById = users.ToDictionary(user => user.Id);
-            if (target is null ||
+            if (target is not { Status: MembershipStatus.Active } ||
                 targetOrganizationMembership is not { Status: MembershipStatus.Active } ||
                 !usersById.TryGetValue(newOwnerUserId, out var targetUser) ||
                 !usersById.TryGetValue(actorId, out var actorUser))
@@ -57,11 +62,15 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
                     ApplicationError.NotFound("MEMBERSHIP_NOT_FOUND", "Target project membership was not found."),
                     cancellationToken);
             }
+            if (targetUser.Status != UserStatus.Active || targetUser.DeletedAt is not null)
+                return await RollbackAsync<ProjectOwnershipTransferDto>(
+                    ApplicationError.NotFound("MEMBERSHIP_NOT_FOUND", "Target account is not active."), cancellationToken);
 
             var actorMembership = access.ProjectMembership!;
             var now = _clock.UtcNow;
             target.UpdateRole(ProjectRole.ProjectOwner, target.Version, now);
             actorMembership.UpdateRole(retainedRole, actorMembership.Version, now);
+            access.Project.RecordOwnershipTransfer(version, now);
             await _auditWriter.WriteAuditAsync(
                 actorId, projectId, "project.ownership_transferred", "project", projectId, "succeeded",
                 new { PreviousOwnerUserId = actorId, NewOwnerUserId = newOwnerUserId, RetainedRole = retainedRole.ToString() }, cancellationToken);
@@ -101,10 +110,14 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
         return new PagedResult<ProjectMemberDto>(items, members.Page, members.PageSize, members.TotalItems);
     }
 
-    public async Task<Result<ProjectMemberDto>> AddMemberAsync(Guid actorId, Guid projectId, Guid userId, string role, CancellationToken cancellationToken)
+    public async Task<Result<ProjectMemberDto>> AddMemberAsync(Guid actorId, Guid projectId, Guid userId, string role, CancellationToken cancellationToken, string? idempotencyKey = null)
     {
         if (!EnumText.TryParseDefined<ProjectRole>(role, out var newRole))
             return ApplicationError.Validation("VALIDATION_ERROR", "Project role is invalid.");
+
+        var keyError = IdempotencyRequest.Normalize(idempotencyKey, out var key);
+        if (keyError is not null) return keyError;
+        var requestHash = IdempotencyRequest.Hash($"{projectId:N}\n{userId:N}\n{newRole}");
 
         await BeginSerializedMutationAsync("project-membership", projectId, cancellationToken);
         try
@@ -119,12 +132,26 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
 
             var organizationMembership = await _organizationMembers.GetAsync(access.Project!.OrganizationId, userId, cancellationToken);
             var user = await _users.GetByIdAsync(userId, cancellationToken);
-            if (organizationMembership is not { Status: MembershipStatus.Active } || user is null)
+            if (organizationMembership is not { Status: MembershipStatus.Active } || user is not { Status: UserStatus.Active, DeletedAt: null })
                 return await RollbackAsync<ProjectMemberDto>(
                     ApplicationError.NotFound("MEMBERSHIP_NOT_FOUND", "Target user is not an active organization member."),
                     cancellationToken);
 
             var existing = await _members.GetAnyMembershipAsync(projectId, userId, cancellationToken);
+            if (key is not null)
+            {
+                var record = await _idempotency.GetAsync(actorId, "project.member.add", key, cancellationToken);
+                if (record is not null)
+                {
+                    if (record.RequestHash != requestHash)
+                        return await RollbackAsync<ProjectMemberDto>(ApplicationError.Conflict("IDEMPOTENCY_KEY_REUSED", "The key was used with a different request."), cancellationToken);
+                    if (existing is not { Status: MembershipStatus.Active } || existing.Id != record.ResourceId || existing.Role != newRole)
+                        return await RollbackAsync<ProjectMemberDto>(ApplicationError.Conflict("IDEMPOTENCY_RESOURCE_UNAVAILABLE", "The recorded membership has changed."), cancellationToken);
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    _unitOfWork.ClearTrackedChanges();
+                    return ProjectMemberDto.From(existing, user);
+                }
+            }
             var now = _clock.UtcNow;
             if (existing is null)
             {
@@ -148,6 +175,9 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
             {
                 existing.Reactivate(newRole, now);
             }
+
+            if (key is not null)
+                await _idempotency.AddAsync(IdempotencyRecord.Create(actorId, "project.member.add", key, requestHash, "project-member", existing.Id, now), cancellationToken);
 
             await _auditWriter.WriteAuditAsync(
                 actorId,
@@ -188,7 +218,7 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
 
             var target = await _members.GetAnyMembershipAsync(projectId, userId, cancellationToken);
             var user = await _users.GetByIdAsync(userId, cancellationToken);
-            if (target is null || user is null)
+            if (target is not { Status: MembershipStatus.Active } || user is null)
                 return await RollbackAsync<ProjectMemberDto>(
                     ApplicationError.NotFound("MEMBERSHIP_NOT_FOUND", "Project membership was not found."),
                     cancellationToken);
@@ -255,6 +285,9 @@ public sealed class ProjectMembershipService : ProjectOperationServiceBase, IPro
                 return await RollbackAsync(
                     ApplicationError.NotFound("MEMBERSHIP_NOT_FOUND", "Project membership was not found."),
                     cancellationToken);
+            var mutationError = GetMutationError(project);
+            if (mutationError is not null)
+                return await RollbackAsync(mutationError, cancellationToken);
             if (target.Role == ProjectRole.ProjectOwner &&
                 target.Status == MembershipStatus.Active &&
                 await _members.GetOwnerCountAsync(projectId, cancellationToken) <= 1)

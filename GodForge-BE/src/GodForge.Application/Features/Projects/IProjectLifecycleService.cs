@@ -12,4 +12,5 @@ public interface IProjectLifecycleService
     Task<Result<ProjectDto>> UpdateAsync(Guid actorId, Guid projectId, string name, string slug, string? description, string visibility, long version, CancellationToken cancellationToken);
     Task<Result<ProjectDeletionAcceptedDto>> RequestDeletionAsync(Guid actorId, Guid projectId, long version, string confirmationSlug, CancellationToken cancellationToken);
     Task<Result<ProjectDto>> RestoreAsync(Guid actorId, Guid projectId, long version, CancellationToken cancellationToken);
+    Task<Result<ProjectDto>> ArchiveAsync(Guid actorId, Guid projectId, long version, CancellationToken cancellationToken);
 }

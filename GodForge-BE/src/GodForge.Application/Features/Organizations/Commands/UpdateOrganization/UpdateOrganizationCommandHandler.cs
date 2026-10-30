@@ -27,12 +27,15 @@ public sealed class UpdateOrganizationCommandHandler : OrganizationCommandHandle
 
     public async Task<Result<OrganizationDto>> Handle(UpdateOrganizationCommand request, CancellationToken cancellationToken)
     {
+        if (request.Version <= 0 || (request.Name is null && request.Slug is null))
+            return ApplicationError.Validation("VALIDATION_ERROR", "Organization update request is invalid.");
+
         var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationsUpdate, cancellationToken);
         if (access.Error is not null) return access.Error;
 
         var organization = access.Organization!;
-        var nextName = string.IsNullOrWhiteSpace(request.Name) ? organization.Name : request.Name.Trim();
-        var nextSlug = string.IsNullOrWhiteSpace(request.Slug) ? organization.Slug : request.Slug.Trim();
+        var nextName = request.Name is null ? organization.Name : request.Name.Trim();
+        var nextSlug = request.Slug is null ? organization.Slug : request.Slug.Trim();
 
         if (!Organization.IsValidName(nextName) || !Organization.IsValidSlug(nextSlug))
             return ApplicationError.Validation("VALIDATION_ERROR", "Organization name or slug is invalid.");
@@ -41,6 +44,9 @@ public sealed class UpdateOrganizationCommandHandler : OrganizationCommandHandle
 
         if (organization.Version != request.Version)
             return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "The resource changed before this operation completed.");
+
+        if (nextSlug != organization.Slug && await _organizations.SlugExistsAsync(nextSlug, organization.Id, cancellationToken))
+            return ApplicationError.Conflict("ORGANIZATION_SLUG_EXISTS", "Organization slug already exists.");
 
         var now = _clock.UtcNow;
         organization.Update(nextName, nextSlug, request.Version, now);

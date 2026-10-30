@@ -43,6 +43,7 @@ Public errors use stable `SCREAMING_SNAKE_CASE`, safe messages and correlation I
 | `PROJECT_NOT_ARCHIVED` | 409 | Restore requires an archived project. |
 | `PROJECT_SETTINGS_NOT_FOUND` | 404 | Project settings row is absent. |
 | `PROJECT_ARCHIVED` | 409 | Mutation blocked for archived project. |
+| `PROJECT_NOT_ACTIVE` | 409 | Mutation blocked for a project that is not active. |
 | `MEMBERSHIP_NOT_FOUND` | 404 | Membership absent or inaccessible. |
 | `MEMBERSHIP_ALREADY_EXISTS` | 409 | An active membership already exists. |
 | `LAST_OWNER_REQUIRED` | 409 | Operation would leave no owner. |

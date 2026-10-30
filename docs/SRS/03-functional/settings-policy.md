@@ -82,3 +82,16 @@ User, ProjectOwner, Maintainer, OrganizationOwner, OrganizationAdmin.
 - Test effective-value precedence, stale-version conflict and platform-minimum rejection.
 - Metrics: settings updates by scope/outcome and cache-invalidation failures.
 - Audit logs record safe before/after summaries without secrets.
+
+
+## Executable M1 settings boundary — 2026-10-30
+
+FR-17.2 project reads/updates are executable through projects.read/settings.update. ProjectOwner/Maintainer persist the existing key, AI preference, private/internal default asset visibility and positive notification-policy version with independent concurrency and audit. The UI preserves the profile key/notification version without inventing choices or notification delivery. Saving a Boolean does not activate Gemini.
+
+Open Must acceptance prerequisites:
+
+- FR-17.1 / AC-FR-17.1-01: /users/me/settings is named above, but detailed M1 contracts provide no typed supported preference request/response/version/error contract. identity.UserSetting has theme/notification fields but no concurrency version, application use case or API. Approve preference semantics and document the physical version/backfill and typed acceptance contract before implementation. This is an M1 gap, not a later-milestone waiver.
+- AC-FR-17.2-02 / FR-17.3: no executable organization/platform policy source or provider-capability resolver exists. sourceScope=project is a stored scope marker, not evidence of effective precedence. Complete the policy source/contract and authoritative resolution; frontend restrictions would not meet acceptance.
+- FR-17.4 / AC-FR-17.4-01: no authoritative active/compatible profile registry/selection source is exposed. The UI displays the stored key. New versioned analysis identity depends on the registry/rules and immutable analysis pipeline (M4–M6). Key persistence alone does not meet this criterion.
+
+AC-FR-17.4-02 stale settings conflicts have PostgreSQL and live HTTP evidence. [Project acceptance evidence](../../PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md). Full M1 remains open.

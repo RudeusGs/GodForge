@@ -7,4 +7,6 @@ public sealed class FrontendSettings
     [Required]
     [Url]
     public string BaseUrl { get; set; } = "http://localhost:5173";
+
+    public string[] AllowedOrigins { get; set; } = [];
 }

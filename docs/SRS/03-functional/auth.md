@@ -54,6 +54,8 @@ Anonymous user, authenticated user, SystemAdmin.
 - Refresh-token reuse marks the token family compromised and revokes the configured session/family scope.
 - Password reset and privileged session changes emit append-oriented security/audit events.
 - Session authorization always verifies current user/session state; a valid JWT does not override a revoked session.
+- Browser logout clears runtime credentials and records a non-secret local logout intent even if the server is unavailable. A failed server revocation is explained on the sign-in page; reload must not silently restore that session. Explicit sign-in clears the intent. The UI must not claim remote revocation succeeded after a failed request.
+- A transient session-bootstrap failure blocks authenticated content and offers Retry. If Retry returns a definitive 401, protected routes redirect to sign-in even when authentication was already false before the retry.
 
 ## Async processing and idempotency
 
@@ -61,6 +63,7 @@ Anonymous user, authenticated user, SystemAdmin.
 - Creating a challenge is idempotent within the configured resend cooldown; repeated requests do not create unlimited active challenges.
 - Login, refresh, logout and session reads are synchronous.
 - Refresh rotation uses a database transaction and concurrency protection; duplicate/replayed tokens do not produce multiple valid descendants.
+- Password reset retries bounded optimistic conflicts from fresh user/challenge/session/token state when a concurrent refresh updates tracked versions. Every retry revalidates the single-use challenge; a challenge consumed by another reset remains invalid. Revocation-cache failures still fail closed before persistence.
 
 ## Acceptance criteria
 

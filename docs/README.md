@@ -44,6 +44,7 @@ Target requirements must not be described as implemented until `IMPLEMENTATION_S
 | `DEFINITION_OF_DONE.md` | Completion gate for a feature or milestone. |
 | `MILESTONES.md` | Ordered implementation plan and exit gates. |
 | `IMPLEMENTATION_STATUS.md` | Current evidence-based implementation state. |
+| [Completion plan](IMPLEMENTATION_PLAN.md) | Remaining milestone work and required completion evidence. |
 | `RBAC_MATRIX.md` | Permission model for platform, organization, project and asset scopes. |
 | `ERROR_CODES.md` | Stable public error catalog. |
 | `QUALITY_GATES.md` | Build, test, security, documentation and release gates. |

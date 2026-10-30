@@ -47,8 +47,23 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
 
         if (!_secretHash.Verify(request.Otp, challenge.SecretHash))
         {
-            challenge.RecordFailedAttempt(now);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var retries = 3;
+            while (retries-- > 0)
+            {
+                try
+                {
+                    challenge.RecordFailedAttempt(now);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    break;
+                }
+                catch (ConcurrencyConflictException)
+                {
+                    if (retries == 0) break;
+                    _unitOfWork.ClearTrackedChanges();
+                    challenge = await _challenges.GetActiveAsync(normalizedEmail, AuthChallengePurposes.Registration, cancellationToken);
+                    if (challenge is null || !challenge.IsActive(now)) break;
+                }
+            }
             return ApplicationError.Validation("AUTH_OTP_INVALID", "Invalid OTP verification code.");
         }
 

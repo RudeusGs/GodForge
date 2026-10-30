@@ -57,11 +57,6 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationError.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password.");
         }
-        // Do the expensive verification before taking the user lock, but make no account
-        // decision from this potentially stale aggregate. Every known-user login outcome,
-        // including failure counters and lockout, is serialized and re-evaluated below.
-        _ = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
-
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {

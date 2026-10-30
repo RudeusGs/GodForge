@@ -4,6 +4,7 @@ using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Security;
 using GodForge.Application.Features.Organizations.DTOs;
 using GodForge.Domain.Entities.Core;
+using GodForge.Domain.Enums;
 using MediatR;
 
 namespace GodForge.Application.Features.Organizations.Commands.RequestOrganizationDeletion;
@@ -27,24 +28,61 @@ public sealed class RequestOrganizationDeletionCommandHandler : OrganizationComm
 
     public async Task<Result<DeletionAcceptedDto>> Handle(RequestOrganizationDeletionCommand request, CancellationToken cancellationToken)
     {
-        var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationsDelete, cancellationToken);
-        if (access.Error is not null) return access.Error;
+        if (request.Version <= 0)
+            return ApplicationError.Validation("VALIDATION_ERROR", "Organization version must be positive.");
 
-        var organization = access.Organization!;
-        if (!string.Equals(organization.Slug, request.ConfirmationSlug?.Trim(), StringComparison.Ordinal))
-            return ApplicationError.Validation("VALIDATION_ERROR", "confirmationSlug does not match the organization slug.");
-        if (organization.Version != request.Version)
-            return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "Organization version is stale.");
+        await BeginMembershipMutationAsync("organization-membership", request.OrganizationId, cancellationToken);
+        try
+        {
+            var organization = await _organizations.GetByIdAsync(request.OrganizationId, cancellationToken);
+            var membership = await _members.GetAsync(request.OrganizationId, request.ActorId, cancellationToken);
+            if (organization is null || organization.Status == OrganizationStatus.Deleted || membership is not { Status: MembershipStatus.Active })
+                return await RollbackAsync<DeletionAcceptedDto>(
+                    ApplicationError.NotFound("ORGANIZATION_NOT_FOUND", "Organization was not found."),
+                    cancellationToken);
+            if (!OrganizationRolePermissions.GetPermissionsForRole(membership.Role).Contains(Permissions.OrganizationsDelete))
+                return await RollbackAsync<DeletionAcceptedDto>(
+                    ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission for this organization operation."),
+                    cancellationToken);
+            if (!string.Equals(organization.Slug, request.ConfirmationSlug?.Trim(), StringComparison.Ordinal))
+                return await RollbackAsync<DeletionAcceptedDto>(
+                    ApplicationError.Validation("VALIDATION_ERROR", "confirmationSlug does not match the organization slug."),
+                    cancellationToken);
 
-        organization.MarkDeleting(request.Version, _clock.UtcNow);
+            if (organization.Status == OrganizationStatus.Deleting)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                _unitOfWork.ClearTrackedChanges();
+                return new DeletionAcceptedDto(organization.Id, "deleting", organization.Version);
+            }
 
-        await _auditWriter.WriteAuditAsync(
-            request.ActorId, null, "organization.deletion_requested", "organization", organization.Id, "succeeded",
-            new { organization.Slug, organization.Version }, cancellationToken);
+            if (organization.Status != OrganizationStatus.Active)
+                return await RollbackAsync<DeletionAcceptedDto>(
+                    ApplicationError.Conflict("ORGANIZATION_NOT_ACTIVE", "Organization is not active."),
+                    cancellationToken);
+            if (organization.Version != request.Version)
+                return await RollbackAsync<DeletionAcceptedDto>(
+                    ApplicationError.Conflict("CONCURRENCY_CONFLICT", "Organization version is stale."),
+                    cancellationToken);
 
-        var save = await SaveAsync(cancellationToken);
-        if (save is not null) return save;
+            organization.MarkDeleting(request.Version, _clock.UtcNow);
 
-        return new DeletionAcceptedDto(organization.Id, "deleting", organization.Version);
+            await _auditWriter.WriteAuditAsync(
+                request.ActorId, null, "organization.deletion_requested", "organization", organization.Id, "succeeded",
+                new { organization.Slug, organization.Version }, cancellationToken);
+
+            var save = await SaveAsync(cancellationToken);
+            if (save is not null)
+                return await RollbackAsync<DeletionAcceptedDto>(save, cancellationToken);
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return new DeletionAcceptedDto(organization.Id, "deleting", organization.Version);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            _unitOfWork.ClearTrackedChanges();
+            throw;
+        }
     }
 }

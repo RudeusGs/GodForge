@@ -7,20 +7,22 @@ import AppLoading from './components/AppLoading.vue';
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-const isBootstrapping = computed(() => !authStore.initialized);
+const isBootstrapping = computed(() => !authStore.initialized || (route.meta.requiresAuth && !authStore.isAuthenticated));
 
-watch(() => authStore.isAuthenticated, authenticated => {
-    if (!authenticated && authStore.initialized && route.meta.requiresAuth) {
+watch([() => authStore.isAuthenticated, () => authStore.initialized], ([authenticated, initialized]) => {
+    if (!authenticated && initialized && route.meta.requiresAuth) {
         void router.replace({ name: 'login', query: { authReason: authStore.lastAuthClearReason ?? 'session-revoked', returnTo: route.fullPath } });
     }
 });
 </script>
 
 <template>
-    <Transition name="app-ready" mode="out-in">
-        <AppLoading v-if="isBootstrapping" key="loading" />
-        <router-view v-else key="application" />
-    </Transition>
+    <router-view v-slot="{ Component }">
+        <Transition name="app-ready" mode="out-in">
+            <AppLoading v-if="isBootstrapping" key="loading" />
+            <component :is="Component" v-else :key="route.path" />
+        </Transition>
+    </router-view>
 </template>
 
 <style>

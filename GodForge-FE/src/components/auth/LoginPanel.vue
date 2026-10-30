@@ -15,6 +15,8 @@ const loading = ref(false);
 const errorMsg = ref('');
 const statusMsg = ref(route.query.registered === 'true'
     ? 'Your account was created. Please sign in.'
+    : route.query.authReason === 'logout-incomplete'
+        ? 'You are signed out on this device. The server could not confirm session revocation. Sign in again to review and revoke your sessions.'
     : route.query.authReason === 'password-changed'
         ? 'Your password changed. Sign in with your new password.'
         : route.query.authReason === 'session-revoked'

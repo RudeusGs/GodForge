@@ -164,8 +164,10 @@ describe('Auth Store', () => {
         vi.mocked(authApi.logout).mockRejectedValueOnce(new Error('redis unavailable'));
         await store.login({ email: 'test@example.com', password: 'password123' });
 
-        await expect(store.logout()).rejects.toThrow('redis unavailable');
+        await expect(store.logout()).rejects.toThrow('Logout incomplete: The server could not be reached to securely revoke your session.');
 
+        expect(authRefreshCoordinator.publishCleared).toHaveBeenCalledWith('logout-incomplete');
+        expect(localStorage.getItem('godforge_auth_logout_intent')).toBe('true');
         expect(store.isAuthenticated).toBe(false);
         expect(store.accessToken).toBeNull();
         expect(store.user).toBeNull();

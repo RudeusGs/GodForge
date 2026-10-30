@@ -7,7 +7,12 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node scripts/verify.mjs",
+    "verify": "node scripts/verify.mjs",
+    "verify:backend": "node scripts/verify.mjs --backend",
+    "test:backend:smoke": "node scripts/backend-smoke.mjs",
+    "test:workspace:live": "node scripts/workspace-live.mjs",
+    "docs:check": "node scripts/check-doc-links.mjs",
     "prepare": "husky"
   },
   "repository": {

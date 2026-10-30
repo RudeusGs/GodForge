@@ -32,7 +32,8 @@ public sealed record OrganizationMemberDto(
     string Role,
     string Status,
     DateTimeOffset JoinedAt,
-    long Version)
+    long Version,
+    string AccountStatus = "active")
 {
     public static OrganizationMemberDto From(OrganizationMember membership, User user) => new(
         membership.UserId,
@@ -41,7 +42,8 @@ public sealed record OrganizationMemberDto(
         EnumText.ToCamelCase(membership.Role),
         EnumText.ToCamelCase(membership.Status),
         membership.JoinedAt,
-        membership.Version);
+        membership.Version,
+        EnumText.ToCamelCase(user.Status));
 }
 
 public sealed record OrganizationInvitationDto(

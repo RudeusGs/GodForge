@@ -32,11 +32,12 @@ public sealed class UpdateOrganizationMemberCommandHandler : OrganizationCommand
 
     public async Task<Result<OrganizationMemberDto>> Handle(UpdateOrganizationMemberCommand request, CancellationToken cancellationToken)
     {
-        if (!EnumText.TryParseDefined<OrganizationRole>(request.Role, out var newRole) ||
+        if (request.Version <= 0 ||
+            !EnumText.TryParseDefined<OrganizationRole>(request.Role, out var newRole) ||
             !EnumText.TryParseDefined<MembershipStatus>(request.Status, out var newStatus) ||
             newStatus == MembershipStatus.Removed)
         {
-            return ApplicationError.Validation("VALIDATION_ERROR", "Membership role or status is invalid.");
+            return ApplicationError.Validation("VALIDATION_ERROR", "Membership role, status, or version is invalid.");
         }
 
         await BeginMembershipMutationAsync("organization-membership", request.OrganizationId, cancellationToken);
@@ -48,7 +49,7 @@ public sealed class UpdateOrganizationMemberCommandHandler : OrganizationCommand
 
             var target = await _members.GetAsync(request.OrganizationId, request.UserId, cancellationToken);
             var targetUser = await _users.GetByIdAsync(request.UserId, cancellationToken);
-            if (target is null || targetUser is null)
+            if (target is null || target.Status == MembershipStatus.Removed || targetUser is null)
                 return await RollbackAsync<OrganizationMemberDto>(
                     ApplicationError.NotFound("MEMBERSHIP_NOT_FOUND", "Organization membership was not found."),
                     cancellationToken);

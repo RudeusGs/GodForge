@@ -433,7 +433,8 @@ public sealed class ConcurrencyPersistenceTests
             new UserRepository(context),
             audit.Object,
             clock.Object,
-            unitOfWork);
+            unitOfWork,
+            new IdempotencyRepository(context));
         return new ProjectServiceScope(context, lifecycle, membership);
     }
 

@@ -206,14 +206,16 @@ public sealed class OrganizationsController : BaseApiController
     public async Task<IActionResult> CreateInvitation(
         Guid organizationId,
         [FromBody] CreateOrganizationInvitationRequest request,
-        CancellationToken cancellationToken)
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
             new GodForge.Application.Features.Organizations.Commands.CreateOrganizationInvitation.CreateOrganizationInvitationCommand(
                 ActorId,
                 organizationId,
                 request.Email,
-                request.Role),
+                request.Role,
+                idempotencyKey),
             cancellationToken);
         if (result.IsError) return HandleResult(result);
         return Created($"/api/v1/organizations/{organizationId}/invitations/{result.Value.Id}", Envelope(result.Value));

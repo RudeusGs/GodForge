@@ -9,7 +9,8 @@ public sealed record AddProjectMemberCommand(
     Guid ActorId,
     Guid ProjectId,
     Guid UserId,
-    string Role) : IRequest<Result<ProjectMemberDto>>;
+    string Role,
+    string? IdempotencyKey = null) : IRequest<Result<ProjectMemberDto>>;
 
 public sealed class AddProjectMemberCommandHandler : IRequestHandler<AddProjectMemberCommand, Result<ProjectMemberDto>>
 {
@@ -23,7 +24,8 @@ public sealed class AddProjectMemberCommandHandler : IRequestHandler<AddProjectM
             request.ProjectId,
             request.UserId,
             request.Role,
-            cancellationToken);
+            cancellationToken,
+            request.IdempotencyKey);
 }
 
 public sealed class AddProjectMemberCommandValidator : AbstractValidator<AddProjectMemberCommand>
