@@ -1,0 +1,33 @@
+# M1 Settings contracts
+
+These synchronous contracts implement FR-17.1, FR-17.2, the AI restriction portion of FR-17.3 and the FR-17.4 selection foundation. Success and error envelopes follow the API conventions. No endpoint accepts secrets or a target user ID.
+
+## User preferences
+
+`GET /api/v1/users/me/settings` requires an active authenticated session. Missing settings are initialized under a user-scoped transaction lock, with database uniqueness on user_id. Defaults preserve the existing entity: light, in-app true, email true, digest off, version 1. Initialization is persistence housekeeping; explicit updates are audited.
+
+`PUT /api/v1/users/me/settings` requires all fields: `theme` (light/dark), `notificationInApp` (boolean), `notificationEmail` (boolean), `notificationDigest` (off/daily/weekly), `version` (positive int64). Unknown fields, missing fields and unsupported values return 400 VALIDATION_ERROR. No numeric enum values. Response contains those fields plus createdAt/updatedAt; a successful write increments version. Stale writes return 409 CONCURRENCY_CONFLICT. The actor comes only from the session. Audit: user.settings_updated, without notification delivery or session mutation. Notification values are preferences for future delivery, not evidence of a delivery subsystem.
+
+Schema: identity.user_settings gains a bigint concurrency token, constant backfill/default 1 and positive constraint. Existing values and unique user relation remain unchanged. Personal preferences follow user retention; audit follows audit retention. Forward migration only; roll back application code without removing the new column.
+
+## Organization capability policy
+
+`GET/PUT /api/v1/organizations/{organizationId}/settings` requires active OrganizationOwner/Admin and current organization membership. Nonmembers receive masked 404; active nonadministrators receive 403. PUT requires `aiAdvisoryAllowed` and positive `version`; unknown/missing properties are rejected. Default organization policy permits AI preference configuration, but cannot enable a disabled platform capability. Response contains organizationId, stored aiAdvisoryAllowed, platformAiAdvisoryAllowed, version, createdAt, updatedAt. A missing row is initialized lazily under the organization-membership lock, preserving existing projects with no hidden restrictive backfill. Audit: organization.settings_updated. Policy versions are independent of organization metadata versions.
+
+Schema: core.organization_settings, UUID primary key, unique organization_id restricted FK, boolean ai_advisory_allowed, bigint positive concurrency version, UTC timestamps. No credentials. Policy retained with organization; no cascade deletion. Policy writes and project writes take organization-membership first, so validation uses current committed policy and cannot partially save. No effective-policy cache.
+
+## Project effective settings and profiles
+
+Existing project routes/permissions remain unchanged. GET/PUT responses retain stored fields and add `effectiveAiAdvisory` (value, sourceScope, editable, restrictionReason) and `availableAnalysisProfiles`. Precedence: Gemini.Enabled platform capability, organization AI restriction, stored project preference. User display/notification preferences do not affect capability authorization. Project setting `sourceScope` remains the stored project scope; the effective field carries actual provenance. An attempt to enable restricted AI returns 409 SETTINGS_POLICY_RESTRICTED atomically. Disabling AI remains allowed. Stored true can remain after a later policy restriction, with effective false.
+
+Project settings PUT also rejects unknown properties (including injected tenant IDs and platform-capability fields) with 400 before any mutation/audit, matching the strict user/organization settings boundary. Existing supported request fields and routes are unchanged.
+
+Profile entries contain key, version, enabled and compatible. Only the existing current-default-v1 deterministic profile is selectable; its version is immutable in the registry. Unknown/disabled/incompatible references return 400 ANALYSIS_PROFILE_INVALID after resource authorization and stale-version checks. No speculative profiles or engine compatibility claims. The current pipeline has no authoritative Godot engine-version metadata; compatibility is limited to the existing analyzer contract. Selection does not certify full immutable execution identity. Historical analysis identity, versioned rules/parser, queued-work policy revalidation and full AC-FR-17.4-01 remain later pipeline integration work. No new messages or fake analyses are emitted by these settings operations.
+
+## Acceptance and threats
+
+Organization policy recovery (FR-17.3 / AC-FR-17.4-02): explicitly classify `CONCURRENCY_CONFLICT`, fetch current policy and retain edits for deliberate resubmission using the returned version. Forbidden/masked access blocks saves until an authorized reload; validation/policy rejections display safe API messages. Transport failures, HTTP 408 and server errors have uncertain write outcomes: reconcile with GET, compare values/version, never automatically replay PUT. Matching requested values at a newer version need no retry; otherwise permit a user-initiated conditional PUT after reconciliation. Failed reconciliation blocks mutation until a successful reload. Server concurrency protects against a late original write. Generation guards cover reads, writes and reconciliation across tenant changes and disposal.
+
+The repository-trigger legacy `analysisProfile` field remains wire compatible and selects an **AI advisory mode** (`health_overview`, `commit_review`, `architecture_review`), validated by `AiAdvisoryModes`. Project `analysisProfileKey` selects a **deterministic definition** from `AnalysisProfileRegistry`. Each validator rejects the other concept's values. This adds no immutable execution identity to AnalysisRun. Queued AI checks fresh policy before cache lookup, after lookup and after provider completion. These point-in-time checks cannot retract transmitted requests or establish atomic policy validation through final job publication.
+
+TC-SET coverage must exercise own scope, overposting, missing values, enum validation, stale/concurrent updates, duplicate initialization, audit atomicity, fresh/upgrade migration preservation, organization role/tenant boundaries, policy precedence and project rollback. T-01/T-02 tenant and privilege boundaries apply. APIs return no provider keys. Settings are small bounded synchronous operations; existing authentication rate limits remain unchanged. No new provider calls or notifications are introduced.

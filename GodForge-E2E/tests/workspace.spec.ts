@@ -77,6 +77,8 @@ async function contract(context: BrowserContext, onboarding = false) {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
     const method = route.request().method();
+    if (path === '/users/me/settings') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { theme: 'dark', notificationInApp: true, notificationEmail: true, notificationDigest: 'off', version: 1, createdAt: stamp, updatedAt: stamp } }) });
+    if (/^\/organizations\/[^/]+\/settings$/.test(path)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { organizationId: path.split('/')[2], aiAdvisoryAllowed: true, platformAiAdvisoryAllowed: false, version: 1, createdAt: stamp, updatedAt: stamp } }) });
     const reply = (data: unknown, status = 200, meta?: unknown) =>
       route.fulfill({
         status,

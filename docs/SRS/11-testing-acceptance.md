@@ -1,6 +1,10 @@
 # 11. Testing and Acceptance
 
+Settings acceptance extension: SettingsHttpTests exercises defaults, own-user access, strict full requests/overposting, invalid enums, no target-user route, concurrency/audit atomicity, policy floors, roles/tenancy, source attribution, current-state retrieval, profile validation and independent versions. SettingsMigrationTests applies both empty and previous-schema migrations in random disposable databases, preserves meaningful settings and verifies PostgreSQL concurrency, uniqueness and positive-version checks. EffectiveSettingsPolicyTests/QueuedAiPolicyTests cover intersections and provider denial/revoked in-flight output. Frontend specs cover preferences, theme, dirty/revert/conflict, duplicate submit, loading, disposal and policy presentation. TC-SETTINGS-BROWSER-001 uses controlled contracts; TC-SETTINGS-LIVE-001/002 use real isolated services, session refresh, policy and profiles. Historical analysis immutability/different-version execution remain unverified AC-FR-17.4-01; no alternate profile is fabricated. [Executed results](../M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+
 ## Test levels
+
+Stabilization regressions cover all ten policy recovery scenarios, late reconciliation during tenant switching and disposal on save success/failure. PostgreSQL tests verify separate actors, removed-admin denial, strict policy rejection without rows/audits, concurrent initialization, archived/deleting queued-policy denial and prior project preservation. AnalysisConceptBoundaryTests rejects cross-use of deterministic keys/advisory modes. The deterministic remote-revocation HTTP regression uses an audit barrier to commit refresh before the stale revocation save.
 
 ### Unit
 

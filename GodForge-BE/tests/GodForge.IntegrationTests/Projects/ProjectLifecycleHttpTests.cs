@@ -361,7 +361,7 @@ public sealed class ProjectLifecycleHttpTests(PostgresPersistenceFixture fixture
         using var owner = CreateClient(factory, seed.Users["owner"]);
         using var maintainer = CreateClient(factory, seed.Users["maintainer"]);
         var prefix = $"/api/v1/projects/{seed.ProjectId}";
-        var settings = new { analysisProfileKey = "current-default-v1", aiAdvisoryEnabled = true, defaultAssetVisibility = "internal", notificationPolicyVersion = 1, version = 1 };
+        var settings = new { analysisProfileKey = "current-default-v1", aiAdvisoryEnabled = false, defaultAssetVisibility = "internal", notificationPolicyVersion = 1, version = 1 };
         Task<HttpResponseMessage> ChangeSettings() => owner.PutAsJsonAsync($"{prefix}/settings", settings);
         Task<HttpResponseMessage> Add() => owner.PostAsJsonAsync($"{prefix}/members", new { userId = seed.Users["candidate"], role = "viewer" });
         Task<HttpResponseMessage> Role(string role) => owner.PatchAsJsonAsync($"{prefix}/members/{seed.Users["developer"]}", new { role, version = 1 });

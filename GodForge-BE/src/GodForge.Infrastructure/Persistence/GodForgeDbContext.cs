@@ -69,6 +69,7 @@ public class GodForgeDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationSetting> OrganizationSettings => Set<OrganizationSetting>();
     public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ParserDiagnostic> ParserDiagnostics => Set<ParserDiagnostic>();

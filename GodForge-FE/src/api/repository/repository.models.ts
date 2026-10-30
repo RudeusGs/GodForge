@@ -24,9 +24,12 @@ export interface LinkRepositoryRequest {
   autoAnalyzeEnabled: boolean
 }
 
+export type AiAdvisoryMode = 'health_overview' | 'commit_review' | 'architecture_review'
+
 export interface TriggerRepositoryAnalysisRequest {
   branch?: string | null
-  analysisProfile: 'health_overview' | 'commit_review' | 'architecture_review'
+  /** Legacy wire name: selects optional AI advisory intent, not a deterministic profile. */
+  analysisProfile: AiAdvisoryMode
   includeAi: boolean
 }
 

@@ -11,6 +11,12 @@ export function useResource<T>(
     const error = ref('');
     let generation = 0;
     let disposed = false;
+    function reset() {
+        generation++;
+        data.value = undefined;
+        loading.value = false;
+        error.value = '';
+    }
     async function load() {
         const current = ++generation;
         data.value = undefined;
@@ -32,7 +38,7 @@ export function useResource<T>(
         disposed = true;
         generation++;
     });
-    return { data, loading, error, load };
+    return { data, loading, error, load, reset };
 }
 
 export const ORGANIZATION_MAX_NAME_LENGTH = 160;
@@ -125,6 +131,8 @@ export function workspaceError(cause: unknown): string {
         if (code === 'MEMBERSHIP_ALREADY_EXISTS') return 'This user is already an active project member.';
         if (code === 'PROJECT_ARCHIVED') return 'This project is archived. Restore it before making changes.';
         if (code === 'PROJECT_NOT_ACTIVE') return 'This project is not active and cannot be modified.';
+        if (code === 'SETTINGS_POLICY_RESTRICTED') return 'AI advisory is restricted by current platform or organization policy. Reload settings to review the effective policy.';
+        if (code === 'ANALYSIS_PROFILE_INVALID') return 'Select an active compatible analysis profile from the current list.';
         if (cause.response?.status === 404) {
             return 'This workspace is unavailable or you no longer have access.';
         }

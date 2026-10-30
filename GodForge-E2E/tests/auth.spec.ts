@@ -27,6 +27,7 @@ async function installAuthContract(context: BrowserContext) {
       state.refreshCalls++;
       return reply(state.refreshFails ? 503 : state.authenticated ? 200 : 401, auth);
     }
+    if (path.endsWith('/users/me/settings')) return reply(200, { theme: 'dark', notificationInApp: true, notificationEmail: true, notificationDigest: 'off', version: 1, createdAt: session.createdAt, updatedAt: session.createdAt });
     if (path.endsWith('/auth/login')) {
       state.authenticated = true;
       return reply(200, auth);
@@ -182,4 +183,32 @@ test('TC-AUTH-BROWSER-011: retrying an outage with an expired session protects t
   await expect(page).toHaveURL(/\/login\?/);
   await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+});
+
+test('TC-SETTINGS-BROWSER-001: accessible preferences save, reload and retain edits on conflict', async ({ page, context }) => {
+  await installAuthContract(context);
+  let preferences = { theme: 'dark', notificationInApp: true, notificationEmail: true, notificationDigest: 'off', version: 1, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z' };
+  await context.route('**/api/v1/users/me/settings', async route => {
+    if (route.request().method() === 'PUT') {
+      const input = route.request().postDataJSON() as typeof preferences;
+      if (input.version !== preferences.version) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'CONCURRENCY_CONFLICT' } }) });
+      preferences = { ...preferences, ...input, version: preferences.version + 1 };
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: preferences }) });
+  });
+  await signIn(page, '/account/preferences');
+  await page.getByLabel('Theme', { exact: true }).selectOption('light');
+  await page.getByLabel('Notification digest', { exact: true }).selectOption('weekly');
+  await page.getByRole('button', { name: 'Save preferences', exact: true }).click();
+  await expect(page.getByText('Preferences saved.', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Notification digest', { exact: true })).toHaveValue('weekly');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  preferences.version++;
+  await page.getByLabel('Theme', { exact: true }).selectOption('dark');
+  await page.getByRole('button', { name: 'Save preferences', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('another session');
+  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('dark');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

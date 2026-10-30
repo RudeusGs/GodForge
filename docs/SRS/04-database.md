@@ -1,5 +1,7 @@
 # 4. Database Model
 
+The executable M1 user/organization settings extension and safe version backfill are specified in [M1 physical settings design](04-database-m1-physical.md) and [typed settings contracts](05-api-contracts/settings.md). It uses typed columns, unique scope ownership, restricted foreign keys and independent positive concurrency versions; no policy JSON or credentials.
+
 PostgreSQL is the durable source of GodForge business state. This document defines the target logical model; exact EF names may differ only with documented mapping. The implementation-ready M1 physical schema is defined in `04-database-m1-physical.md`.
 
 ## 4.1 Global rules

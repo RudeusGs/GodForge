@@ -1,4 +1,5 @@
 using GodForge.Application.Common.Text;
+using GodForge.Application.Features.Settings;
 using GodForge.Domain.Entities.Core;
 using GodForge.Domain.Entities.Identity;
 
@@ -75,7 +76,11 @@ public sealed record ProjectSettingsDto(
     string DefaultAssetVisibility,
     int NotificationPolicyVersion,
     string SourceScope,
-    long Version)
+    long Version,
+    EffectiveBooleanSetting? EffectiveAiAdvisory = null,
+    IReadOnlyList<AnalysisProfileOption>? AvailableAnalysisProfiles = null,
+    string? AnalysisProfileVersion = null,
+    bool SettingsEditable = false)
 {
     public static ProjectSettingsDto From(ProjectSetting settings) => new(
         settings.ProjectId,

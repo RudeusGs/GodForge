@@ -1,8 +1,12 @@
 # Implementation Status
 
+2026-10-30 stabilization: policy recovery and safe conditional retry, separate advisory-mode validation, post-cache policy revalidation, and the remote session-revocation concurrency defect are fixed with targeted regressions. [Final settings evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) owns final source identifiers, actual gate results and remote CI status. Full M1 stays open for FR-27.2 external reconciliation and AC-FR-17.4-01 immutable execution; selection is a foundation only.
+
 Evidence basis: the repository snapshot and executable local verification performed through 2026-10-30. This file records only behavior present in the current snapshot; future milestones are not counted as current defects. Remaining work is tracked in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). The dated workspace evidence below supplements the earlier baseline record; it does not certify M0/M1 or a clean CI run.
 
 ## Current evidence
+
+Final stabilization source `1e56c7f757a95ec5e41138bd410b8bbca281c410` has a successful eight-job [Actions run 41066217337](https://github.com/RudeusGs/GodForge/actions/runs/41066217337), clean-checkout local full verification, 271 unit/153 PostgreSQL/148 frontend/22 controlled-browser tests, 10 live browser tests and 41 smoke assertions. Both API and Worker HIGH/CRITICAL scans and dependency/secret scans passed. [Final commands, image identities and source limits](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) supersede historical pending local/security/CI statements below. M0 verification is accepted for this source; overall M1 remains partially verified. M2 readiness is BLOCKED on the unresolved M1 exit gate/provider-reconciliation dependency. Immutable execution remains separate M4–M6 work, not an additional M2 feature requirement.
 
 | Area | Status | Current evidence |
 |---|---|---|
@@ -76,4 +80,4 @@ A row may be marked fully verified only when code, automated tests, documentatio
 
 ## Project management addendum — 2026-10-30
 
-Overview, Members and Settings now implement assignment/reactivation, role management, removal/self-leave, ownership, versioned metadata/settings, archive/restore and retained deletion requests. The earlier organization results are historical. Current results and limitations are in [project management acceptance evidence](PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md). Full M1 remains incomplete: FR-17.1 user preference contracts/versioning, effective organization policy, versioned profile/analysis identity and FR-27.2 external reconciliation remain open. Remote CI/staging/release readiness is not established.
+Overview, Members and Settings implement assignment/reactivation, role management, removal/self-leave, ownership, versioned metadata/settings, archive/restore and retained deletion requests. The earlier organization results are historical. [Project management evidence](PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md) is supplemented by [settings and policy evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md): own-user preferences and effective AI policy are now executable. Full M1 remains incomplete: immutable profile/analysis execution identity and FR-27.2 external reconciliation remain open. Remote CI/staging/release readiness is not established.

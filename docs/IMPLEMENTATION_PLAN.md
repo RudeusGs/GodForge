@@ -1,5 +1,9 @@
 # Completion Plan
 
+Final source `1e56c7f` closes available M0 local/clean-checkout/remote CI and security gates: [Actions 41066217337](https://github.com/RudeusGs/GodForge/actions/runs/41066217337), eight successful mandatory jobs, both runtime images scanned and local regression gates passed. This supersedes the historical M0 row's missing CI/scan evidence for that source. Full M1 and M2 readiness remain blocked by required FR-27.2 provider reconciliation; full AC-FR-17.4-01 remains dependent on M4–M6, with no fabricated profiles or executions.
+
+2026-10-30 stabilization: policy recovery, advisory-mode boundaries, post-cache policy checks and the verified remote refresh/revocation race have targeted fixes. [Final settings evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) owns commands, counts, source identity and CI status. FR-27.2 remains an M2 provider-reconciliation dependency; AC-FR-17.4-01 remains OPEN for M4–M6 version propagation, immutable uniqueness and historical execution evidence.
+
 Status: current implementation backlog, reviewed 2026-10-26. This plan preserves the milestone order and Core Must scope in [MILESTONES.md](MILESTONES.md) and [SRS/01-scope.md](SRS/01-scope.md). Passing an isolated test suite does not close a milestone or a production release.
 
 | Order | Remaining completion work | Required exit evidence |
@@ -20,4 +24,4 @@ For every slice, identify FR/AC IDs and actor permissions, implement API/UI/data
 
 ## Project management follow-up — 2026-10-30
 
-Project browser workflows now exist with real local acceptance; see [project management evidence](PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md). Before M2, close M0 remote CI/scans/release evidence and remaining M1 settings prerequisites: approve own-user typed/versioned preferences and physical version/backfill, implement authoritative policy resolution, and complete the profile/analysis identity contract. Coordinate the FR-27.2 durable consumer with the M2 provider adapter; internal authorization does not establish external revocation.
+Project browser workflows have real local acceptance. The [settings slice](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) now implements typed/versioned own-user preferences, safe schema upgrade, authoritative AI policy resolution and single-profile selection. Before M2, close exact-snapshot remote CI/release evidence. Full AC-FR-17.4-01 remains dependent on M4–M6 immutable parser/rule/profile/input identity integration. Coordinate the FR-27.2 durable consumer with the M2 provider adapter; internal authorization does not establish external revocation. No unused reconciliation messages are emitted by settings changes.

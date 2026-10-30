@@ -1,5 +1,7 @@
 # 5. API Contract Catalog
 
+M1 settings GET/PUT routes and additive project effective-policy/profile fields are defined in [settings contracts](05-api-contracts/settings.md). They require active session identity, current scope authorization and versioned writes; no user ID or provider secrets are accepted through generic settings.
+
 All public routes use `/api/v1` and conventions in `../OPENAPI_CONVENTIONS.md`. Route existence does not make a feature implementation-ready; the module must also satisfy Definition of Ready.
 
 ## 5.1 Contract index

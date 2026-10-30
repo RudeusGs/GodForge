@@ -9,3 +9,4 @@ M1 contracts:
 - `auth.md`
 - `organizations.md`
 - `projects.md`
+- [settings.md](settings.md)

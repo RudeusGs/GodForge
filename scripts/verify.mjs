@@ -25,11 +25,15 @@ const compose = ['compose', '-f', 'docker-compose.test.yml'];
 let started = false;
 try {
   run(process.execPath, ['scripts/check-doc-links.mjs']);
+  const existing = spawnSync('docker', [...compose, 'ps', '-aq'], { cwd: root, encoding: 'utf8' });
+  if (existing.error || existing.status !== 0) throw new Error('Docker Compose is unavailable.');
+  if (existing.stdout.trim()) throw new Error('Verification project is already running. Stop that run before starting another.');
   started = true;
   run('docker', [...compose, 'up', '-d', '--wait']);
   const backendArtifacts = resolve(root, 'artifacts/verification-backend');
-  for (const args of [['restore'], ['format', '--verify-no-changes', '--no-restore'],
-    ['build', '--artifacts-path', backendArtifacts], ['test', '--no-build', '--artifacts-path', backendArtifacts]]) run('dotnet', args, 'GodForge-BE');
+  for (const args of [['restore', '--locked-mode'], ['format', '--verify-no-changes', '--no-restore'],
+    ['build', '-p:RestoreLockedMode=true', '--artifacts-path', backendArtifacts],
+    ['test', '--no-build', '--artifacts-path', backendArtifacts, '--logger', 'trx', '--results-directory', resolve(root, 'artifacts/test-results')]]) run('dotnet', args, 'GodForge-BE');
   run(process.execPath, ['scripts/check-dotnet-vulnerabilities.mjs']);
   if (!backendOnly) {
   run('npm', ['ci', '--no-audit', '--no-fund'], 'GodForge-FE');

@@ -32,6 +32,25 @@ public sealed class RevokeUserSessionCommandHandler : IRequestHandler<RevokeUser
 
     public async Task<Result> Handle(RevokeUserSessionCommand request, CancellationToken cancellationToken)
     {
+        // Refresh rotates both the session and its tokens. Retry the whole revocation
+        // from current state so a committed descendant cannot escape revocation.
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                return await RevokeAsync(request, cancellationToken);
+            }
+            catch (ConcurrencyConflictException)
+            {
+                _unitOfWork.ClearTrackedChanges();
+            }
+        }
+
+        return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "The session changed concurrently. Retry revocation.");
+    }
+
+    private async Task<Result> RevokeAsync(RevokeUserSessionCommand request, CancellationToken cancellationToken)
+    {
         var session = await _sessions.GetByIdAsync(request.SessionId, cancellationToken);
         if (session is null || session.UserId != request.UserId)
             return ApplicationError.NotFound("RESOURCE_NOT_FOUND", "The session was not found.");

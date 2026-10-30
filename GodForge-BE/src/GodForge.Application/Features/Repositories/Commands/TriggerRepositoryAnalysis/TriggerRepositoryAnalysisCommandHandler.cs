@@ -5,6 +5,7 @@ using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models;
 using GodForge.Application.Common.Models.Messages;
 using GodForge.Application.Common.Security;
+using GodForge.Application.Features.Settings;
 using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Enums;
 using MediatR;
@@ -19,6 +20,7 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
     private readonly IOutboxWriter _outbox;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly IAiExecutionPolicy _policy;
 
     public TriggerRepositoryAnalysisCommandHandler(
         IGitRepositoryRepository repositories,
@@ -26,7 +28,8 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
         IAuthorizationService authorization,
         IOutboxWriter outbox,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        IAiExecutionPolicy policy)
     {
         _repositories = repositories;
         _jobs = jobs;
@@ -34,6 +37,7 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
         _outbox = outbox;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _policy = policy;
     }
 
     public async Task<Result<Guid>> Handle(
@@ -48,6 +52,9 @@ public sealed class TriggerRepositoryAnalysisCommandHandler : IRequestHandler<Tr
         {
             return ApplicationError.Forbidden("SECURITY_FORBIDDEN", "You do not have permission to trigger repository analysis.");
         }
+
+        if (request.IncludeAi && !await _policy.IsAllowedAsync(request.ProjectId, cancellationToken))
+            return ApplicationError.Conflict("SETTINGS_POLICY_RESTRICTED", "AI advisory is disabled by current settings or policy.");
 
         var repository = await _repositories.GetByProjectIdAsync(request.ProjectId, cancellationToken);
         if (repository is null)

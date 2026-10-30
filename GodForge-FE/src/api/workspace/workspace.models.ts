@@ -144,8 +144,12 @@ export interface ProjectSettings {
     notificationPolicyVersion: number;
     sourceScope: string;
     version: number;
+    effectiveAiAdvisory?: { value: boolean; sourceScope: string; editable: boolean; restrictionReason: string | null };
+    availableAnalysisProfiles?: { key: string; version: string; enabled: boolean; compatible: boolean }[];
+    analysisProfileVersion?: string | null;
+    settingsEditable?: boolean;
 }
-export type UpdateProjectSettingsInput = Omit<ProjectSettings, 'projectId' | 'sourceScope'>;
+export type UpdateProjectSettingsInput = Pick<ProjectSettings, 'analysisProfileKey' | 'aiAdvisoryEnabled' | 'defaultAssetVisibility' | 'notificationPolicyVersion' | 'version'>;
 export interface UpdateProjectInput extends ProjectInput { version: number }
 export interface TransferProjectOwnershipInput {
     newOwnerUserId: string;

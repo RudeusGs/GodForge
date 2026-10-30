@@ -34,6 +34,10 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/account/preferences', name: 'accountPreferences',
+            component: () => import('../views/AccountPreferencesView.vue'), meta: { requiresAuth: true }
+        },
+        {
             path: '/login',
             name: 'login',
             component: () => import('../views/LoginView.vue'),

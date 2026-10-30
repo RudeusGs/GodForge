@@ -49,13 +49,26 @@ jobs:
           global-json-file: GodForge-BE/global.json
       - name: Restore dependencies
         working-directory: GodForge-BE
-        run: dotnet restore
+        run: dotnet restore --locked-mode
       - name: Build
         working-directory: GodForge-BE
         run: dotnet build --no-restore
+      - name: Record SDK and runtime diagnostics
+        working-directory: GodForge-BE
+        run: dotnet --info
       - name: Test
         working-directory: GodForge-BE
-        run: dotnet test --no-build --collect:"XPlat Code Coverage"
+        run: dotnet test --no-build --collect:"XPlat Code Coverage" --logger trx --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: GodForge-BE/TestResults
+      - name: Capture service diagnostics on failure
+        if: failure()
+        run: |
+          docker logs ${{ job.services.postgres.id }}
+          docker logs ${{ job.services.redis.id }}
       - name: Format check
         working-directory: GodForge-BE
         run: dotnet format --verify-no-changes
@@ -177,3 +190,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Scan checked-out source for credentials
         run: docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" ghcr.io/gitleaks/gitleaks:latest dir /repo --redact --no-banner
+
+  container-security-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API and Worker release images
+        run: |
+          docker build --target api -f GodForge-BE/Dockerfile -t godforge-api:ci .
+          docker build --target worker -f GodForge-BE/Dockerfile -t godforge-worker:ci .
+      - name: Scan API runtime and dependencies
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.69.3 image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln godforge-api:ci
+      - name: Scan Worker runtime and dependencies
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.69.3 image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln godforge-worker:ci

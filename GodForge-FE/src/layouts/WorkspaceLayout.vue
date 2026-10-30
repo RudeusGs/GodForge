@@ -33,6 +33,7 @@ function closeUserMenu(event: KeyboardEvent) {
                 <div class="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-xl">
                     <p class="mb-3 break-all text-sm text-slate-400">{{ auth.user?.email }}</p>
                     <router-link class="block rounded p-2 hover:bg-slate-800" :to="{ name: 'accountSessions' }">Security sessions</router-link>
+                    <router-link class="block rounded p-2 hover:bg-slate-800" :to="{ name: 'accountPreferences' }">Preferences</router-link>
                     <button class="mt-2 w-full rounded p-2 text-left text-rose-300 hover:bg-slate-800" @click="logout">Logout</button>
                 </div>
             </details>
@@ -50,6 +51,7 @@ function closeUserMenu(event: KeyboardEvent) {
                         <router-link class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-800" active-class="" exact-active-class="bg-slate-800 text-cyan-300" :to="{ name: 'organizationSettings', params: { organizationId: selectedOrganization } }">Settings</router-link>
                     </template>
                     <router-link class="block rounded-lg px-3 py-3 hover:bg-slate-800" :to="{ name: 'accountSessions' }">Account security</router-link>
+                    <router-link class="block rounded-lg px-3 py-3 hover:bg-slate-800" :to="{ name: 'accountPreferences' }">Account preferences</router-link>
                 </nav>
                 <p class="mt-10 px-3 text-xs leading-5 text-slate-500">Workspace foundation<br />Organization and project access</p>
             </aside>
