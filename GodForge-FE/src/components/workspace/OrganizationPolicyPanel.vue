@@ -71,7 +71,7 @@ async function save() {
         } else if (status !== undefined && status >= 400 && status < 500 && status !== 408) {
             // API errors are safe contract messages; Vue renders them as text.
             error.value = axios.isAxiosError<{ error?: { message?: string } }>(cause)
-                ? cause.response?.data.error?.message || workspaceError(cause) : workspaceError(cause);
+                ? cause.response?.data?.error?.message || workspaceError(cause) : workspaceError(cause);
         } else {
             await reconcile(id, request, 'The save outcome is unknown because the request failed.', input.version);
         }

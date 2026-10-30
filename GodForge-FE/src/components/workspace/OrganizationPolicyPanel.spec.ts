@@ -72,6 +72,15 @@ it.each([[400, 'VALIDATION_ERROR'], [409, 'SETTINGS_POLICY_RESTRICTED']])('prese
     expect(wrapper.text()).toContain('Policy value rejected.'); expect(wrapper.get('input').element.checked).toBe(false);
     expect(settingsApi.getPolicy).toHaveBeenCalledTimes(1); wrapper.unmount();
 });
+it('handles a rejected request with an empty error body without throwing or losing edits', async () => {
+    const wrapper = await edited();
+    vi.mocked(settingsApi.updatePolicy).mockRejectedValueOnce(new AxiosError('bad request', undefined, undefined, undefined,
+        { status: 400, data: null, config: {} as never, headers: {}, statusText: '' }));
+    await wrapper.get('form').trigger('submit'); await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain('Check');
+    expect(wrapper.get('input').element.checked).toBe(false);
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeUndefined(); wrapper.unmount();
+});
 it('prevents duplicates and ignores save completion after rapid tenant switches', async () => {
     const wrapper = await edited(); let resolve!: (value: { data: typeof policy }) => void;
     vi.mocked(settingsApi.updatePolicy).mockReturnValue(new Promise(r => { resolve = r; }));
