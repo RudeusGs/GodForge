@@ -1,5 +1,7 @@
 # Error Code Catalog
 
+Settings additions: `ANALYSIS_PROFILE_INVALID` (400: no active compatible registry definition), `SETTINGS_POLICY_RESTRICTED` (409: capability disabled by current settings/policy). `CONCURRENCY_CONFLICT` (409) also applies to user preferences and organization policies. Strict missing/unknown fields and unsupported enums use `VALIDATION_ERROR` (400). Tenant masking and role denials use existing `ORGANIZATION_NOT_FOUND`, `PROJECT_NOT_FOUND`, `SECURITY_FORBIDDEN`. See [settings contracts](SRS/05-api-contracts/settings.md).
+
 Public errors use stable `SCREAMING_SNAKE_CASE`, safe messages and correlation IDs. Provider payloads, stack traces, SQL, secrets and workspace paths are never returned.
 
 ## Common

@@ -1,6 +1,10 @@
 # Frontend Architecture
 
+Settings extension: `/account/preferences` uses typed settingsApi, explicit labels, versioned full writes, dirty/revert/loading/conflict states and unmount guards. Account/session/workspace navigation links the screen. App loads persisted theme after authentication; generation plus theme revision prevent late bootstrap reads from replacing a saved theme. Light/dark switch shared Tailwind color tokens on the document; workspace/account surfaces respond consistently, public/auth editorial palettes retain their design. No personal preferences are stored in local storage. Notification toggles explicitly store intent without promising delivery. OrganizationPolicyPanel is keyed by tenant and discards disposed completions. ProjectSettingsView displays authoritative effective policy/source/restriction and registry options. Resetting its settings resource invalidates requests on project navigation. See [contracts](SRS/05-api-contracts/settings.md) and [acceptance](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+
 ## Stack
+
+OrganizationPolicyPanel watches tenant IDs as well as parent keying. Generation guards discard stale reads, writes and reconciliation. Conflicts reload the current version while retaining edits; unknown write outcomes reconcile values/version before a user-initiated conditional PUT. Authorization failures require an authorized reload; validation remains editable. Failed reconciliation blocks Save while leaving reload available. No automatic mutation retry.
 
 - Vue 3 Composition API.
 - TypeScript with strict mode.

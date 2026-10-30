@@ -1,6 +1,7 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models.Messages;
+using GodForge.Application.Features.Settings;
 using GodForge.Domain.Entities.Ops;
 using GodForge.Domain.Entities.Repo;
 using GodForge.Domain.Enums;
@@ -57,7 +58,8 @@ public sealed class RepositoryAnalysisPipelineHandlerTests
         var aiStage = new RepositoryAiAnalysisStage(
             _aiRepository.Object,
             _aiProvider.Object,
-            _clock.Object);
+            _clock.Object,
+            Mock.Of<IAiExecutionPolicy>(p => p.IsAllowedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()) == Task.FromResult(true)));
 
         _handler = new RepositoryAnalysisPipelineHandler(
             _jobs.Object,

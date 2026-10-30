@@ -1701,6 +1701,51 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                     b.ToTable("organization_members", "core");
                 });
 
+            modelBuilder.Entity("GodForge.Domain.Entities.Core.OrganizationSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AiAdvisoryAllowed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ai_advisory_allowed");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization_settings");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organization_settings_organization_id");
+
+                    b.ToTable("organization_settings", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_organization_settings_version", "version > 0");
+                        });
+                });
+
             modelBuilder.Entity("GodForge.Domain.Entities.Core.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3046,6 +3091,13 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("version");
+
                     b.HasKey("Id")
                         .HasName("pk_user_settings");
 
@@ -3053,7 +3105,10 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_user_settings_user_id");
 
-                    b.ToTable("user_settings", "identity");
+                    b.ToTable("user_settings", "identity", t =>
+                        {
+                            t.HasCheckConstraint("ck_user_settings_version", "version > 0");
+                        });
                 });
 
             modelBuilder.Entity("GodForge.Domain.Entities.Metadata.Asset", b =>
@@ -6124,6 +6179,16 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_organization_members_users_user_id");
+                });
+
+            modelBuilder.Entity("GodForge.Domain.Entities.Core.OrganizationSetting", b =>
+                {
+                    b.HasOne("GodForge.Domain.Entities.Core.Organization", null)
+                        .WithOne()
+                        .HasForeignKey("GodForge.Domain.Entities.Core.OrganizationSetting", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_settings_organizations_organization_id");
                 });
 
             modelBuilder.Entity("GodForge.Domain.Entities.Core.Project", b =>

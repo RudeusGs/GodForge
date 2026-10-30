@@ -24,6 +24,7 @@ public sealed class IdentityOpenApiTests : IClassFixture<CustomWebApplicationFac
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
             "/api/v1/users/me",
+            "/api/v1/users/me/settings",
             "/api/v1/users/me/sessions",
             "/api/v1/users/me/sessions/{sessionId}"
         };
@@ -39,5 +40,21 @@ public sealed class IdentityOpenApiTests : IClassFixture<CustomWebApplicationFac
         var document = scope.ServiceProvider.GetRequiredService<ISwaggerProvider>().GetSwagger("v1");
         Assert.True(document.Paths.ContainsKey("/api/v1/projects/{projectId}/archive"));
         Assert.True(document.Paths.ContainsKey("/api/v1/projects/{projectId}/restore"));
+        Assert.True(document.Paths.ContainsKey("/api/v1/organizations/{organizationId}/settings"));
+    }
+
+    [Fact]
+    public void OpenApiGeneration_DescribesStrictRequiredSettingsProperties()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var document = scope.ServiceProvider.GetRequiredService<ISwaggerProvider>().GetSwagger("v1");
+        var preferences = document.Components.Schemas["UserPreferencesRequest"];
+        Assert.False(preferences.AdditionalPropertiesAllowed);
+        Assert.Equal(5, preferences.Required.Count);
+        Assert.Equal(2, preferences.Properties["theme"].Enum.Count);
+        Assert.Equal(3, preferences.Properties["notificationDigest"].Enum.Count);
+        var policy = document.Components.Schemas["OrganizationPolicyRequest"];
+        Assert.False(policy.AdditionalPropertiesAllowed);
+        Assert.Equal(2, policy.Required.Count);
     }
 }

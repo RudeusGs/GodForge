@@ -1,6 +1,10 @@
 # Backend Architecture
 
+Settings extension: MediatR own-user query/command handlers use typed repositories, current session actor, strict boundary DTOs, FluentValidation and independent EF concurrency tokens. OrganizationPolicyHandler applies current Owner/Admin authorization under the shared organization-membership lock. ProjectSettingsService enforces EffectiveSettingsPolicy inside the existing serialized mutation before changing the row. Gemini.Enabled is the platform ceiling; organization allowance is a restriction preference, never a permission grant. Fresh database projections bypass tracking/cache for queued AI eligibility before provider/cache use and after provider response. Existing job/outbox/claim flows remain unchanged. Successful explicit writes commit safe before/after audit summaries atomically and emit the bounded `GodForge.Settings` meter counter `godforge.settings.updates` with scope/outcome tags; production metric export remains an operations gate. [Settings contract](SRS/05-api-contracts/settings.md); [evidence and dependencies](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+
 ## Runtime target
+
+Stabilization: remote session revocation retries up to three optimistic conflicts from fresh state, rechecks ownership, revokes current token descendants and invalidates cache before persistence. Exhaustion returns conflict. A PostgreSQL HTTP barrier commits refresh between revocation read/save and verifies final revocation plus exactly one audit. AI policy is rechecked after cache lookup; these are point-in-time checks, not atomic publication fencing. Legacy trigger AnalysisProfile names AI advisory intent, validated independently of deterministic registry keys.
 
 - **.NET 10 LTS / ASP.NET Core 10 / EF Core 10**.
 - Clean Architecture with Domain, Application, Infrastructure, API and Worker hosts.

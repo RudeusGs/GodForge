@@ -1,5 +1,7 @@
 # Quality Gates
 
+Settings/M0 extension: all seven .NET projects now have packages.lock.json; CI, combined verification and runtime Docker builds restore with `--locked-mode`. CI adds API/Worker Trivy HIGH/CRITICAL scans without ignoring unfixed findings, and always retains backend TRX output. Runtime images explicitly install current libbrotli1 to remediate the locally detected CVE-2026-111497. Existing Gitleaks, NuGet/npm, browser, live/runtime and whitespace gates remain mandatory. [Current command results and remote run status](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) distinguish working-tree, clean local worktree and remote evidence. A running Windows Vite/API can lock native packages/DLLs; use isolated checkout/artifact paths instead of bypassing checks or killing unrelated services.
+
 ## Documentation gate
 
 - Markdown links resolve.
@@ -41,6 +43,8 @@ npm audit --audit-level=high
 ```
 
 ## Local combined gate
+
+The runner refuses to replace an existing verification Compose project, locks restoration during isolated-artifact builds and records TRX under artifacts/test-results. CI records SDK diagnostics, retains TRX on failure and captures PostgreSQL/Redis logs on backend failure. Historical remote failure is now known: refresh racing remote revocation returned 409 where 204 was expected. Current verification must include its fresh-state retry regression.
 
 From the repository root, run `npm run verify` (Windows PowerShell: `npm.cmd run verify`). This runs local documentation-link checks, isolated PostgreSQL/Redis startup, backend restore/format/build/tests, frontend clean install/lint/typecheck/tests/build, frontend/browser dependency audits at severity High, and Chromium browser tests. Docker Compose removes only the verification project's disposable containers on completion. Ports `15433` and `16379` must be available; development services are not reused.
 

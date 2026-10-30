@@ -87,6 +87,7 @@ public static class DependencyInjection
 
         services.AddSwaggerGen(c =>
         {
+            c.SchemaFilter<GodForge.Api.Contracts.StrictSettingsSchemaFilter>();
             c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
             {
                 Title = "GodForge API",

@@ -3,10 +3,23 @@ import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth.store';
 import AppLoading from './components/AppLoading.vue';
+import { settingsApi } from './api/settings.api';
+import { applyTheme, themeRevision } from './features/theme';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+let themeGeneration = 0;
+watch(() => authStore.user?.id, async userId => {
+    const current = ++themeGeneration;
+    applyTheme('dark');
+    const initialRevision = themeRevision;
+    if (!userId) return;
+    try {
+        const preferences = (await settingsApi.getPreferences()).data;
+        if (current === themeGeneration && initialRevision === themeRevision) applyTheme(preferences.theme);
+    } catch { /* The preferences screen provides retry; a theme fetch never changes authentication. */ }
+}, { immediate: true });
 const isBootstrapping = computed(() => !authStore.initialized || (route.meta.requiresAuth && !authStore.isAuthenticated));
 
 watch([() => authStore.isAuthenticated, () => authStore.initialized], ([authenticated, initialized]) => {

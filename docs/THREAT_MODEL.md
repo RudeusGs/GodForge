@@ -1,5 +1,7 @@
 # Threat Model
 
+Settings extension: own-session actor binding, required typed properties, unknown-field rejection and enum allow-lists address target-user injection and mass assignment. Current membership/role checks, shared transaction locks, independent EF tokens and atomic audit protect tenant policy mutations and stale writes. Platform restrictions always dominate organization/project intent. Fresh worker eligibility checks prevent queued requests from bypassing policy and discard results after in-flight restrictions. An already transmitted provider request cannot be retracted; provider operation and full immutable execution remain later acceptance gates. [Evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+
 ## Security objectives
 
 1. Prevent cross-organization and cross-project data access.

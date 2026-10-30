@@ -1,5 +1,7 @@
 # RBAC Matrix
 
+Settings scope extension: authenticated active users read/write only their own `/users/me/settings`. Active OrganizationOwner/Admin may GET/PUT organization capability policy through `organizations.update`; OrganizationMember cannot. Project settings retain `projects.read`/`settings.update` and active membership intersection. Organization administration does not grant project settings access. Effective capability ceilings never grant a missing role permission. [Typed contracts](SRS/05-api-contracts/settings.md).
+
 ## 1. Role scopes
 
 ### Platform role

@@ -2,9 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Features.Auth;
 using GodForge.Domain.Entities.Identity;
+using GodForge.Infrastructure.Auditing;
 using GodForge.Infrastructure.Configuration;
+using GodForge.Infrastructure.Persistence;
 using GodForge.Infrastructure.Security;
 using GodForge.IntegrationTests.Infrastructure;
 using GodForge.IntegrationTests.Persistence;
@@ -208,6 +211,58 @@ public sealed class AuthPostgresHttpTests
         Assert.NotEmpty(tokens);
         Assert.All(tokens, token => Assert.NotNull(token.RevokedAt));
         Assert.Equal(HttpStatusCode.Unauthorized, (await sessionClient.PostAsync("/api/v1/auth/refresh", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task RemoteRevoke_RefreshCommitsAfterRevocationRead_RevokesReplacementAndAuditsOnce()
+    {
+        var credentials = await SeedUserAsync();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var visits = 0;
+        using var factory = new AuthPostgresWebApplicationFactory(_fixture.ConnectionString);
+        using var host = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddScoped<IAuditWriter>(provider => new RevokeBarrierAudit(
+                new AuditWriter(provider.GetRequiredService<GodForgeDbContext>(), provider.GetRequiredService<IClock>(),
+                    provider.GetRequiredService<IRequestContext>()), async () =>
+                {
+                    if (Interlocked.Increment(ref visits) != 1) return;
+                    entered.TrySetResult();
+                    await release.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                }))));
+        using var authority = host.CreateClient(SecureCookieClientOptions());
+        using var target = host.CreateClient(SecureCookieClientOptions());
+        var loginA = await LoginAsync(authority, credentials.Email, credentials.Password, "Authority");
+        var loginB = await LoginAsync(target, credentials.Email, credentials.Password, "Target");
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/users/me/sessions/{loginB.SessionId}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", loginA.AccessToken);
+        var revoke = authority.SendAsync(request);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Equal(HttpStatusCode.OK, (await target.PostAsync("/api/v1/auth/refresh", null)).StatusCode);
+        }
+        finally { release.TrySetResult(); }
+        Assert.Equal(HttpStatusCode.NoContent, (await revoke).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await target.PostAsync("/api/v1/auth/refresh", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await GetMeAsync(authority, loginA.AccessToken)).StatusCode);
+        await using var db = _fixture.CreateContext();
+        Assert.All(await db.RefreshTokens.Where(t => t.SessionId == loginB.SessionId).ToListAsync(), t => Assert.NotNull(t.RevokedAt));
+        var targetSession = await db.UserSessions.SingleAsync(s => s.Id == loginB.SessionId);
+        Assert.Equal(1, await db.SecurityAuditEvents.CountAsync(e => e.UserId == targetSession.UserId && e.EventType == "auth.session_revoked"));
+    }
+
+    private sealed class RevokeBarrierAudit(IAuditWriter inner, Func<Task> barrier) : IAuditWriter
+    {
+        public Task WriteAuditAsync(Guid? actorUserId, Guid? projectId, string eventType, string? resourceType,
+            Guid? resourceId, string outcome, object? details = null, CancellationToken cancellationToken = default)
+            => inner.WriteAuditAsync(actorUserId, projectId, eventType, resourceType, resourceId, outcome, details, cancellationToken);
+
+        public async Task WriteSecurityAsync(Guid? userId, string eventType, string severity, object? details = null, CancellationToken cancellationToken = default)
+        {
+            await inner.WriteSecurityAsync(userId, eventType, severity, details, cancellationToken);
+            if (eventType == "auth.session_revoked") await barrier();
+        }
     }
 
     [Fact]

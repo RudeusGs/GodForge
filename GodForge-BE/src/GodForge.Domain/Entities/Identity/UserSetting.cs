@@ -10,6 +10,7 @@ public sealed class UserSetting : BaseAuditableEntity
     public bool NotificationInApp { get; private set; }
     public bool NotificationEmail { get; private set; }
     public NotificationDigest NotificationDigest { get; private set; }
+    public long Version { get; private set; } = 1;
 
     private UserSetting() { } // EF Core
 
@@ -28,12 +29,16 @@ public sealed class UserSetting : BaseAuditableEntity
         };
     }
 
-    public void Update(Theme theme, bool notificationInApp, bool notificationEmail, NotificationDigest notificationDigest, DateTimeOffset now)
+    public void Update(Theme theme, bool notificationInApp, bool notificationEmail, NotificationDigest notificationDigest, long expectedVersion, DateTimeOffset now)
     {
+        if (Version != expectedVersion) throw new InvalidOperationException("Concurrency version mismatch.");
+        if (!Enum.IsDefined(theme) || !Enum.IsDefined(notificationDigest))
+            throw new ArgumentOutOfRangeException(nameof(theme));
         Theme = theme;
         NotificationInApp = notificationInApp;
         NotificationEmail = notificationEmail;
         NotificationDigest = notificationDigest;
         UpdatedAt = now;
+        Version++;
     }
 }

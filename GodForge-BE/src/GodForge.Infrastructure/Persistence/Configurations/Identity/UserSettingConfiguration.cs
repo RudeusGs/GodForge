@@ -9,6 +9,8 @@ public sealed class UserSettingConfiguration : IEntityTypeConfiguration<UserSett
     public void Configure(EntityTypeBuilder<UserSetting> builder)
     {
         builder.ToTable("user_settings", "identity");
+        builder.ToTable(t => t.HasCheckConstraint("ck_user_settings_version", "version > 0"));
+        builder.Property(s => s.Version).HasColumnName("version").HasDefaultValue(1L).IsConcurrencyToken();
 
         builder.HasKey(s => s.Id);
         builder.Property(s => s.Id).HasColumnName("id").HasColumnType("uuid");

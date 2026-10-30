@@ -176,4 +176,26 @@ describe('project management', () => {
         wrapper.unmount(); const reads = vi.mocked(projectsApi.getSettings).mock.calls.length;
         finish({ data: settings }); await flushPromises(); expect(projectsApi.getSettings).toHaveBeenCalledTimes(reads);
     });
+    it('displays authoritative profile and organization restriction and explains rejected profiles', async () => {
+        vi.mocked(projectsApi.getSettings).mockResolvedValue({ data: { ...settings, availableAnalysisProfiles: [{ key: 'current-default-v1', version: '1', enabled: true, compatible: true }], effectiveAiAdvisory: { value: false, sourceScope: 'organization', editable: false, restrictionReason: 'Disabled by organization policy.' } } });
+        const { wrapper } = await render(Settings);
+        expect(wrapper.get<HTMLSelectElement>('#project-analysis-profile').element.value).toBe('current-default-v1');
+        expect(wrapper.get('#analysis input[type=checkbox]').attributes('disabled')).toBeDefined();
+        expect(wrapper.text()).toContain('Source: organization. Disabled by organization policy.');
+        vi.mocked(projectsApi.updateSettings).mockRejectedValue(failure('ANALYSIS_PROFILE_INVALID'));
+        await wrapper.get('#analysis form').trigger('submit'); await flushPromises();
+        expect(wrapper.get('[role=alert]').text()).toContain('active compatible analysis profile'); wrapper.unmount();
+    });
+    it('invalidates old settings reads immediately when navigating to another project', async () => {
+        let finish!: (value: { data: ProjectSettings }) => void;
+        vi.mocked(projectsApi.getSettings).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const { wrapper, router } = await render(Settings);
+        let nextProject!: (value: { data: Project }) => void;
+        vi.mocked(projectsApi.get).mockImplementationOnce(() => new Promise(resolve => { nextProject = resolve; }));
+        await router.push('/organizations/a/projects/q/settings'); await flushPromises();
+        finish({ data: { ...settings, analysisProfileKey: 'old-tenant-value' } }); await flushPromises();
+        vi.mocked(projectsApi.getSettings).mockResolvedValue({ data: { ...settings, projectId: 'q' } });
+        nextProject({ data: { ...project, id: 'q' } }); await flushPromises();
+        expect(wrapper.text()).not.toContain('old-tenant-value'); expect(wrapper.text()).toContain('current-default-v1'); wrapper.unmount();
+    });
 });

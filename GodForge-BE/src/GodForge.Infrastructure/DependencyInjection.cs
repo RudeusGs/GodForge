@@ -30,6 +30,12 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserSettingRepository, UserSettingRepository>();
+        services.AddScoped<IOrganizationSettingRepository, OrganizationSettingRepository>();
+        services.AddSingleton<GodForge.Application.Features.Settings.IPlatformCapabilities, PlatformCapabilities>();
+        services.AddScoped<GodForge.Application.Features.Settings.EffectiveSettingsPolicy>();
+        services.AddScoped<GodForge.Application.Features.Settings.IAiExecutionPolicy, GodForge.Application.Features.Settings.AiExecutionPolicy>();
+        services.AddScoped<GodForge.Application.Features.Settings.IAiExecutionStateReader, AiExecutionStateReader>();
         services.AddScoped<IAuthChallengeRepository, AuthChallengeRepository>();
         services.AddScoped<IUserSessionRepository, UserSessionRepository>();
         services.AddScoped<IUserInviteRepository, UserInviteRepository>();

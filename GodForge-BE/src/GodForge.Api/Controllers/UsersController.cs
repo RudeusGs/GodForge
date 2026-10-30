@@ -1,8 +1,10 @@
+using GodForge.Api.Contracts;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Features.Auth.Commands.RevokeUserSession;
 using GodForge.Application.Features.Auth.DTOs;
 using GodForge.Application.Features.Auth.Queries.GetCurrentUser;
 using GodForge.Application.Features.Auth.Queries.GetUserSessions;
+using GodForge.Application.Features.Settings;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +28,18 @@ public sealed class UsersController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMe(CancellationToken cancellationToken)
         => HandleResult(await _mediator.Send(new GetCurrentUserQuery(_currentUser.GetId()), cancellationToken));
+
+    [HttpGet("me/settings")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [ProducesResponseType(typeof(ApiResponse<UserPreferencesDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSettings(CancellationToken cancellationToken)
+        => HandleResult(await _mediator.Send(new GetUserPreferencesQuery(_currentUser.GetId()), cancellationToken));
+
+    [HttpPut("me/settings")]
+    [ProducesResponseType(typeof(ApiResponse<UserPreferencesDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateSettings(UserPreferencesRequest request, CancellationToken cancellationToken)
+        => HandleResult(await _mediator.Send(new UpdateUserPreferencesCommand(_currentUser.GetId(), request.Theme,
+            request.NotificationInApp, request.NotificationEmail, request.NotificationDigest, request.Version), cancellationToken));
 
     [HttpGet("me/sessions")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]

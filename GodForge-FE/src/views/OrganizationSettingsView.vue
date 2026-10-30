@@ -19,6 +19,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import OrganizationSectionNav from '@/components/workspace/OrganizationSectionNav.vue';
 import PageControls from '@/components/workspace/PageControls.vue';
 import ResourceState from '@/components/workspace/ResourceState.vue';
+import OrganizationPolicyPanel from '@/components/workspace/OrganizationPolicyPanel.vue';
 
 const route = useRoute();
 const auth = useAuthStore();
@@ -412,6 +413,7 @@ async function confirmDeletionRequest() {
             </div>
 
             <OrganizationSectionNav :organization="data.org" />
+            <OrganizationPolicyPanel v-if="['organizationOwner', 'organizationAdmin'].includes(data.org.currentUserRole)" :key="id" :organization-id="id" :mutable="canManageOrganization(data.org.currentUserRole, data.org.status)" />
 
             <div
                 v-if="!['organizationOwner', 'organizationAdmin'].includes(data.org.currentUserRole)"

@@ -22,7 +22,7 @@ const validation = ref('');
 let initialized = '';
 const settings = useResource(async () => (await projectsApi.getSettings(id.value)).data);
 const { data: settingsData, loading: settingsLoading, error: settingsError, load: loadSettings } = settings;
-watch(identity, () => { initialized = ''; preferences.value = undefined; candidate.value = undefined; confirmation.value = ''; confirmationSlug.value = ''; validation.value = ''; });
+watch(identity, () => { settings.reset(); initialized = ''; preferences.value = undefined; candidate.value = undefined; confirmation.value = ''; confirmationSlug.value = ''; validation.value = ''; });
 watch(data, value => {
     if (!value || initialized === value.project.id) return;
     initialized = value.project.id;
@@ -30,7 +30,7 @@ watch(data, value => {
     if (manager.value) void loadSettings();
 });
 watch(settingsData, value => {
-    if (value && !preferences.value) preferences.value = { analysisProfileKey: value.analysisProfileKey, aiAdvisoryEnabled: value.aiAdvisoryEnabled, defaultAssetVisibility: value.defaultAssetVisibility, notificationPolicyVersion: value.notificationPolicyVersion, version: value.version };
+    if (value && value.projectId === id.value && !preferences.value) preferences.value = { analysisProfileKey: value.analysisProfileKey, aiAdvisoryEnabled: value.aiAdvisoryEnabled, defaultAssetVisibility: value.defaultAssetVisibility, notificationPolicyVersion: value.notificationPolicyVersion, version: value.version };
 });
 async function saveGeneral() {
     validation.value = '';
@@ -87,8 +87,11 @@ async function execute() {
                 <section id="analysis" class="workspace-panel my-5"><h2 class="text-xl font-semibold">Analysis &amp; Preferences</h2>
                     <ResourceState :loading="settingsLoading" :error="settingsError" @retry="loadSettings">
                         <form v-if="preferences && settingsData" class="mt-5 space-y-4" @submit.prevent="saveSettings"><fieldset :disabled="busy || !mutable" class="space-y-4">
-                            <p>Analysis profile: {{ settingsData.analysisProfileKey }}</p><p class="text-sm text-slate-400">The current analysis profile is managed by the platform.</p>
-                            <label class="flex items-center gap-3"><input v-model="preferences.aiAdvisoryEnabled" type="checkbox" /> Enable AI advisory preference</label><p class="text-sm text-slate-400">AI analysis is not available yet.</p>
+                            <div v-if="settingsData.availableAnalysisProfiles"><label for="project-analysis-profile" class="block">Analysis profile</label><select id="project-analysis-profile" v-model="preferences.analysisProfileKey" class="workspace-input"><option v-for="profile in settingsData.availableAnalysisProfiles" :key="profile.key" :value="profile.key" :disabled="!profile.enabled || !profile.compatible">{{ profile.key }} · version {{ profile.version }}</option></select></div>
+                            <p v-else>Analysis profile: {{ settingsData.analysisProfileKey }}</p>
+                            <p class="text-sm text-slate-400">Profile selection does not certify immutable analysis execution.</p>
+                            <label class="flex items-center gap-3"><input v-model="preferences.aiAdvisoryEnabled" type="checkbox" :disabled="settingsData.effectiveAiAdvisory && !settingsData.effectiveAiAdvisory.editable && !preferences.aiAdvisoryEnabled" /> Enable AI advisory preference</label><p class="text-sm text-slate-400">AI analysis is not available yet.</p>
+                            <p v-if="settingsData.effectiveAiAdvisory" role="status">Effective AI advisory: {{ settingsData.effectiveAiAdvisory.value ? 'enabled' : 'disabled' }} · Source: {{ settingsData.effectiveAiAdvisory.sourceScope }}. {{ settingsData.effectiveAiAdvisory.restrictionReason }}</p>
                             <label class="block">Default asset visibility<select v-model="preferences.defaultAssetVisibility" class="workspace-input"><option>private</option><option>internal</option></select></label>
                             <p>Notification policy version: {{ settingsData.notificationPolicyVersion }}</p>
                             <p class="text-sm text-slate-400">Source: {{ settingsData.sourceScope }} · Settings version {{ settingsData.version }}</p>

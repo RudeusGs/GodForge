@@ -1,7 +1,9 @@
+using GodForge.Api.Contracts;
 using GodForge.Api.Contracts.Organizations;
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Features.Projects.Commands.CreateProject;
 using GodForge.Application.Features.Projects.Queries.ListProjectsForOrganization;
+using GodForge.Application.Features.Settings;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -58,6 +60,18 @@ public sealed class OrganizationsController : BaseApiController
                 ActorId,
                 organizationId),
             cancellationToken));
+
+    [HttpGet("{organizationId:guid}/settings")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [ProducesResponseType(typeof(ApiResponse<OrganizationPolicyDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSettings(Guid organizationId, CancellationToken cancellationToken)
+        => HandleResult(await _mediator.Send(new GetOrganizationPolicyQuery(ActorId, organizationId), cancellationToken));
+
+    [HttpPut("{organizationId:guid}/settings")]
+    [ProducesResponseType(typeof(ApiResponse<OrganizationPolicyDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateSettings(Guid organizationId, OrganizationPolicyRequest request, CancellationToken cancellationToken)
+        => HandleResult(await _mediator.Send(new UpdateOrganizationPolicyCommand(ActorId, organizationId,
+            request.AiAdvisoryAllowed, request.Version), cancellationToken));
 
     [HttpPatch("{organizationId:guid}")]
     public async Task<IActionResult> Update(

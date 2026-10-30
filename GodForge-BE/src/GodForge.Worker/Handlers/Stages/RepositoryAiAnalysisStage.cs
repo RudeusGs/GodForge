@@ -5,6 +5,7 @@ using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
 using GodForge.Application.Common.Models.Analysis;
 using GodForge.Application.Common.Models.Messages;
+using GodForge.Application.Features.Settings;
 using GodForge.Domain.Entities.Analysis;
 using GodForge.Domain.Entities.Repo;
 
@@ -25,15 +26,18 @@ public sealed class RepositoryAiAnalysisStage
     private readonly IAiAnalysisRepository _aiRepository;
     private readonly IAiAnalysisProvider _aiProvider;
     private readonly IClock _clock;
+    private readonly IAiExecutionPolicy _policy;
 
     public RepositoryAiAnalysisStage(
         IAiAnalysisRepository aiRepository,
         IAiAnalysisProvider aiProvider,
-        IClock clock)
+        IClock clock,
+        IAiExecutionPolicy policy)
     {
         _aiRepository = aiRepository;
         _aiProvider = aiProvider;
         _clock = clock;
+        _policy = policy;
     }
 
     public async Task<RepositoryAiStageResult> StageAsync(
@@ -44,6 +48,8 @@ public sealed class RepositoryAiAnalysisStage
     {
         if (!message.IncludeAi)
             return RepositoryAiStageResult.NotRequested();
+        if (!await _policy.IsAllowedAsync(message.ProjectId, cancellationToken))
+            return new RepositoryAiStageResult(AiStageStatus.Disabled, null, 0, null);
 
         var cachedRun = await _aiRepository.GetCompletedAsync(
             repository.Id,
@@ -54,6 +60,10 @@ public sealed class RepositoryAiAnalysisStage
             PromptVersion,
             stageResult.Context.InputHash,
             cancellationToken);
+
+        // Policy may be revoked while the cache query is in flight.
+        if (!await _policy.IsAllowedAsync(message.ProjectId, cancellationToken))
+            return new RepositoryAiStageResult(AiStageStatus.Disabled, null, 0, null);
 
         if (cachedRun is not null)
             return new RepositoryAiStageResult(AiStageStatus.Cached, cachedRun.Summary, 0, null);
@@ -66,6 +76,11 @@ public sealed class RepositoryAiAnalysisStage
             PromptVersion,
             stageResult.Context,
             stageResult.Deterministic), cancellationToken);
+
+        // A restriction may have changed while an external provider request was in flight.
+        // Discard its result rather than publishing advisory under revoked policy.
+        if (!await _policy.IsAllowedAsync(message.ProjectId, cancellationToken))
+            return new RepositoryAiStageResult(AiStageStatus.Disabled, null, 0, null);
 
         if (!aiResult.IsEnabled)
             return new RepositoryAiStageResult(AiStageStatus.Disabled, null, 0, null);

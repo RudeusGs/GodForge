@@ -58,6 +58,7 @@ onMounted(loadSessions);
                     <p class="text-sm font-medium text-cyan-400">Account security</p>
                     <h1 class="mt-1 text-3xl font-semibold">Active and recent sessions</h1>
                     <p class="mt-2 text-sm text-slate-400">Review devices and revoke access you no longer recognize.</p>
+                    <router-link to="/account/preferences" class="text-cyan-300">Account preferences</router-link>
                 </div>
                 <router-link :to="{ name: 'dashboard' }" class="rounded-lg border border-slate-700 px-4 py-2 hover:bg-slate-900">
                     Back to dashboard

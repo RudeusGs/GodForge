@@ -7,6 +7,7 @@ public sealed record LinkRepositoryRequest(
     string? ExternalRepositoryId,
     bool AutoAnalyzeEnabled);
 
+// AnalysisProfile is the backwards-compatible AI advisory mode field, not a deterministic profile key.
 public sealed record TriggerRepositoryAnalysisRequest(
     string? Branch,
     string AnalysisProfile = "health_overview",

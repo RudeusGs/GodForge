@@ -57,6 +57,8 @@ Workspace gate regression (`FR-01.5`, `AC-FR-01.5-01`): `ResetPasswordCommandHan
 
 ## 10.3 Maintenance rules
 
+Stabilization mappings: OrganizationPolicyPanel.spec.ts covers FR-17.3 error classification, uncertain-write reconciliation, deliberate retry, duplicate submission and stale tenant/disposal suppression. AnalysisConceptBoundaryTests and SettingsHttpTests reject advisory-mode/deterministic-key interchange (FR-17.4 foundation). QueuedAiPolicyTests covers cache-hit/miss revocation and provider-completion denial. SettingsHttpTests adds removed-admin denial, strict requests, actor-isolated preferences and fresh lifecycle checks. SettingsMigrationTests adds prior project preservation and organization-policy FK/unique/positive-version/stale-EF constraints. AuthPostgresHttpTests.RemoteRevoke_RefreshCommitsAfterRevocationRead_RevokesReplacementAndAuditsOnce maps FR-01.4 to deterministic race recovery. [Executed gate evidence](../M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+
 - Every new Must requirement has at least one objective `AC-*` and one automated `TC-*` mapping before implementation.
 - Every new endpoint/table maps to a functional requirement and permission.
 - A feature is not Complete in `../IMPLEMENTATION_STATUS.md` if traceability is incomplete.
@@ -72,6 +74,9 @@ Workspace gate regression (`FR-01.5`, `AC-FR-01.5-01`): `ResetPasswordCommandHan
 | FR-27.1; AC-FR-27.1-01; internal FR-27.2 | ProjectLifecycleHttpTests target/actor observed-lock revocation races; existing OrganizationManagementHttpTests; TC-PROJECT-LIVE-006 |
 | FR-27.3; AC-FR-27.3-02 | TenantRoleMatrixIntegrationTests; backend role-negative cases; route mismatch/stale/unmount tests; TC-PROJECT-LIVE-006 |
 | FR-17.2 stored settings; AC-FR-17.4-02 | PostgreSQL concurrent/archived settings; independent frontend versions; TC-PROJECT-LIVE-005 |
-| FR-17.1; AC-FR-17.2-02; AC-FR-17.4-01; AC-FR-27.2-02 | OPEN: typed preferences/version contract, authoritative policy/profile source, analysis identity and external reconciliation prerequisites |
+| FR-17.1 / AC-FR-17.1-01 | SettingsHttpTests, SettingsMigrationTests, AccountPreferencesView.spec, TC-SETTINGS-BROWSER-001, TC-SETTINGS-LIVE-001: own-user versioned preferences, migration, audit and reload |
+| AC-FR-17.2-02 / bounded FR-17.3 | EffectiveSettingsPolicyTests, SettingsHttpTests, QueuedAiPolicyTests, OrganizationPolicyPanel.spec, TC-SETTINGS-LIVE-002: authoritative policy intersection, current state, source and rollback |
+| FR-17.4 foundation / AC-FR-17.4-02 | Registry and profile validation tests; single immutable selection identity; stale-version conflicts. Full AC-FR-17.4-01 remains OPEN for M4–M6 execution integration |
+| AC-FR-27.2-02 | OPEN: M2 Forgejo adapter/durable reconciliation/provider verification |
 
 [Actual results](../PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md).

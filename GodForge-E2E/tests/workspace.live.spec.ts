@@ -138,10 +138,13 @@ test('TC-PROJECT-LIVE-005: metadata and settings use independent versions; delet
   await page.getByRole('button', { name: 'Save general settings', exact: true }).click(); await expect(page.getByText('Project metadata saved.', { exact: true })).toBeVisible();
   const updated = (await (await request.get(f.prefix, { headers: f.ownerHeaders })).json()).data as { name: string; version: number };
   expect(updated.name).toBe(`Updated ${f.suffix}`); expect(updated.version).toBe(2);
-  await page.getByLabel('Enable AI advisory preference').check(); await page.getByLabel('Default asset visibility').selectOption('internal');
+  await expect(page.getByLabel('Enable AI advisory preference')).toBeDisabled();
+  const forbiddenAi = await request.put(`${f.prefix}/settings`, { headers: f.ownerHeaders, data: { analysisProfileKey: 'current-default-v1', aiAdvisoryEnabled: true, defaultAssetVisibility: 'private', notificationPolicyVersion: 1, version: 1 } });
+  expect(forbiddenAi.status()).toBe(409); expect((await forbiddenAi.json()).error.code).toBe('SETTINGS_POLICY_RESTRICTED');
+  await page.getByLabel('Default asset visibility').selectOption('internal');
   await page.getByRole('button', { name: 'Save analysis preferences', exact: true }).click(); await expect(page.getByText('Project settings saved.', { exact: true })).toBeVisible();
   const saved = (await (await request.get(`${f.prefix}/settings`, { headers: f.ownerHeaders })).json()).data as { version: number; aiAdvisoryEnabled: boolean; defaultAssetVisibility: string };
-  expect(saved).toMatchObject({ version: 2, aiAdvisoryEnabled: true, defaultAssetVisibility: 'internal' });
+  expect(saved).toMatchObject({ version: 2, aiAdvisoryEnabled: false, defaultAssetVisibility: 'internal' });
   const stale = await request.put(`${f.prefix}/settings`, { headers: f.ownerHeaders, data: { analysisProfileKey: 'current-default-v1', aiAdvisoryEnabled: false, defaultAssetVisibility: 'private', notificationPolicyVersion: 1, version: 1 } });
   expect(stale.status()).toBe(409); expect((await stale.json()).error.code).toBe('CONCURRENCY_CONFLICT');
   await page.screenshot({ path: '../artifacts/project-settings-desktop.png', fullPage: true });
@@ -165,6 +168,7 @@ test('TC-PROJECT-LIVE-006: tenant isolation, route mismatch and organization rev
   await expect(page.getByRole('alert').filter({ hasText: 'unavailable' })).toBeVisible(); await expect(page.getByText('Live project management', { exact: true })).toHaveCount(0);
   expect((await request.delete(`${api}/organizations/${f.orgId}/members/${f.memberId}`, { headers: f.ownerHeaders })).status()).toBe(204);
   expect((await request.get(f.prefix, { headers: f.memberHeaders })).status()).toBe(404);
+  expect((await request.put(`${f.prefix}/settings`, { headers: f.memberHeaders, data: { analysisProfileKey: 'current-default-v1', aiAdvisoryEnabled: false, defaultAssetVisibility: 'private', notificationPolicyVersion: 1, version: 1 } })).status()).toBe(404);
   await page.goto(f.path); await expect(page.getByRole('alert').filter({ hasText: 'unavailable' })).toBeVisible();
 });
 
@@ -464,4 +468,64 @@ test('TC-WORKSPACE-LIVE-002: end-to-end organization invitations via Mailpit, ro
   } finally {
     await collabContext.close();
   }
+});
+
+test('TC-SETTINGS-LIVE-001: preferences persist, conflicts retain edits and refresh preserves the session', async ({ page, request }) => {
+  const f = await projectFixture(request);
+  await signIn(page, f.ownerEmail, f.password);
+  await page.goto('/account/preferences');
+  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('light');
+  await page.getByLabel('Theme', { exact: true }).selectOption('dark');
+  await page.getByLabel('Email notifications preference', { exact: true }).uncheck();
+  await page.getByLabel('Notification digest', { exact: true }).selectOption('weekly');
+  await page.getByRole('button', { name: 'Save preferences', exact: true }).click();
+  await expect(page.getByText('Preferences saved.', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('dark');
+  await expect(page.getByLabel('Email notifications preference', { exact: true })).not.toBeChecked();
+  await expect(page.getByLabel('Notification digest', { exact: true })).toHaveValue('weekly');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const current = (await (await request.get(`${api}/users/me/settings`, { headers: f.ownerHeaders })).json()).data as { version: number };
+  expect((await request.put(`${api}/users/me/settings`, { headers: f.ownerHeaders, data: { theme: 'light', notificationInApp: true, notificationEmail: true, notificationDigest: 'daily', version: current.version } })).status()).toBe(200);
+  await page.getByLabel('Notification digest', { exact: true }).selectOption('off');
+  await page.getByRole('button', { name: 'Save preferences', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('another session');
+  await expect(page.getByLabel('Notification digest', { exact: true })).toHaveValue('off');
+  await page.getByRole('button', { name: 'Load current preferences', exact: true }).click();
+  await expect(page.getByLabel('Notification digest', { exact: true })).toHaveValue('daily');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.reload(); // Uses the real refresh cookie and session-bound access token.
+  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('light');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByLabel('Theme', { exact: true }).focus(); await page.keyboard.press('ArrowDown');
+  await page.screenshot({ path: '../artifacts/settings-preferences-mobile.png', fullPage: true });
+});
+
+test('TC-SETTINGS-LIVE-002: organization policy, project profile and role intersection use real APIs', async ({ page, request }) => {
+  const f = await projectFixture(request);
+  await signIn(page, f.ownerEmail, f.password);
+  await page.goto(`/organizations/${f.orgId}/settings`);
+  await page.getByLabel('Allow project AI advisory preference', { exact: true }).uncheck();
+  await page.getByRole('button', { name: 'Save capability policy', exact: true }).click();
+  await expect(page.getByText('Organization policy saved.', { exact: true })).toBeVisible();
+  const policyPath = `${api}/organizations/${f.orgId}/settings`;
+  expect((await request.put(policyPath, { headers: f.memberHeaders, data: { aiAdvisoryAllowed: true, version: 2 } })).status()).toBe(403);
+  expect((await request.post(`${f.prefix}/members`, { headers: f.ownerHeaders, data: { userId: f.memberId, role: 'viewer' } })).status()).toBe(201);
+  await page.goto(`${f.path}/settings`);
+  await expect(page.getByLabel('Enable AI advisory preference')).toBeDisabled();
+  await page.getByLabel('Analysis profile', { exact: true }).selectOption('current-default-v1');
+  await page.getByLabel('Default asset visibility').selectOption('internal');
+  await page.getByRole('button', { name: 'Save analysis preferences', exact: true }).click();
+  await expect(page.getByText('Project settings saved.', { exact: true })).toBeVisible();
+  const settings = (await (await request.get(`${f.prefix}/settings`, { headers: f.ownerHeaders })).json()).data;
+  expect(settings).toMatchObject({ analysisProfileKey: 'current-default-v1', analysisProfileVersion: '1', version: 2, effectiveAiAdvisory: { value: false, sourceScope: 'platform' } });
+  const input = { analysisProfileKey: 'current-default-v1', aiAdvisoryEnabled: true, defaultAssetVisibility: 'private', notificationPolicyVersion: 1, version: 2 };
+  expect((await request.put(`${f.prefix}/settings`, { headers: f.ownerHeaders, data: input })).status()).toBe(409);
+  expect((await request.put(`${f.prefix}/settings`, { headers: f.memberHeaders, data: { ...input, aiAdvisoryEnabled: false } })).status()).toBe(403);
+  const invalid = await request.put(`${f.prefix}/settings`, { headers: f.ownerHeaders, data: { ...input, aiAdvisoryEnabled: false, analysisProfileKey: 'current-default-v2' } });
+  expect(invalid.status()).toBe(400); expect((await invalid.json()).error.code).toBe('ANALYSIS_PROFILE_INVALID');
+  const unchanged = (await (await request.get(`${f.prefix}/settings`, { headers: f.ownerHeaders })).json()).data;
+  expect(unchanged.version).toBe(2); expect(unchanged.defaultAssetVisibility).toBe('internal');
+  // Only one actual profile exists; no alternate profile or completed analysis is fabricated.
 });

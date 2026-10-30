@@ -1,5 +1,7 @@
 # 4A. M1 Physical Database Design
 
+Settings migration `20261030055044_VersionedPreferencesAndOrganizationPolicy`: identity.user_settings.version is required bigint, default/backfill 1, positive check and EF concurrency token. Existing unique user_id/FK, theme, notification flags, digest and timestamps are preserved. core.organization_settings contains UUID id, unique organization_id with restricted FK, ai_advisory_allowed (default true), positive bigint concurrency version (default 1) and UTC created_at/updated_at. Existing organizations are not silently backfilled; missing policy means allowance, bounded by the platform flag. First authorized read/write initializes under organization-membership lock. User preferences are personal; policy is tenant-confidential; audit follows existing retention. No credentials or provider messages are stored. Rollout is a controlled forward migration; retain the new column/table on application rollback and use a corrective forward migration if needed. [Contracts](05-api-contracts/settings.md), [migration evidence](../M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+
 ## 1. Scope and authority
 
 This document is the implementation-ready PostgreSQL design for M1 Identity and Tenancy. It refines the logical model in `04-database.md`.
