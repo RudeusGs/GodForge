@@ -93,13 +93,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: node scripts/check-doc-links.mjs
       - run: npm ci --no-audit --no-fund
       - run: npm audit --audit-level=high
-      - run: git show --check --oneline HEAD
+      - name: Check whitespace in the complete change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: git diff --check "$BASE_SHA" HEAD
 
   backend-runtime-quality-gate:
     runs-on: ubuntu-latest
