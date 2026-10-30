@@ -1,5 +1,7 @@
 # Backend Feature Evidence
 
+Final stabilization source `1e56c7f`: 271 backend unit and 153 real PostgreSQL integration tests pass locally and in [successful exact-source CI](https://github.com/RudeusGs/GodForge/actions/runs/41066217337). API and Worker rebuild/scan and real runtime smoke gates pass. The runtime row's older missing CI/scan evidence is superseded for this source by [final settings acceptance](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md); immutable production artifacts and release acceptance remain separate.
+
 2026-10-30 stabilization adds fresh-state remote revocation retry with a deterministic PostgreSQL race regression, strict settings/migration coverage, independent advisory-mode validation and post-cache policy checks. [Final settings evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) supersedes historical gate outcomes for the tested snapshot. Full M1/provider reconciliation and immutable deterministic execution remain OPEN.
 
 Reviewed 2026-10-26. This is a feature inventory, not a claim that all Core requirements are implemented. The backend-first request retains the product requirements and milestone dependencies. API route presence, EF entity presence and a passing baseline test suite are insufficient to close a feature.

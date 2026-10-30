@@ -6,6 +6,8 @@ Evidence basis: the repository snapshot and executable local verification perfor
 
 ## Current evidence
 
+Final stabilization source `1e56c7f757a95ec5e41138bd410b8bbca281c410` has a successful eight-job [Actions run 41066217337](https://github.com/RudeusGs/GodForge/actions/runs/41066217337), clean-checkout local full verification, 271 unit/153 PostgreSQL/148 frontend/22 controlled-browser tests, 10 live browser tests and 41 smoke assertions. Both API and Worker HIGH/CRITICAL scans and dependency/secret scans passed. [Final commands, image identities and source limits](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) supersede historical pending local/security/CI statements below. M0 verification is accepted for this source; overall M1 remains partially verified. M2 readiness is BLOCKED on the unresolved M1 exit gate/provider-reconciliation dependency. Immutable execution remains separate M4–M6 work, not an additional M2 feature requirement.
+
 | Area | Status | Current evidence |
 |---|---|---|
 | Baseline and CI | Local executable gates passed; clean-checkout CI pending | `npm run verify` checks documentation links, creates isolated PostgreSQL/Redis, runs backend restore/format/build/tests, frontend clean install/audit/lint/typecheck/tests/build and Chromium tests, then removes the verification containers. The configured SDK floor is `10.0.302` with `latestFeature`; the SDK actually resolved on this run was `10.0.400`. All solution projects built as `net10.0`. Runtime-image/release verification and clean-checkout CI remain separate gates. |

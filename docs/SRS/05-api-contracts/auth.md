@@ -184,6 +184,7 @@ The raw refresh token is returned only as the `godforge_refresh` cookie. The coo
 - **Permission:** session belongs to current user.
 - **Response:** `204 No Content`.
 - **Transaction:** revoke session and active refresh tokens.
-- **Errors:** masked `RESOURCE_NOT_FOUND`, `UNAUTHORIZED`.
+- **Concurrency:** re-read session ownership and revoke current refresh-token descendants after an optimistic conflict with refresh, up to three attempts. Cache invalidation remains before persistence. A lost attempt's tracked changes and audit are discarded; a successful retry commits one revocation audit.
+- **Errors:** masked `RESOURCE_NOT_FOUND`, `UNAUTHORIZED`; `409 CONCURRENCY_CONFLICT` if all three attempts lose a race. No cache failure is treated as success.
 - **Audit/security:** session revocation event; current session may also be revoked intentionally.
 - **Tests:** `TC-AUTH-SESSION-005` to `TC-AUTH-SESSION-008`.

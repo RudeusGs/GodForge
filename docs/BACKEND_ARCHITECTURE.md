@@ -12,7 +12,7 @@ Stabilization: remote session revocation retries up to three optimistic conflict
 - Boundary validation through dedicated validators.
 - PostgreSQL is the primary business database.
 
-The repository may temporarily contain `.NET 9` projects during M0. Target documentation remains `.NET 10 LTS`; implementation status changes only after the solution builds and tests on `net10.0`.
+All seven current backend projects target `net10.0`. Locked restore, build, tests and .NET 10 API/Worker runtime images have current executable evidence in the [final stabilization record](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md). Production release acceptance remains separate.
 
 ## Layer responsibilities
 

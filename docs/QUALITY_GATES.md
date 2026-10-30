@@ -1,5 +1,7 @@
 # Quality Gates
 
+Final stabilization source `1e56c7f` passed all eight mandatory jobs in [Actions 41066217337](https://github.com/RudeusGs/GodForge/actions/runs/41066217337), clean local full verification, real-service browser/smoke, API/Worker scans, dependency audits and secrets. [Commands, actual counts and image identities](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) supersede older pending CI/security notes for this source. Later commits require their own checks; production acceptance remains separate.
+
 Settings/M0 extension: all seven .NET projects now have packages.lock.json; CI, combined verification and runtime Docker builds restore with `--locked-mode`. CI adds API/Worker Trivy HIGH/CRITICAL scans without ignoring unfixed findings, and always retains backend TRX output. Runtime images explicitly install current libbrotli1 to remediate the locally detected CVE-2026-111497. Existing Gitleaks, NuGet/npm, browser, live/runtime and whitespace gates remain mandatory. [Current command results and remote run status](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) distinguish working-tree, clean local worktree and remote evidence. A running Windows Vite/API can lock native packages/DLLs; use isolated checkout/artifact paths instead of bypassing checks or killing unrelated services.
 
 ## Documentation gate

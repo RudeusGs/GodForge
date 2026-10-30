@@ -111,6 +111,8 @@ Physical design: `../04-database-m1-physical.md`.
 
 ## Tests and observability
 
+Remote session revocation recovers from concurrent refresh through at most three complete fresh-state attempts, including ownership validation and revocation of newly rotated token descendants. It retains the distributed cache barrier and returns a conflict on exhaustion. A deterministic PostgreSQL HTTP barrier test commits refresh after the revocation read and verifies only the target session is revoked, all its tokens are revoked and exactly one revocation audit commits (FR-01.4).
+
 - Test suites: `TC-AUTH-REG-*`, `TC-AUTH-LOGIN-*`, `TC-AUTH-REFRESH-*`, `TC-AUTH-SESSION-*`, `TC-AUTH-RESET-*`.
 - Required integration tests use real PostgreSQL constraints/transactions for refresh concurrency and challenge consumption.
 - Metrics: login success/failure/lockout, challenge request/consume, refresh success/reuse, active session count and endpoint rate-limit rejection.
