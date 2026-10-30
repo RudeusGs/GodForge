@@ -1,6 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import router from './index';
+import {
+    clearPendingInvitationToken,
+    getPendingInvitationToken,
+} from '../features/workspace/workspaceState';
 import { safeReturnTo } from '../utils/safeReturnTo';
 import { useAuthStore } from '../stores/auth.store';
 
@@ -13,6 +17,7 @@ describe('authentication routes', () => {
 
     beforeEach(() => {
         setActivePinia(createPinia());
+        clearPendingInvitationToken();
         mockAuthStore = {
             initialize: vi.fn().mockResolvedValue(undefined),
             initialized: true,
@@ -59,5 +64,31 @@ describe('authentication routes', () => {
         await router.push('/login');
 
         expect(router.currentRoute.value.path).toBe('/dashboard');
+    });
+
+    it.each([
+        '/organizations/tenant',
+        '/organizations/tenant/projects',
+        '/organizations/tenant/projects/project',
+        '/organizations/tenant/members',
+        '/organizations/tenant/invitations',
+        '/organizations/tenant/settings',
+    ])('protects workspace deep link %s and preserves the return path', async path => {
+        await router.push(path);
+        expect(router.currentRoute.value.name).toBe('login');
+        expect(router.currentRoute.value.query.returnTo).toBe(path);
+    });
+
+    it('captures invitation token into memory and strips token from login returnTo query', async () => {
+        await router.push('/organization-invitations/accept?token=raw-secret-invite-token');
+        expect(router.currentRoute.value.name).toBe('login');
+        expect(router.currentRoute.value.query.returnTo).toBe('/organization-invitations/accept');
+        expect(getPendingInvitationToken()).toBe('raw-secret-invite-token');
+    });
+
+    it('allows authenticated workspace deep links without claiming a tenant permission', async () => {
+        mockAuthStore.isAuthenticated = true;
+        await router.push('/organizations/tenant/projects/project');
+        expect(router.currentRoute.value.name).toBe('projectDetail');
     });
 });

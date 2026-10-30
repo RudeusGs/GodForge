@@ -3,6 +3,7 @@ import axios, { AxiosError, type AxiosRequestConfig, type AxiosResponse, type In
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearAccessToken, getAccessToken, setAccessToken } from './auth/authSession';
 import axiosClient from './axiosClient';
+import baseApi from './baseApi';
 import { authRefreshCoordinator, AuthRefreshPeerFailedError, AuthRefreshCoordinationUnavailableError } from './auth/authRefreshCoordinator';
 
 const refreshedAuth = {
@@ -33,9 +34,10 @@ describe('axios authentication interceptor', () => {
         axiosClient.defaults.adapter = adapter as AxiosRequestConfig['adapter'];
 
         try {
-            const responses = await Promise.all(Array.from({ length: 10 }, (_, index) => axiosClient.get(`/resource/${index}`)));
+            const responses = await Promise.all(Array.from({ length: 10 }, (_, index) => baseApi.get<{ ok: boolean; url: string }>(`/resource/${index}`)));
             expect(responses).toHaveLength(10);
-            expect(responses.every(response => (response as unknown as { ok: boolean }).ok)).toBe(true);
+            expect(responses.every(response => response.ok)).toBe(true);
+            expect(responses.map(response => response.url)).toEqual(Array.from({ length: 10 }, (_, index) => `/resource/${index}`));
             expect(refreshTransport).toHaveBeenCalledTimes(1);
             expect(adapter).toHaveBeenCalledTimes(20);
         } finally {

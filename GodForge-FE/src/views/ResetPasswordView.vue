@@ -9,8 +9,13 @@ import { useAuthStore } from '@/stores/auth.store';
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const email = computed(() => String(route.query.email ?? ''));
-const token = computed(() => String(route.query.token ?? ''));
+const email = ref(String(route.query.email ?? ''));
+const token = ref(String(route.query.token ?? ''));
+
+if (email.value && token.value) {
+    // Remove the sensitive token from the URL history
+    router.replace({ query: {} }).catch(() => {});
+}
 const newPassword = ref('');
 const confirmPassword = ref('');
 const errorMessage = ref('');

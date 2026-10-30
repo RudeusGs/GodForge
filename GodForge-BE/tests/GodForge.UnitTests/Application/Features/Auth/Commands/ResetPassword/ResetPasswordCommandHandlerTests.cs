@@ -1,5 +1,6 @@
 using GodForge.Application.Common.Interfaces;
 using GodForge.Application.Common.Interfaces.Repositories;
+using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Auth;
 using GodForge.Application.Features.Auth.Commands.ResetPassword;
 using GodForge.Domain.Entities.Identity;
@@ -98,6 +99,40 @@ public sealed class ResetPasswordCommandHandlerTests
         Assert.Equal(1, challenge.FailedAttempts);
         _sessions.Verify(x => x.RevokeAllForUserAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_RevocationConflict_RechecksSingleUseChallengeBeforeRetry(bool consumedByAnotherReset)
+    {
+        var now = new DateTimeOffset(2026, 8, 10, 12, 0, 0, TimeSpan.Zero);
+        var user = User.Create("reset@example.com", "Reset User", "old-hash", now.AddDays(-1));
+        AuthChallenge NewChallenge() => AuthChallenge.Create(user.NormalizedEmail,
+            AuthChallengePurposes.PasswordReset, "token-hash", now.AddMinutes(-1),
+            TimeSpan.FromHours(1), TimeSpan.FromSeconds(60));
+        _clock.SetupGet(x => x.UtcNow).Returns(now);
+        _users.Setup(x => x.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _challenges.SetupSequence(x => x.GetActiveAsync(user.NormalizedEmail,
+                AuthChallengePurposes.PasswordReset, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(NewChallenge())
+            .ReturnsAsync(consumedByAnotherReset ? null : NewChallenge());
+        _secretHash.Setup(x => x.Verify("raw-token", "token-hash")).Returns(true);
+        _passwords.Setup(x => x.HashPassword("NewPassword1")).Returns("new-hash");
+        _sessions.Setup(x => x.RevokeAllForUserAsync(user.Id, "password-reset", now, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Guid>());
+        _unitOfWork.SetupSequence(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConcurrencyConflictException("refresh updated the session"))
+            .ReturnsAsync(1);
+
+        var result = await CreateHandler().Handle(
+            new ResetPasswordCommand(user.Email, "raw-token", "NewPassword1"), CancellationToken.None);
+
+        Assert.Equal(!consumedByAnotherReset, result.IsSuccess);
+        _unitOfWork.Verify(x => x.ClearTrackedChanges(), Times.Once);
+        _refreshTokens.Verify(x => x.RevokeAllForUserAsync(user.Id, "password-reset", now,
+            It.IsAny<CancellationToken>()), Times.Exactly(consumedByAnotherReset ? 1 : 2));
+        if (consumedByAnotherReset) Assert.Equal("AUTH_RESET_TOKEN_INVALID", result.Error!.Code);
     }
 
     private ResetPasswordCommandHandler CreateHandler() => new(

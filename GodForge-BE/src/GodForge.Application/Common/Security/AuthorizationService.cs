@@ -38,6 +38,12 @@ public sealed class AuthorizationService : IAuthorizationService
         if (project is null || project.Status is ProjectStatus.Deleted or ProjectStatus.Deleting || project.DeletedAt is not null)
             return false;
 
+        if (project.Status == ProjectStatus.Archived && permission is not
+            (Permissions.ProjectsRead or Permissions.ProjectMembersRead or Permissions.RepositoryRead or
+             Permissions.RevisionsRead or Permissions.AnalysisRead or Permissions.JobsRead or Permissions.ActivityRead or
+             Permissions.ProjectsRestore or Permissions.ProjectsDelete))
+            return false;
+
         if (!await _organizationMembers.IsActiveAsync(project.OrganizationId, userId, cancellationToken))
             return false;
 

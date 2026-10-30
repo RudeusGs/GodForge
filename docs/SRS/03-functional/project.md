@@ -105,9 +105,11 @@ OrganizationOwner, OrganizationAdmin, OrganizationMember, ProjectOwner, Maintain
 - `AC-FR-03-02`: Project slug uniqueness is enforced per organization, not globally.
 - `AC-FR-03-03`: Archived project rejects repository, membership and analysis mutations while remaining readable to authorized roles.
 - `AC-FR-03-04`: Project restore requires permission and returns the project to the allowed active state without restoring removed memberships.
+- `AC-FR-03-05`: ProjectOwner/Maintainer can archive an active project through a versioned synchronous request; archive and audit commit atomically. Archived metadata/settings/membership/ownership writes return a stable conflict while authorized reads and restore remain available.
 - `AC-FR-03.1-01`: A Maintainer cannot add, remove or change a ProjectOwner and cannot grant a role above Maintainer.
 - `AC-FR-03.1-02`: Ownership transfer is atomic and never leaves a project without an active ProjectOwner.
 - `AC-FR-03.1-03`: Membership removal takes effect for GodForge authorization immediately and preserves historical attribution.
+- `AC-FR-03.1-04`: Successful ownership transfer consumes and increments the organization/project aggregate version; reusing the preceding version conflicts without changing memberships or audit history.
 - `AC-FR-17-01`: Project/user settings are read or changed only through the settings-policy contract and do not bypass membership or platform minimums.
 
 ## Related API
@@ -144,8 +146,26 @@ Physical design: `../04-database-m1-physical.md`.
 
 ## Tests and observability
 
+### Current workspace and organization management slice
+
+The browser and backend implement M1 organization management (`FR-27`, `FR-27.1`, `FR-27.2` internal revocation, `FR-27.3`, `AC-FR-27-01/02`, `AC-FR-27.1-01/02`, `AC-FR-27.2-01`, `AC-FR-27.3-01/02`, `AC-FR-03.1-03/04`) alongside selected-organization project list/create/detail (`FR-03`, `AC-FR-03-01/02`):
+
+- Organization navigation and overview (`/organizations/:organizationId`), projects (`/organizations/:organizationId/projects`), members (`/organizations/:organizationId/members`), invitations (`/organizations/:organizationId/invitations`), invitation acceptance (`/organization-invitations/accept`), and settings (`/organizations/:organizationId/settings` covering General Settings, Ownership Transfer, and Danger Zone deletion request).
+- Server-side paginated member directory with search, role, and status filters; versioned role/status updates (`PATCH /organizations/{id}/members/{userId}`); member removal and self-leave (`DELETE /organizations/{id}/members/{userId}`) with atomic revocation of all project memberships in that organization and last-owner protection.
+- Idempotent invitation creation (`POST /organizations/{id}/invitations` with `Idempotency-Key`), paginated/filtered invitation listing, idempotent revocation, and serialized invitation acceptance (`POST /organization-invitations/accept`) that scrubs `?token=` from browser URLs and never stores raw tokens in `localStorage`, `sessionStorage`, or logs.
+- Versioned organization settings updates (`PATCH /organizations/{id}`), atomic ownership transfer (`POST /organizations/{id}/transfer-ownership`), and owner-confirmed deletion requests (`DELETE /organizations/{id}` returning `202 Accepted` with retained `deleting` status).
+
+Organization catalog metadata remains displayed separately from assigned project content (`FR-27.3`, `AC-FR-27.3-02`); catalog rows never imply a project role or offer a content link. Frontend route IDs are lookup inputs only.
+
+Project membership/ownership/settings browser workflows now exist (see the project addendum below). External hosted-provider reconciliation `FR-27.2` (`AC-FR-27.2-02`) remains open. Evidence: `TC-WORKSPACE-BROWSER-001`–`008`, `TC-WORKSPACE-LIVE-001`–`002`, frontend workspace/organization unit tests, and PostgreSQL HTTP integration tests (`OrganizationManagementHttpTests`, `TenantProjectLifecycleHttpTests`, `TenantBoundaryAndRbacTests`); see [organization management acceptance evidence](../../ORGANIZATION_MANAGEMENT_ACCEPTANCE_EVIDENCE.md) and [workspace foundation evidence](../../WORKSPACE_FOUNDATION_EVIDENCE.md).
+
 - Test suites: `TC-TENANT-*`, `TC-ORG-*`, `TC-PROJ-*`, `TC-RBAC-*`, `TC-INVITE-*`.
 - Every project route requires cross-tenant negative integration tests.
 - Required concurrency tests cover last-owner protection, duplicate invitation acceptance and ownership transfer.
 - Metrics: organization/project creation, invite lifecycle, membership changes, authorization denials and pending provider reconciliation.
 - Audit/log fields: correlation ID, actor ID, organization ID, project ID, action, target and safe outcome; never raw invitation token.
+
+
+## Executable project management slice — 2026-10-30
+
+FR-03/FR-03.1 now have Overview, Members and Settings browser workflows. Assignment/reactivation validates an active account and active same-organization membership under shared mutation locks. Ownership also explicitly requires active project membership, consumes the aggregate version and commits roles/audit atomically. PATCH of inactive memberships returns MEMBERSHIP_NOT_FOUND; explicit assignment reuses the original membership row. Optional assignment idempotency uses project.member.add; replay cannot bypass current authorization, archival or revocation. Member summaries expose accountStatus for candidate eligibility. AC-FR-03-03/04/05, AC-FR-03.1-01/02/03/04, AC-FR-27.1-01 and AC-FR-27.3-02 map to tests in [project acceptance evidence](../../PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md). External Forgejo reconciliation remains open.

@@ -4,6 +4,7 @@ using GodForge.Api.Routing;
 using GodForge.Api.Services;
 using GodForge.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.Extensions.Configuration;
@@ -216,21 +217,64 @@ public static class DependencyInjection
 
         services.AddAuthorization();
 
-        var frontendBaseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-        var frontendOrigin = Uri.TryCreate(frontendBaseUrl, UriKind.Absolute, out var frontendUri)
-            ? frontendUri.GetLeftPart(UriPartial.Authority)
-            : "http://localhost:5173";
-
-        services.AddCors(options =>
-        {
-            options.AddPolicy("CorsPolicy", policy =>
+        services.AddCors();
+        services.AddOptions<CorsOptions>()
+            .Configure<IConfiguration, IHostEnvironment>((options, config, env) =>
             {
-                policy.WithOrigins(frontendOrigin)
-                      .AllowAnyHeader()
-                      .AllowAnyMethod()
-                      .AllowCredentials();
+                var allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                var frontendBaseUrl = config["Frontend:BaseUrl"] ?? "http://localhost:5173";
+                if (Uri.TryCreate(frontendBaseUrl, UriKind.Absolute, out var frontendUri))
+                {
+                    allowedOrigins.Add(frontendUri.GetLeftPart(UriPartial.Authority));
+                }
+                else
+                {
+                    allowedOrigins.Add("http://localhost:5173");
+                }
+
+                var configuredAllowedOrigins = config.GetSection("Frontend:AllowedOrigins").Get<string[]>() ?? [];
+                foreach (var origin in configuredAllowedOrigins)
+                {
+                    if (Uri.TryCreate(origin, UriKind.Absolute, out var parsedOrigin))
+                    {
+                        allowedOrigins.Add(parsedOrigin.GetLeftPart(UriPartial.Authority));
+                    }
+                }
+
+                options.AddPolicy("CorsPolicy", policy =>
+                {
+                    if (env.IsDevelopment())
+                    {
+                        policy.SetIsOriginAllowed(origin =>
+                        {
+                            if (string.IsNullOrWhiteSpace(origin))
+                                return false;
+
+                            if (allowedOrigins.Contains(origin))
+                                return true;
+
+                            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                            {
+                                return (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                                    && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase));
+                            }
+
+                            return false;
+                        })
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+                    }
+                    else
+                    {
+                        policy.WithOrigins(allowedOrigins.ToArray())
+                              .AllowAnyHeader()
+                              .AllowAnyMethod()
+                              .AllowCredentials();
+                    }
+                });
             });
-        });
 
         return services;
     }

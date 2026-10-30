@@ -1,0 +1,102 @@
+name: godforge-backend
+
+# Local development only. Production uses protected secrets and controlled migrations.
+x-backend-environment: &backend-environment
+  ConnectionStrings__DefaultConnection: Host=postgres;Database=godforge;Username=godforge;Password=godforge_backend_local
+  ConnectionStrings__Redis: redis:6379
+  RabbitMQ__Enabled: "true"
+  RabbitMQ__HostName: rabbitmq
+  RabbitMQ__UserName: godforge
+  RabbitMQ__Password: godforge_backend_local
+  OutboxEncryption__Key: local-backend-outbox-key-0000000000000000000000000000000000000000
+  SecretHashing__Key: local-backend-challenge-key-11111111111111111111111111111111111111
+  Email__Smtp__Host: mailpit
+  Email__Smtp__Port: "1025"
+  Email__Smtp__EnableSsl: "false"
+  Email__Smtp__FromEmail: noreply@godforge.test
+  Email__Smtp__FromName: GodForge Local
+  Frontend__BaseUrl: http://localhost:5173
+  Gemini__Enabled: "false"
+  Forgejo__Enabled: "false"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: godforge
+      POSTGRES_PASSWORD: godforge_backend_local
+      POSTGRES_DB: godforge
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U godforge -d godforge"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: godforge
+      RABBITMQ_DEFAULT_PASS: godforge_backend_local
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:18025:8025"]
+  api:
+    build:
+      context: .
+      dockerfile: GodForge-BE/Dockerfile
+      target: api
+    environment:
+      <<: *backend-environment
+      ASPNETCORE_ENVIRONMENT: Development
+      Jwt__Secret: local-backend-jwt-signing-key-22222222222222222222222222222222222
+      Frontend__AllowedOrigins__0: http://localhost:5173
+      Frontend__AllowedOrigins__1: http://127.0.0.1:5173
+    ports: ["127.0.0.1:15072:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      mailpit: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health/ready"]
+      interval: 3s
+      timeout: 5s
+      start_period: 60s
+      retries: 30
+    read_only: true
+    tmpfs: ["/tmp:size=128m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+  worker:
+    build:
+      context: .
+      dockerfile: GodForge-BE/Dockerfile
+      target: worker
+    environment:
+      <<: *backend-environment
+      DOTNET_ENVIRONMENT: Production
+    depends_on:
+      api: { condition: service_healthy }
+    volumes: ["workspaces:/workspaces"]
+    read_only: true
+    tmpfs: ["/tmp:size=128m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    cpus: 2
+    mem_limit: 1g
+
+volumes:
+  postgres-data:
+  workspaces:

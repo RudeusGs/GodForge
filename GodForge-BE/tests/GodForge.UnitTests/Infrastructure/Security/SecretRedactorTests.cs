@@ -5,7 +5,7 @@ namespace GodForge.UnitTests.Infrastructure.Security;
 public sealed class SecretRedactorTests
 {
     [Theory]
-    [InlineData("API_KEY=abc123456789", "abc123456789")]
+    [InlineData("API_KEY=abc123456789", "abc123456789")] // gitleaks:allow -- synthetic security-test fixture, never a live credential.
     [InlineData("password: super-secret-password", "super-secret-password")]
     [InlineData("Authorization: Bearer abcdefghijklmnopqrstuvwxyz", "abcdefghijklmnopqrstuvwxyz")]
     [InlineData("{\"apiKey\":\"AIzaabcdefghijklmnopqrstuvwxyz123456\"}", "AIzaabcdefghijklmnopqrstuvwxyz123456")]

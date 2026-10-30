@@ -278,45 +278,58 @@ public sealed class ProjectLifecycleService : ProjectOperationServiceBase, IProj
 
     public async Task<Result<ProjectDeletionAcceptedDto>> RequestDeletionAsync(Guid actorId, Guid projectId, long version, string confirmationSlug, CancellationToken cancellationToken)
     {
-        var access = await GetProjectAccessAsync(actorId, projectId, Permissions.ProjectsDelete, true, cancellationToken);
-        if (access.Error is not null) return access.Error;
-        var project = access.Project!;
-        if (!string.Equals(project.Slug, confirmationSlug?.Trim(), StringComparison.Ordinal))
-            return ApplicationError.Validation("VALIDATION_ERROR", "confirmationSlug does not match the project slug.");
-        if (project.Version != version)
-            return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "Project version is stale.");
-        project.MarkDeleting(version, _clock.UtcNow);
-        await _auditWriter.WriteAuditAsync(
-            actorId, project.Id, "project.deletion_requested", "project", project.Id, "succeeded",
-            new { project.Slug, project.Version }, cancellationToken);
-        var save = await SaveAsync(cancellationToken);
-        if (save is not null) return save;
-        return new ProjectDeletionAcceptedDto(project.Id, "deleting", project.Version);
+        var result = await ChangeLifecycleAsync(actorId, projectId, version, Permissions.ProjectsDelete,
+            "project.deletion_requested", confirmationSlug, cancellationToken);
+        return result.IsError ? result.Error! : new ProjectDeletionAcceptedDto(result.Value.Id, result.Value.Status, result.Value.Version);
     }
 
-    public async Task<Result<ProjectDto>> RestoreAsync(Guid actorId, Guid projectId, long version, CancellationToken cancellationToken)
+    public Task<Result<ProjectDto>> RestoreAsync(Guid actorId, Guid projectId, long version, CancellationToken cancellationToken)
+        => ChangeLifecycleAsync(actorId, projectId, version, Permissions.ProjectsRestore, "project.restored", null, cancellationToken);
+
+    public Task<Result<ProjectDto>> ArchiveAsync(Guid actorId, Guid projectId, long version, CancellationToken cancellationToken)
+        => ChangeLifecycleAsync(actorId, projectId, version, Permissions.ProjectsArchive, "project.archived", null, cancellationToken);
+
+    private async Task<Result<ProjectDto>> ChangeLifecycleAsync(Guid actorId, Guid projectId, long version,
+        string permission, string auditEvent, string? confirmationSlug, CancellationToken cancellationToken)
     {
-        var access = await GetProjectAccessAsync(actorId, projectId, Permissions.ProjectsRestore, true, cancellationToken);
-        if (access.Error is not null) return access.Error;
-        var project = access.Project!;
-        if (project.Version != version)
-            return ApplicationError.Conflict("CONCURRENCY_CONFLICT", "Project version is stale.");
+        await BeginSerializedMutationAsync("project-membership", projectId, cancellationToken);
         try
         {
-            project.Restore(version, _clock.UtcNow);
+            var access = await GetProjectAccessAsync(actorId, projectId, permission,
+                permission != Permissions.ProjectsArchive, cancellationToken);
+            if (access.Error is not null) return await RollbackAsync<ProjectDto>(access.Error, cancellationToken);
+            var project = access.Project!;
+            if (permission == Permissions.ProjectsDelete && !string.Equals(project.Slug, confirmationSlug?.Trim(), StringComparison.Ordinal))
+                return await RollbackAsync<ProjectDto>(ApplicationError.Validation("VALIDATION_ERROR", "confirmationSlug does not match the project slug."), cancellationToken);
+            if (permission == Permissions.ProjectsDelete && project.Status == ProjectStatus.Deleting)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return ProjectDto.From(project, access.ProjectMembership is not null
+                    ? EnumText.ToCamelCase(access.ProjectMembership.Role) : EnumText.ToCamelCase(access.OrganizationMembership!.Role));
+            }
+            if (project.Version != version)
+                return await RollbackAsync<ProjectDto>(ApplicationError.Conflict("CONCURRENCY_CONFLICT", "Project version is stale."), cancellationToken);
+            if (permission == Permissions.ProjectsRestore && project.Status != ProjectStatus.Archived)
+                return await RollbackAsync<ProjectDto>(ApplicationError.Conflict("PROJECT_NOT_ARCHIVED", "Only an archived project can be restored."), cancellationToken);
+
+            var now = _clock.UtcNow;
+            if (permission == Permissions.ProjectsRestore) project.Restore(version, now);
+            else if (permission == Permissions.ProjectsArchive) project.Archive(version, now);
+            else project.MarkDeleting(version, now);
+            await _auditWriter.WriteAuditAsync(actorId, project.Id, auditEvent, "project", project.Id, "succeeded",
+                new { project.Version }, cancellationToken);
+            var save = await SaveAsync(cancellationToken);
+            if (save is not null) return await RollbackAsync<ProjectDto>(save, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return ProjectDto.From(project, access.ProjectMembership is not null
+                ? EnumText.ToCamelCase(access.ProjectMembership.Role) : EnumText.ToCamelCase(access.OrganizationMembership!.Role));
         }
-        catch (InvalidOperationException)
+        catch
         {
-            return ApplicationError.Conflict("PROJECT_NOT_ARCHIVED", "Only an archived project can be restored.");
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            _unitOfWork.ClearTrackedChanges();
+            throw;
         }
-        await _auditWriter.WriteAuditAsync(
-            actorId, project.Id, "project.restored", "project", project.Id, "succeeded",
-            new { project.Version }, cancellationToken);
-        var save = await SaveAsync(cancellationToken);
-        if (save is not null) return save;
-        if (access.ProjectMembership is not null)
-            return ProjectDto.From(project, access.ProjectMembership);
-        return ProjectDto.From(project, EnumText.ToCamelCase(access.OrganizationMembership!.Role));
     }
 
     private async Task<Result<ProjectDto>?> GetExistingCreateResultAsync(

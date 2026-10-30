@@ -160,7 +160,7 @@ public class LoginCommandHandlerTests
         Assert.Equal("AUTH_INVALID_CREDENTIALS", result.Error?.Code);
         _passwordHasher.Verify(
             x => x.VerifyPassword(command.Password, user.PasswordHash),
-            Times.Exactly(2));
+            Times.Once);
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class LoginCommandHandlerTests
         Assert.False(result.IsSuccess);
         Assert.Equal("AUTH_INVALID_CREDENTIALS", result.Error?.Code);
         Assert.Equal(ErrorType.Unauthorized, result.Error?.Type);
-        _passwordHasher.Verify(x => x.VerifyPassword(command.Password, user.PasswordHash), Times.Exactly(2));
+        _passwordHasher.Verify(x => x.VerifyPassword(command.Password, user.PasswordHash), Times.Once);
     }
 
 }

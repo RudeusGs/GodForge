@@ -23,7 +23,7 @@ public static class OrganizationRolePermissions
         },
         OrganizationRole.OrganizationMember => new HashSet<string>(StringComparer.Ordinal)
         {
-            Permissions.OrganizationsRead
+            Permissions.OrganizationsRead, Permissions.OrganizationMembersRead
         },
         _ => new HashSet<string>(StringComparer.Ordinal)
     };

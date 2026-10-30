@@ -31,20 +31,44 @@ public sealed class RevokeOrganizationInvitationCommandHandler : OrganizationCom
 
     public async Task<Result> Handle(RevokeOrganizationInvitationCommand request, CancellationToken cancellationToken)
     {
-        var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationMembersInvite, cancellationToken);
-        if (access.Error is not null) return access.Error;
+        await BeginMembershipMutationAsync("organization-invitations", request.OrganizationId, cancellationToken);
+        try
+        {
+            var access = await GetActiveAccessAsync(request.ActorId, request.OrganizationId, Permissions.OrganizationMembersInvite, cancellationToken);
+            if (access.Error is not null)
+                return await RollbackAsync(access.Error, cancellationToken);
 
-        var invitation = await _invitations.GetByIdAsync(request.OrganizationId, request.InvitationId, cancellationToken);
-        if (invitation is null)
-            return ApplicationError.NotFound("RESOURCE_NOT_FOUND", "Invitation was not found.");
+            var invitation = await _invitations.GetByIdAsync(request.OrganizationId, request.InvitationId, cancellationToken);
+            if (invitation is null)
+                return await RollbackAsync(
+                    ApplicationError.NotFound("RESOURCE_NOT_FOUND", "Invitation was not found."),
+                    cancellationToken);
 
-        invitation.Revoke(_clock.UtcNow);
+            if (invitation.Status != InviteStatus.Pending)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                _unitOfWork.ClearTrackedChanges();
+                return Result.Success();
+            }
 
-        await _auditWriter.WriteAuditAsync(
-            request.ActorId, null, "organization.invitation_revoked", "organization-invitation", invitation.Id, "succeeded",
-            new { organizationId = request.OrganizationId, invitation.NormalizedEmail }, cancellationToken);
+            invitation.Revoke(_clock.UtcNow);
 
-        var save = await SaveAsync(cancellationToken);
-        return save is null ? Result.Success() : Result.Failure(save);
+            await _auditWriter.WriteAuditAsync(
+                request.ActorId, null, "organization.invitation_revoked", "organization-invitation", invitation.Id, "succeeded",
+                new { organizationId = request.OrganizationId, invitation.NormalizedEmail }, cancellationToken);
+
+            var save = await SaveAsync(cancellationToken);
+            if (save is not null)
+                return await RollbackAsync(save, cancellationToken);
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return Result.Success();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            _unitOfWork.ClearTrackedChanges();
+            throw;
+        }
     }
 }

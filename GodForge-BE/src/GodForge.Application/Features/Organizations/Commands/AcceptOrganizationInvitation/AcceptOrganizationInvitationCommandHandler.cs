@@ -40,39 +40,60 @@ public sealed class AcceptOrganizationInvitationCommandHandler : OrganizationCom
         if (string.IsNullOrWhiteSpace(request.Token))
             return ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired.");
 
-        var invitation = await _invitations.GetByTokenHashAsync(_secretHash.Hash(request.Token), cancellationToken);
-        var user = await _users.GetByIdAsync(request.ActorId, cancellationToken);
-        var now = _clock.UtcNow;
-
-        if (invitation is null || !invitation.IsActive(now) || user is null || user.EmailVerifiedAt is null || user.NormalizedEmail != invitation.NormalizedEmail)
+        var tokenHash = _secretHash.Hash(request.Token);
+        var initialInvitation = await _invitations.GetByTokenHashAsync(tokenHash, cancellationToken);
+        if (initialInvitation is null)
             return ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired.");
 
-        var organization = await _organizations.GetByIdAsync(invitation.OrganizationId, cancellationToken);
-        if (organization is null || organization.Status != OrganizationStatus.Active)
-            return ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired.");
-
-        var membership = await _members.GetAsync(organization.Id, request.ActorId, cancellationToken);
-        if (membership is null)
+        await BeginMembershipMutationAsync("organization-membership", initialInvitation.OrganizationId, cancellationToken);
+        try
         {
-            membership = OrganizationMember.Create(organization.Id, request.ActorId, invitation.Role, invitation.InvitedBy, now);
-            await _members.AddAsync(membership, cancellationToken);
+            var invitation = await _invitations.GetByTokenHashAsync(tokenHash, cancellationToken);
+            var user = await _users.GetByIdAsync(request.ActorId, cancellationToken);
+            var now = _clock.UtcNow;
+
+            if (invitation is null || !invitation.IsActive(now) || user is null || user.Status != UserStatus.Active || user.EmailVerifiedAt is null || user.NormalizedEmail != invitation.NormalizedEmail)
+                return await RollbackAsync<OrganizationInvitationAcceptanceDto>(
+                    ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired."),
+                    cancellationToken);
+
+            var organization = await _organizations.GetByIdAsync(invitation.OrganizationId, cancellationToken);
+            if (organization is null || organization.Status != OrganizationStatus.Active)
+                return await RollbackAsync<OrganizationInvitationAcceptanceDto>(
+                    ApplicationError.Unauthorized("INVITE_INVALID_OR_EXPIRED", "Invitation is invalid or expired."),
+                    cancellationToken);
+
+            var membership = await _members.GetAsync(organization.Id, request.ActorId, cancellationToken);
+            if (membership is null)
+            {
+                membership = OrganizationMember.Create(organization.Id, request.ActorId, invitation.Role, invitation.InvitedBy, now);
+                await _members.AddAsync(membership, cancellationToken);
+            }
+            else if (membership.Status != MembershipStatus.Active)
+            {
+                membership.Change(invitation.Role, MembershipStatus.Active, invitation.InvitedBy, membership.Version, now);
+            }
+
+            invitation.Accept(now);
+
+            await _auditWriter.WriteAuditAsync(
+                request.ActorId, null, "organization.invitation_accepted", "organization-invitation", invitation.Id, "succeeded",
+                new { organizationId = organization.Id, Role = membership.Role.ToString() }, cancellationToken);
+
+            var save = await SaveAsync(cancellationToken);
+            if (save is not null)
+                return await RollbackAsync<OrganizationInvitationAcceptanceDto>(save, cancellationToken);
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return new OrganizationInvitationAcceptanceDto(
+                OrganizationDto.From(organization, membership),
+                OrganizationMemberDto.From(membership, user));
         }
-        else if (membership.Status != MembershipStatus.Active)
+        catch
         {
-            membership.Change(invitation.Role, MembershipStatus.Active, invitation.InvitedBy, membership.Version, now);
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            _unitOfWork.ClearTrackedChanges();
+            throw;
         }
-
-        invitation.Accept(now);
-
-        await _auditWriter.WriteAuditAsync(
-            request.ActorId, null, "organization.invitation_accepted", "organization-invitation", invitation.Id, "succeeded",
-            new { organizationId = organization.Id, Role = membership.Role.ToString() }, cancellationToken);
-
-        var save = await SaveAsync(cancellationToken);
-        if (save is not null) return save;
-
-        return new OrganizationInvitationAcceptanceDto(
-            OrganizationDto.From(organization, membership),
-            OrganizationMemberDto.From(membership, user));
     }
 }

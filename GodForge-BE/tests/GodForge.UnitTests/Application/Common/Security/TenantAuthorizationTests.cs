@@ -57,6 +57,30 @@ public sealed class TenantAuthorizationTests
         _projectMembers.Verify(x => x.GetMembershipAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(Permissions.RepositoryManage, false)]
+    [InlineData(Permissions.RepositorySync, false)]
+    [InlineData(Permissions.RepositoryPush, false)]
+    [InlineData(Permissions.AnalysisTrigger, false)]
+    [InlineData(Permissions.ProjectMembersAdd, false)]
+    [InlineData(Permissions.RepositoryRead, true)]
+    [InlineData(Permissions.AnalysisRead, true)]
+    [InlineData(Permissions.ProjectsRestore, true)]
+    public async Task ArchivedProject_AllowsReadsAndRestoreButDeniesWrites(string permission, bool expected)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var user = User.Create("archived-owner@example.test", "Owner", "hash", now);
+        var organizationId = Guid.NewGuid();
+        var project = Project.Create(organizationId, "Archived", "archived", null, "4.3", ProjectVisibility.Private, user.Id, now);
+        project.Archive(1, now);
+        var membership = ProjectMember.Create(project.Id, organizationId, user.Id, ProjectRole.ProjectOwner, ProjectMemberSource.Direct, user.Id, now);
+        _users.Setup(x => x.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _projects.Setup(x => x.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        _organizationMembers.Setup(x => x.IsActiveAsync(organizationId, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _projectMembers.Setup(x => x.GetMembershipAsync(project.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(membership);
+        Assert.Equal(expected, await _sut.HasPermissionAsync(user.Id, project.Id, permission));
+    }
+
     [Fact]
     public async Task HasPermissionAsync_DeniesInternalProjectWithoutProjectRole()
     {

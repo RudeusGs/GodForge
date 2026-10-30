@@ -26,10 +26,23 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       GODFORGE_TEST_POSTGRES: Host=localhost;Port=5432;Database=godforge_test;Username=godforge;Password=godforge_local_password
+      GODFORGE_TEST_REDIS: localhost:6379
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -47,8 +60,7 @@ jobs:
         working-directory: GodForge-BE
         run: dotnet format --verify-no-changes
       - name: Vulnerability check
-        working-directory: GodForge-BE
-        run: dotnet list package --vulnerable --include-transitive
+        run: node scripts/check-dotnet-vulnerabilities.mjs
 
   frontend-quality-gate:
     runs-on: ubuntu-latest
@@ -60,7 +72,7 @@ jobs:
           node-version: 22
       - name: Install dependencies
         working-directory: GodForge-FE
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Lint
         working-directory: GodForge-FE
         run: npm run lint
@@ -73,6 +85,95 @@ jobs:
       - name: Build
         working-directory: GodForge-FE
         run: npm run build
-      - name: Audit critical vulnerabilities
+      - name: Audit high vulnerabilities
         working-directory: GodForge-FE
-        run: npm audit --audit-level=critical
+        run: npm audit --audit-level=high
+
+  documentation-quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-doc-links.mjs
+      - run: npm ci --no-audit --no-fund
+      - run: npm audit --audit-level=high
+      - name: Check whitespace in the complete change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: git diff --check "$BASE_SHA" HEAD
+
+  backend-runtime-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build and start .NET 10 backend runtime images
+        run: docker compose -f docker-compose.backend.yml up -d --build --wait
+      - name: Verify real HTTP, sessions, tenant workflows and SMTP delivery
+        run: node scripts/backend-smoke.mjs
+      - name: Stop backend runtime stack
+        if: always()
+        run: docker compose -f docker-compose.backend.yml down
+
+  browser-quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+        working-directory: GodForge-FE
+      - run: npm ci --no-audit --no-fund
+        working-directory: GodForge-E2E
+      - run: npm audit --audit-level=high
+        working-directory: GodForge-E2E
+      - name: Typecheck browser acceptance tests
+        run: node ../GodForge-FE/node_modules/typescript/bin/tsc --noEmit --ignoreDeprecations 6.0
+        working-directory: GodForge-E2E
+      - run: npx playwright install --with-deps chromium
+        working-directory: GodForge-E2E
+      - run: npm test
+        working-directory: GodForge-E2E
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-results
+          path: GodForge-E2E/test-results
+
+  workspace-live-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+        working-directory: GodForge-FE
+      - run: npm ci --no-audit --no-fund
+        working-directory: GodForge-E2E
+      - run: npx playwright install --with-deps chromium
+        working-directory: GodForge-E2E
+      - name: Verify real workspace workflows with isolated services
+        run: npm run test:workspace:live
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: workspace-live-test-results
+          path: GodForge-E2E/test-results
+
+  secret-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan checked-out source for credentials
+        run: docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" ghcr.io/gitleaks/gitleaks:latest dir /repo --redact --no-banner

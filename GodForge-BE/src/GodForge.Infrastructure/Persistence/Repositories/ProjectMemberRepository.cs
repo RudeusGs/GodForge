@@ -78,7 +78,7 @@ public sealed class ProjectMemberRepository : IProjectMemberRepository
                  EF.Functions.ILike(u.DisplayName, displayNamePattern, PostgresSearch.LikeEscapeCharacter))));
         }
         var total = await query.CountAsync(cancellationToken);
-        var items = await query.OrderBy(x => x.Role).ThenBy(x => x.JoinedAt)
+        var items = await query.OrderBy(x => x.Role).ThenBy(x => x.JoinedAt).ThenBy(x => x.Id)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
         return new PagedResult<ProjectMember>(items, page, pageSize, total);
     }

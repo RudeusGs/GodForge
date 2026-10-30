@@ -4,6 +4,7 @@ using GodForge.Application.Common.Models;
 using GodForge.Application.Features.Activities.Queries.GetProjectActivities;
 using GodForge.Application.Features.Jobs.Queries.GetProjectJobs;
 using GodForge.Application.Features.Projects.Commands.AddProjectMember;
+using GodForge.Application.Features.Projects.Commands.ArchiveProject;
 using GodForge.Application.Features.Projects.Commands.RemoveProjectMember;
 using GodForge.Application.Features.Projects.Commands.RequestProjectDeletion;
 using GodForge.Application.Features.Projects.Commands.RestoreProject;
@@ -11,6 +12,7 @@ using GodForge.Application.Features.Projects.Commands.TransferProjectOwnership;
 using GodForge.Application.Features.Projects.Commands.UpdateProject;
 using GodForge.Application.Features.Projects.Commands.UpdateProjectMember;
 using GodForge.Application.Features.Projects.Commands.UpdateProjectSettings;
+using GodForge.Application.Features.Projects.DTOs;
 using GodForge.Application.Features.Projects.Queries.GetProject;
 using GodForge.Application.Features.Projects.Queries.GetProjectSettings;
 using GodForge.Application.Features.Projects.Queries.ListProjectMembers;
@@ -87,6 +89,15 @@ public sealed class ProjectsController : BaseApiController
             new RestoreProjectCommand(ActorId, projectId, request.Version),
             cancellationToken));
 
+    [HttpPost("{projectId:guid}/archive")]
+    [ProducesResponseType(typeof(ApiResponse<ProjectDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Archive(Guid projectId, [FromBody] ArchiveProjectRequest request, CancellationToken cancellationToken)
+        => HandleResult(await _mediator.Send(new ArchiveProjectCommand(ActorId, projectId, request.Version), cancellationToken));
+
     [HttpPost("{projectId:guid}/transfer-ownership")]
     public async Task<IActionResult> TransferOwnership(
         Guid projectId,
@@ -124,7 +135,7 @@ public sealed class ProjectsController : BaseApiController
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
-            new AddProjectMemberCommand(ActorId, projectId, request.UserId, request.Role),
+            new AddProjectMemberCommand(ActorId, projectId, request.UserId, request.Role, Request.Headers["Idempotency-Key"].FirstOrDefault()),
             cancellationToken);
         if (result.IsError) return HandleResult(result);
         return Created($"/api/v1/projects/{projectId}/members/{result.Value.UserId}", Envelope(result.Value));

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { captureInvitationToken } from '../features/workspace/workspaceState';
 import { useAuthStore } from '../stores/auth.store';
 
 const router = createRouter({
@@ -11,9 +12,20 @@ const router = createRouter({
         },
         {
             path: '/dashboard',
-            name: 'dashboard',
-            component: () => import('../views/DashboardView.vue'),
-            meta: { requiresAuth: true }
+            component: () => import('../layouts/WorkspaceLayout.vue'),
+            meta: { requiresAuth: true },
+            children: [
+                { path: '', name: 'dashboard', component: () => import('../views/DashboardView.vue') },
+                { path: '/organizations/:organizationId', name: 'organizationOverview', component: () => import('../views/OrganizationOverviewView.vue') },
+                { path: '/organizations/:organizationId/projects', name: 'organizationProjects', component: () => import('../views/OrganizationProjectsView.vue') },
+                { path: '/organizations/:organizationId/projects/:projectId', name: 'projectDetail', component: () => import('../views/ProjectDetailView.vue') },
+                { path: '/organizations/:organizationId/projects/:projectId/members', name: 'projectMembers', component: () => import('../views/ProjectMembersView.vue') },
+                { path: '/organizations/:organizationId/projects/:projectId/settings', name: 'projectSettings', component: () => import('../views/ProjectSettingsView.vue') },
+                { path: '/organizations/:organizationId/members', name: 'organizationMembers', component: () => import('../views/OrganizationMembersView.vue') },
+                { path: '/organizations/:organizationId/invitations', name: 'organizationInvitations', component: () => import('../views/OrganizationInvitationsView.vue') },
+                { path: '/organizations/:organizationId/settings', name: 'organizationSettings', component: () => import('../views/OrganizationSettingsView.vue') },
+                { path: '/organization-invitations/accept', name: 'organizationInvitationAccept', component: () => import('../views/OrganizationInvitationAcceptView.vue') },
+            ]
         },
         {
             path: '/account/sessions',
@@ -49,6 +61,10 @@ const router = createRouter({
 
 // Navigation Guards
 router.beforeEach(async (to) => {
+    if (to.name === 'organizationInvitationAccept' && to.query.token) {
+        captureInvitationToken(to.query.token);
+    }
+
     const authStore = useAuthStore();
     await authStore.initialize();
 
@@ -61,7 +77,11 @@ router.beforeEach(async (to) => {
     const isAuthenticated = authStore.isAuthenticated;
 
     if (to.meta.requiresAuth && !isAuthenticated) {
-        return { name: 'login', query: { returnTo: to.fullPath } };
+        const returnTo =
+            to.name === 'organizationInvitationAccept'
+                ? '/organization-invitations/accept'
+                : to.fullPath;
+        return { name: 'login', query: { returnTo } };
     } else if (to.meta.requiresGuest && isAuthenticated) {
         // Redirect away from login/register if already logged in
         return { name: 'dashboard' };

@@ -45,6 +45,8 @@ public sealed class OrganizationMemberRepository : IOrganizationMemberRepository
             query = query.Where(x => x.Role == parsedRole);
         if (EnumText.TryParseDefined<MembershipStatus>(status, out var parsedStatus))
             query = query.Where(x => x.Status == parsedStatus);
+        else
+            query = query.Where(x => x.Status != MembershipStatus.Removed);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var normalizedEmailPattern = PostgresSearch.ContainsPattern(search.ToUpperInvariant());
@@ -54,7 +56,7 @@ public sealed class OrganizationMemberRepository : IOrganizationMemberRepository
                  EF.Functions.ILike(u.DisplayName, displayNamePattern, PostgresSearch.LikeEscapeCharacter))));
         }
         var total = await query.CountAsync(cancellationToken);
-        var items = await query.OrderBy(x => x.Role).ThenBy(x => x.JoinedAt)
+        var items = await query.OrderBy(x => x.Role).ThenBy(x => x.JoinedAt).ThenBy(x => x.Id)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
         return new PagedResult<OrganizationMember>(items, page, pageSize, total);
     }

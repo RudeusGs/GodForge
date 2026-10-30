@@ -11,15 +11,7 @@ public sealed class RedisAuthRateLimiterIntegrationTests
     public async Task ConsumeAsync_ConcurrentDistributedIncrements_AllowOnlyConfiguredLimit()
     {
         var connectionString = Environment.GetEnvironmentVariable("GODFORGE_TEST_REDIS") ?? "localhost:6379";
-        ConnectionMultiplexer redis;
-        try
-        {
-            redis = await ConnectionMultiplexer.ConnectAsync(connectionString);
-        }
-        catch (RedisConnectionException)
-        {
-            return; // Skip test gracefully if Redis is not available in the environment
-        }
+        var redis = await ConnectionMultiplexer.ConnectAsync(connectionString);
 
         await using (redis)
         {

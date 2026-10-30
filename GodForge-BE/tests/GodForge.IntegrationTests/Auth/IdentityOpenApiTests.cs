@@ -31,4 +31,13 @@ public sealed class IdentityOpenApiTests : IClassFixture<CustomWebApplicationFac
         foreach (var path in expectedPaths)
             Assert.True(document.Paths.ContainsKey(path), $"OpenAPI is missing Identity route '{path}'.");
     }
+
+    [Fact]
+    public void OpenApiGeneration_IncludesVersionedProjectArchiveAndRestore()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var document = scope.ServiceProvider.GetRequiredService<ISwaggerProvider>().GetSwagger("v1");
+        Assert.True(document.Paths.ContainsKey("/api/v1/projects/{projectId}/archive"));
+        Assert.True(document.Paths.ContainsKey("/api/v1/projects/{projectId}/restore"));
+    }
 }

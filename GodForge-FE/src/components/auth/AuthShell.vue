@@ -87,7 +87,7 @@ onUnmounted(() => {
             </router-link>
             <div class="auth-page__nav-action">
                 <span>{{ isRecovery ? 'Remembered your password?' : isRegister ? 'Already a member?' : 'New to GodForge?' }}</span>
-                <router-link :to="isRecovery || isRegister ? '/login' : '/register'">
+                <router-link :to="{ path: isRecovery || isRegister ? '/login' : '/register', query: route.query.returnTo ? { returnTo: route.query.returnTo } : undefined }">
                     {{ isRecovery || isRegister ? 'Sign in' : 'Create account' }}
                 </router-link>
             </div>

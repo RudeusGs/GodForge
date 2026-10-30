@@ -44,6 +44,26 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
 
     public async Task<Result> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
+        // A refresh can update the token/session versions while reset is revoking them.
+        // Retry from authoritative state, including the single-use challenge, so a valid
+        // reset can revoke the replacement token without accepting a consumed challenge.
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                return await ResetAsync(request, cancellationToken);
+            }
+            catch (ConcurrencyConflictException)
+            {
+                _unitOfWork.ClearTrackedChanges();
+            }
+        }
+
+        return InvalidToken();
+    }
+
+    private async Task<Result> ResetAsync(ResetPasswordCommand request, CancellationToken cancellationToken)
+    {
         var now = _clock.UtcNow;
         var user = await _users.GetByEmailAsync(request.Email, cancellationToken);
         if (user is null)
@@ -55,8 +75,23 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
 
         if (!_secretHash.Verify(request.Token, challenge.SecretHash))
         {
-            challenge.RecordFailedAttempt(now);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var retries = 3;
+            while (retries-- > 0)
+            {
+                try
+                {
+                    challenge.RecordFailedAttempt(now);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    break;
+                }
+                catch (ConcurrencyConflictException)
+                {
+                    if (retries == 0) break;
+                    _unitOfWork.ClearTrackedChanges();
+                    challenge = await _challenges.GetActiveAsync(user.NormalizedEmail, AuthChallengePurposes.PasswordReset, cancellationToken);
+                    if (challenge is null || !challenge.IsActive(now)) break;
+                }
+            }
             return InvalidToken();
         }
 
@@ -72,14 +107,7 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
         // security change that another API instance could temporarily miss.
         await _sessionValidation.InvalidateSessionsAsync(revokedSessionIds, cancellationToken);
 
-        try
-        {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-        catch (ConcurrencyConflictException)
-        {
-            return InvalidToken();
-        }
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

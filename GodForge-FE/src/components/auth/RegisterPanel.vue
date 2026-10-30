@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth.store';
 import { authApi } from '../../api/auth/auth.api';
 import AuthInput from './AuthInput.vue';
 import { RegistrationCompletedLoginFailedError } from '../../stores/auth.store';
+import { safeReturnTo } from '../../utils/safeReturnTo';
 
 type RegisterFieldErrors = Partial<Record<'displayName' | 'email' | 'otp' | 'password' | 'confirmPassword', string>>;
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const displayName = ref('');
 const email = ref('');
@@ -100,7 +102,7 @@ const handleRegister = async () => {
     try {
         loading.value = true;
         await authStore.register({ email: normalizedEmail.value, displayName: displayName.value.trim(), password: password.value, otp: otp.value });
-        await router.push({ name: 'dashboard' });
+        await router.push(safeReturnTo(route.query.returnTo) ?? { name: 'dashboard' });
     } catch (error: unknown) {
         const err = error as { response?: { data?: { error?: { message?: string } } } };
         errorMsg.value = err.response?.data?.error?.message || 'We could not create your account. Review the details and try again.';

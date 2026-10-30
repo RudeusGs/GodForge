@@ -64,6 +64,12 @@ export const useAuthStore = defineStore('auth', () => {
         initializationError.value = null;
 
         initializationPromise = (async () => {
+            if (localStorage.getItem('godforge_auth_logout_intent') === 'true') {
+                clearAuthData();
+                initialized.value = true;
+                return;
+            }
+
             try {
                 const auth = await authRefreshCoordinator.refreshAccessToken();
                 setAuthData(auth.accessToken, auth.user);
@@ -88,6 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     const login = async (payload: LoginPayload) => {
         const response = await authApi.login(payload);
+        localStorage.removeItem('godforge_auth_logout_intent');
         setAuthData(response.data.accessToken, response.data.user);
         authRefreshCoordinator.publishAuthenticated(response.data);
     };
@@ -106,12 +113,17 @@ export const useAuthStore = defineStore('auth', () => {
     };
 
     const logout = async () => {
+        localStorage.setItem('godforge_auth_logout_intent', 'true');
+        let reason = 'logout';
         try {
             await authApi.logout();
+        } catch (error) {
+            reason = 'logout-incomplete';
+            throw new Error('Logout incomplete: The server could not be reached to securely revoke your session.', { cause: error });
         } finally {
             clearAuthData();
             initialized.value = true;
-            authRefreshCoordinator.publishCleared('logout');
+            authRefreshCoordinator.publishCleared(reason);
         }
     };
 

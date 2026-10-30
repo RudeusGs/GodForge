@@ -35,11 +35,17 @@ public sealed class RemoveOrganizationMemberCommandHandler : OrganizationCommand
             var actorMembership = await _members.GetAsync(request.OrganizationId, request.ActorId, cancellationToken);
             var target = await _members.GetAsync(request.OrganizationId, request.UserId, cancellationToken);
 
-            if (organization is null || organization.Status != OrganizationStatus.Active ||
+            if (organization is null || organization.Status == OrganizationStatus.Deleted ||
                 actorMembership is not { Status: MembershipStatus.Active } || target is null || target.Status == MembershipStatus.Removed)
             {
                 return await RollbackAsync(
                     ApplicationError.NotFound("MEMBERSHIP_NOT_FOUND", "Organization membership was not found."),
+                    cancellationToken);
+            }
+            if (organization.Status != OrganizationStatus.Active)
+            {
+                return await RollbackAsync(
+                    ApplicationError.Conflict("ORGANIZATION_NOT_ACTIVE", "Organization is not active."),
                     cancellationToken);
             }
             if (request.ActorId != request.UserId && !OrganizationRolePermissions.GetPermissionsForRole(actorMembership.Role).Contains(Permissions.OrganizationMembersRemove))
@@ -59,6 +65,7 @@ public sealed class RemoveOrganizationMemberCommandHandler : OrganizationCommand
                     cancellationToken);
             }
 
+            await LockAffectedProjectsAsync(request.OrganizationId, request.UserId, cancellationToken);
             var soleOwnerProjectIds = await _projectMembers.GetSoleOwnerProjectIdsAsync(request.OrganizationId, request.UserId, cancellationToken);
             if (soleOwnerProjectIds.Count > 0)
             {

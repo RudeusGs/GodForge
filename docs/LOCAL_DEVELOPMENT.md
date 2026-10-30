@@ -1,5 +1,7 @@
 # Local Development
 
+For the first real workspace browser workflow, run `npm.cmd run test:workspace:live` from the repository root after `npm ci` in `GodForge-FE` and `GodForge-E2E`. Docker Compose builds .NET 10 API/Worker images and starts disposable PostgreSQL/Redis/RabbitMQ/Mailpit using `docker-compose.backend.yml` plus `docker-compose.workspace-test.yml`, under project `godforge-workspace-acceptance`. API/Vite/mailbox bind loopback ports 25072/25173/28025; development volumes and ports are not reused. The runner refuses an existing run and automatically removes its containers and fixture volumes. No external email, Forgejo or Gemini is enabled. See [workspace evidence](WORKSPACE_FOUNDATION_EVIDENCE.md) for assertions and limitations.
+
 ## Prerequisites
 
 - .NET SDK version from `global.json`.
@@ -42,11 +44,26 @@ The Worker launch profile selects `Development` and validates its own compositio
 
 ```bash
 cd GodForge-FE
-npm install --no-audit --no-fund
+npm ci --no-audit --no-fund
 npm run dev
 ```
 
 ## Before committing
+
+Run `npm run verify` from the repository root (`npm.cmd run verify` in Windows PowerShell). The command uses [docker-compose.test.yml](../docker-compose.test.yml) to provide disposable PostgreSQL and Redis on loopback ports `15433` and `16379`, sets the test connection variables for its own child processes, runs the local gates and removes its containers afterward. It requires Docker, the configured .NET SDK, Node/npm and network access for dependency/browser installation. Test data in this Compose project is disposable; never point persistence tests at a retained database because their fixture drops and recreates the configured test database.
+
+To run only the controlled browser workflows:
+
+```bash
+cd GodForge-E2E
+npm ci --no-audit --no-fund
+npx playwright install chromium
+npm test
+```
+
+Playwright starts Vite automatically on `127.0.0.1:15173`; no seeded user is required. On Linux, install browser system dependencies with `npx playwright install --with-deps chromium` as used by CI.
+
+Individual gates:
 
 ```bash
 cd GodForge-BE

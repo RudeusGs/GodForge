@@ -81,8 +81,8 @@ public sealed class DistributedAuthRateLimitFilter : IAsyncActionFilter
             LoginRequest value => NormalizeEmail(value.Email),
             SendOtpRequest value => NormalizeEmail(value.Email),
             ForgotPasswordRequest value => NormalizeEmail(value.Email),
-            RegisterRequest value => $"{NormalizeEmail(value.Email)}:{value.Otp}",
-            ResetPasswordRequest value => $"{NormalizeEmail(value.Email)}:{value.Token}",
+            RegisterRequest value => NormalizeEmail(value.Email),
+            ResetPasswordRequest value => NormalizeEmail(value.Email),
             _ when _policy == "refresh" => _refreshTokenCookie.Read(context.HttpContext.Request) ?? "missing-refresh-cookie",
             _ => "invalid-request"
         };

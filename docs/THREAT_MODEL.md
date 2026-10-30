@@ -45,6 +45,10 @@
 
 ## Abuse cases
 
+Current M1 browser controls for `T-15`: access tokens stay in memory; a non-secret logout-intent marker prevents automatic session restoration after failed server logout and the sign-in page explains the incomplete revocation. Bootstrap outage recovery must re-evaluate protected-route access after a definitive 401. `TC-AUTH-BROWSER-001` through `011` cover browser interaction with controlled API responses; real PostgreSQL HTTP tests cover server session state. A server session may remain valid until expiry or successful remote revocation when a logout request cannot reach the server.
+
+`T-16` describes the current implementation gap, not a waiver of `FR-27.2`/`AC-FR-27.2-02`: durable provider reconciliation remains required before M1/hosted Git completion. Passing local tenancy tests does not prove external repository access is revoked.
+
 - User creates many projects/jobs to exhaust queue and storage.
 - User links a remote that redirects to internal metadata service.
 - Repository includes `.env`, private key, huge binary, recursive symlink or crafted filenames.
@@ -53,5 +57,7 @@
 - Duplicate webhook creates repeated analysis and cost.
 
 ## Security review trigger
+
+Workspace foundation browser controls for `T-01`, `T-13`, `T-15`: tenant selection is route-only and never authorizes a request; current server role/status controls creation affordances only. Membership-scoped project lists and administration catalogs use separate DTOs/endpoints; catalog rows have no content links. Detail verifies route organization against the returned project before rendering. Old data is cleared on load and late requests are suppressed after navigation. Vue escapes names/descriptions; no HTML rendering, new token storage, provider requests or protected content endpoints are introduced. Creates retain retry idempotency keys; conflict/denial messages disclose no private resource detail. Existing server authorization and session coordination remain mandatory. `TC-WORKSPACE-*` adds browser presentation evidence; full server/provider revocation and role-matrix acceptance remain open.
 
 Update this threat model before adding dynamic project execution, new external providers, public anonymous uploads, billing, organization-wide search or cross-region deployment.

@@ -109,6 +109,32 @@ public sealed class ProjectServicesTests
             _clock.Object,
             _unitOfWork.Object);
 
+    [Theory]
+    [InlineData("maintainer", "projectOwner", "developer", false)]
+    [InlineData("maintainer", "developer", "projectOwner", false)]
+    [InlineData("maintainer", "developer", "reviewer", true)]
+    [InlineData("developer", "viewer", "maintainer", false)]
+    [InlineData("viewer", "developer", "reviewer", false)]
+    public async Task RoleChange_EnforcesGrantBoundary(string actorRole, string targetRole, string requested, bool allowed)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var actorId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        var user = User.Create("target@example.test", "Target", "hash", now);
+        var project = Project.Create(orgId, "Project", "project", null, "4.3", ProjectVisibility.Private, actorId, now);
+        var actor = ProjectMember.Create(project.Id, orgId, actorId, Enum.Parse<ProjectRole>(actorRole, true), ProjectMemberSource.Direct, actorId, now);
+        var target = ProjectMember.Create(project.Id, orgId, user.Id, Enum.Parse<ProjectRole>(targetRole, true), ProjectMemberSource.Direct, actorId, now);
+        _projects.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        _organizationMembers.Setup(r => r.GetAsync(orgId, actorId, It.IsAny<CancellationToken>())).ReturnsAsync(OrganizationMember.CreateOwner(orgId, actorId, now));
+        _members.Setup(r => r.GetMembershipAsync(project.Id, actorId, It.IsAny<CancellationToken>())).ReturnsAsync(actor);
+        _members.Setup(r => r.GetAnyMembershipAsync(project.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(target);
+        _users.Setup(r => r.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        var result = await CreateMembershipService().UpdateMemberAsync(actorId, project.Id, user.Id, requested, 1, CancellationToken.None);
+        Assert.Equal(allowed, result.IsSuccess);
+        Assert.Equal(allowed ? 2 : 1, target.Version);
+        if (!allowed) Assert.Equal("SECURITY_FORBIDDEN", result.Error?.Code);
+    }
+
     private ProjectMembershipService CreateMembershipService()
         => new(
             _projects.Object,
@@ -117,6 +143,7 @@ public sealed class ProjectServicesTests
             _users.Object,
             _audit.Object,
             _clock.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _idempotency.Object);
 
 }
