@@ -210,8 +210,11 @@ public sealed class SettingsHttpTests(PostgresPersistenceFixture fixture)
         using var owner = Client(factory, s.Owner);
         var body = new Dictionary<string, object>
         {
-            ["analysisProfileKey"] = "current-default-v1", ["aiAdvisoryEnabled"] = false,
-            ["defaultAssetVisibility"] = "internal", ["notificationPolicyVersion"] = 1, ["version"] = 1,
+            ["analysisProfileKey"] = "current-default-v1",
+            ["aiAdvisoryEnabled"] = false,
+            ["defaultAssetVisibility"] = "internal",
+            ["notificationPolicyVersion"] = 1,
+            ["version"] = 1,
             [field] = true
         };
         Assert.Equal(HttpStatusCode.BadRequest, (await owner.PutAsJsonAsync($"/api/v1/projects/{s.Project}/settings", body)).StatusCode);
