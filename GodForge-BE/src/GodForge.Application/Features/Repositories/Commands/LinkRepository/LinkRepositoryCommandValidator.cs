@@ -16,7 +16,7 @@ public sealed class LinkRepositoryCommandValidator : AbstractValidator<LinkRepos
         RuleFor(x => x.Provider)
             .NotEmpty()
             .IsEnumName(typeof(GitProvider), caseSensitive: false);
-        RuleFor(x => x.DefaultBranch).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.DefaultBranch).NotEmpty().MaximumLength(150).Must(RepositoryInput.ValidBranch);
         RuleFor(x => x.ExternalRepositoryId).MaximumLength(200);
     }
 
@@ -28,7 +28,7 @@ public sealed class LinkRepositoryCommandValidator : AbstractValidator<LinkRepos
         }
 
         return uri.Scheme == Uri.UriSchemeHttps &&
-               string.IsNullOrEmpty(uri.UserInfo);
+               string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment);
     }
 }
 

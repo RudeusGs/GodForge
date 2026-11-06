@@ -754,6 +754,17 @@
           "RabbitMQ.Client": "[6.8.1, )",
           "System.IdentityModel.Tokens.Jwt": "[8.22.0, )"
         }
+      },
+      "godforge.worker": {
+        "type": "Project",
+        "dependencies": {
+          "DotNetEnv": "[3.2.0, )",
+          "GodForge.Application": "[1.0.0, )",
+          "GodForge.Infrastructure": "[1.0.0, )",
+          "Microsoft.EntityFrameworkCore": "[10.0.10, )",
+          "Microsoft.Extensions.Hosting": "[10.0.10, )",
+          "RabbitMQ.Client": "[6.8.1, )"
+        }
       }
     }
   }

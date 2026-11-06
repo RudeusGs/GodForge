@@ -1,5 +1,5 @@
 export type RepositoryMode = 'ExternalLinked' | 'InternalHosted'
-export type RepositoryStatus = 'Unconfigured' | 'Configured' | 'Cloning' | 'Ready' | 'Error' | 'Disabled'
+export type RepositoryStatus = 'Unconfigured' | 'Configured' | 'Cloning' | 'Ready' | 'Error' | 'Disabled' | 'ProvisioningPending' | 'Provisioning' | 'ProvisioningFailed'
 
 export interface RepositoryDto {
   id: string
@@ -14,6 +14,12 @@ export interface RepositoryDto {
   repositorySizeBytes?: number | null
   lastSyncedAt?: string | null
   lastErrorCode?: string | null
+  accessRequestedAt?: string | null
+  accessReconciledAt?: string | null
+  accessErrorCode?: string | null
+  accessGeneration?: number
+  accessConfirmedGeneration?: number
+  webhookConfirmedAt?: string | null
 }
 
 export interface LinkRepositoryRequest {
@@ -36,3 +42,10 @@ export interface TriggerRepositoryAnalysisRequest {
 export interface JobAcceptedDto {
   jobId: string
 }
+
+export interface ProvisionHostedRepositoryRequest { name: string; defaultBranch: string; isPrivate: boolean; autoAnalyzeEnabled: boolean }
+export interface RepositoryBranch { name: string; commitSha: string; isDefault: boolean; isProtected: boolean }
+export interface RepositoryCommit { sha: string; shortSha: string; message: string; author: string; timestamp: string; parents: string[] }
+export interface RepositoryTreeEntry { name: string; path: string; type: 'tree' | 'blob' | 'unsupported'; size: number; sha: string }
+export interface RepositoryTree { commitSha: string; entries: RepositoryTreeEntry[] }
+export interface RepositoryBlob { commitSha: string; path: string; content: string; size: number }

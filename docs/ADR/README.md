@@ -44,7 +44,7 @@ Proposed | Accepted | Superseded by ADR ...
 ### Positive
 ### Negative
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 
 ## Validation
 ```

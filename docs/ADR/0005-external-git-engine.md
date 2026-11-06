@@ -16,7 +16,7 @@ Use Forgejo for hosted repository creation, clone, push, pull, branches, commits
 ### Negative
 - Additional service, database, backups and provider reconciliation.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Do not implement a custom Git protocol server.
 - Do not expose Forgejo admin tokens to clients.
 - Hosted Git is not production-ready until permission sync and webhook verification pass.

@@ -23,6 +23,7 @@ async function render(component: typeof Members | typeof Settings, path = '/orga
         { path: '/organizations/:organizationId/projects', name: 'organizationProjects', component: { template: '<p>Projects</p>' } },
         { path: '/organizations/:organizationId', name: 'organizationOverview', component: { template: '<p>Organization</p>' } },
         { path: '/organizations/:organizationId/projects/:projectId', name: 'projectDetail', component: Members },
+        { path: '/organizations/:organizationId/projects/:projectId/repository', name: 'projectRepository', component: Members },
         { path: '/organizations/:organizationId/projects/:projectId/members', name: 'projectMembers', component: Members },
         { path: '/organizations/:organizationId/projects/:projectId/settings', name: 'projectSettings', component: Settings },
     ] });

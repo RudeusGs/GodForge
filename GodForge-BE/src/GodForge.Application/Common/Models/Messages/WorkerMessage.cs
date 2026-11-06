@@ -6,6 +6,7 @@ public abstract record WorkerMessage
     public Guid MessageId { get; init; } = Guid.NewGuid();
     public Guid JobId { get; init; }
     public Guid ProjectId { get; init; }
+    public Guid OrganizationId { get; init; }
     public Guid? RepositoryId { get; init; }
     public string CorrelationId { get; init; } = default!;
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
@@ -27,3 +28,6 @@ public sealed record HostedRepositoryProvisionJobMessage : WorkerMessage
     public bool IsPrivate { get; init; } = true;
     public string DefaultBranch { get; init; } = "main";
 }
+
+public sealed record HostedRepositoryReconcileJobMessage : WorkerMessage;
+public sealed record RepositorySyncJobMessage : WorkerMessage { public string Branch { get; init; } = "main"; public bool IsDeletion { get; init; } }

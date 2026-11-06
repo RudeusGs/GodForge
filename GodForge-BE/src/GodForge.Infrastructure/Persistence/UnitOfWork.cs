@@ -20,6 +20,7 @@ public sealed class UnitOfWork : IUnitOfWork
     {
         try
         {
+            await GodForge.Infrastructure.HostedGit.HostedReconciliationIntents.StageChangesAsync(_context, cancellationToken);
             return await _context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException exception)

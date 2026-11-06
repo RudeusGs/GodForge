@@ -14,6 +14,8 @@ Implementation-ready M1 contracts:
 
 Later milestone routes remain catalog entries until their detailed contract is added.
 
+M2 repository contracts: [repository provisioning, identity, webhooks and browsing](05-api-contracts/repositories.md).
+
 ## 5.2 Identity and sessions - M1
 
 ```http
@@ -87,6 +89,8 @@ GET  /projects/{projectId}/repository/branches
 GET  /projects/{projectId}/repository/commits
 GET  /projects/{projectId}/repository/tree?commitSha=&path=
 GET  /projects/{projectId}/repository/blob?commitSha=&path=
+GET/PUT /projects/{projectId}/repository/branch-protection?branch=
+POST /users/me/forgejo-identity
 GET  /projects/{projectId}/revisions
 GET  /projects/{projectId}/revisions/{commitSha}
 ```

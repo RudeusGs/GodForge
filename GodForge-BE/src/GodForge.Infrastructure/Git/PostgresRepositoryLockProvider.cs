@@ -15,9 +15,16 @@ public sealed class PostgresRepositoryLockProvider : IRepositoryLockProvider
             ?? throw new InvalidOperationException("DefaultConnection is required for repository locks.");
     }
 
-    public async Task<IAsyncDisposable> AcquireAsync(
+    public Task<IAsyncDisposable> AcquireAsync(Guid repositoryId, TimeSpan timeout, CancellationToken cancellationToken = default)
+        => AcquireCoreAsync(repositoryId, timeout, false, cancellationToken);
+
+    public Task<IAsyncDisposable> AcquireOperationAsync(Guid repositoryId, TimeSpan timeout, CancellationToken cancellationToken = default)
+        => AcquireCoreAsync(repositoryId, timeout, true, cancellationToken);
+
+    private async Task<IAsyncDisposable> AcquireCoreAsync(
         Guid repositoryId,
         TimeSpan timeout,
+        bool operation,
         CancellationToken cancellationToken = default)
     {
         var connection = new NpgsqlConnection(_connectionString);
@@ -33,14 +40,14 @@ public sealed class PostgresRepositoryLockProvider : IRepositoryLockProvider
             while (DateTimeOffset.UtcNow < deadline)
             {
                 await using var command = new NpgsqlCommand(
-                    "SELECT pg_try_advisory_lock(@key1, @key2);",
+                    operation ? "SELECT pg_try_advisory_lock(@operationKey);" : "SELECT pg_try_advisory_lock(@key1, @key2);",
                     connection);
-                command.Parameters.AddWithValue("key1", key1);
-                command.Parameters.AddWithValue("key2", key2);
+                if (operation) command.Parameters.AddWithValue("operationKey", BitConverter.ToInt64(bytes, 0));
+                else { command.Parameters.AddWithValue("key1", key1); command.Parameters.AddWithValue("key2", key2); }
 
                 if (await command.ExecuteScalarAsync(cancellationToken) is true)
                 {
-                    return new AdvisoryLockLease(connection, key1, key2);
+                    return new AdvisoryLockLease(connection, key1, key2, operation, BitConverter.ToInt64(bytes, 0));
                 }
 
                 await Task.Delay(RetryInterval, cancellationToken);
@@ -62,12 +69,16 @@ public sealed class PostgresRepositoryLockProvider : IRepositoryLockProvider
         private readonly int _key1;
         private readonly int _key2;
         private bool _disposed;
+        private readonly bool _operation;
+        private readonly long _operationKey;
 
-        public AdvisoryLockLease(NpgsqlConnection connection, int key1, int key2)
+        public AdvisoryLockLease(NpgsqlConnection connection, int key1, int key2, bool operation, long operationKey)
         {
             _connection = connection;
             _key1 = key1;
             _key2 = key2;
+            _operation = operation;
+            _operationKey = operationKey;
         }
 
         public async ValueTask DisposeAsync()
@@ -81,10 +92,10 @@ public sealed class PostgresRepositoryLockProvider : IRepositoryLockProvider
             try
             {
                 await using var command = new NpgsqlCommand(
-                    "SELECT pg_advisory_unlock(@key1, @key2);",
+                    _operation ? "SELECT pg_advisory_unlock(@operationKey);" : "SELECT pg_advisory_unlock(@key1, @key2);",
                     _connection);
-                command.Parameters.AddWithValue("key1", _key1);
-                command.Parameters.AddWithValue("key2", _key2);
+                if (_operation) command.Parameters.AddWithValue("operationKey", _operationKey);
+                else { command.Parameters.AddWithValue("key1", _key1); command.Parameters.AddWithValue("key2", _key2); }
                 await command.ExecuteNonQueryAsync();
             }
             finally

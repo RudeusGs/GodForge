@@ -16,7 +16,7 @@ Parser and versioned rule engine produce authoritative metadata, findings and he
 ### Negative
 - Requires both deterministic engines and AI integration.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - AI must never invent repository facts not present in supplied context.
 - AI cannot directly alter health score, code, permissions or repository state.
 - Prompt/model/input versions and token usage must be recorded.

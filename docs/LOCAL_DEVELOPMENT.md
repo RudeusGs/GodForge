@@ -1,6 +1,6 @@
 # Local Development
 
-For the first real workspace browser workflow, run `npm.cmd run test:workspace:live` from the repository root after `npm ci` in `GodForge-FE` and `GodForge-E2E`. Docker Compose builds .NET 10 API/Worker images and starts disposable PostgreSQL/Redis/RabbitMQ/Mailpit using `docker-compose.backend.yml` plus `docker-compose.workspace-test.yml`, under project `godforge-workspace-acceptance`. API/Vite/mailbox bind loopback ports 25072/25173/28025; development volumes and ports are not reused. The runner refuses an existing run and automatically removes its containers and fixture volumes. No external email, Forgejo or Gemini is enabled. See [workspace evidence](WORKSPACE_FOUNDATION_EVIDENCE.md) for assertions and limitations.
+For the first real workspace browser workflow, run `npm.cmd run test:workspace:live` from the repository root after `npm ci` in `GodForge-FE` and `GodForge-E2E`. Docker Compose builds .NET 10 API/Worker images and starts disposable PostgreSQL/Redis/RabbitMQ/Mailpit using `docker-compose.backend.yml` plus `docker-compose.workspace-test.yml`, under project `godforge-workspace-acceptance`. API/Vite/mailbox bind loopback ports 25072/25173/28025; development volumes and ports are not reused. The runner refuses an existing run and automatically removes its containers and fixture volumes. No external email, Forgejo or Gemini is enabled. See [Testing Guide](TESTING.md) for assertions and limitations.
 
 ## Prerequisites
 
@@ -42,11 +42,26 @@ The Worker launch profile selects `Development` and validates its own compositio
 
 ## Frontend
 
+When running the API locally on your host (Mode A, port `5072`):
+
 ```bash
 cd GodForge-FE
 npm ci --no-audit --no-fund
 npm run dev
 ```
+
+When connecting to the full containerized backend (Mode B via `docker-compose.backend.yml`, port `15072`):
+
+```bash
+cd GodForge-FE
+npm ci --no-audit --no-fund
+npm run dev:docker
+```
+
+Alternatively, override the API base URL via `.env.local`:
+- **Windows PowerShell:** `'VITE_API_BASE_URL=http://localhost:15072/api/v1' | Set-Content .env.local`
+- **Linux / macOS:** `echo "VITE_API_BASE_URL=http://localhost:15072/api/v1" > .env.local`
+Then run `npm run dev`.
 
 ## Before committing
 

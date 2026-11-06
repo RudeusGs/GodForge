@@ -16,7 +16,7 @@ Organization is the tenant boundary; project is the primary authorization scope.
 ### Negative
 - More authorization joins, tests and operational metadata.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Never fetch by resource ID alone when tenant scope is available.
 - Mask existence with 404 where policy requires.
 - Background jobs revalidate current project state before publishing results.

@@ -67,6 +67,13 @@ services:
       retries: 10
     networks: [godforge_network]
 
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_HTTP_PORT:-8025}:8025"
+    networks: [godforge_network]
+
   forgejo-db:
     image: postgres:16-alpine
     profiles: ["hosted-git"]
@@ -101,8 +108,8 @@ services:
       FORGEJO__server__SSH_PORT: ${FORGEJO_SSH_PORT:-2222}
       FORGEJO__service__DISABLE_REGISTRATION: "true"
     ports:
-      - "${FORGEJO_HTTP_PORT:-3000}:3000"
-      - "${FORGEJO_SSH_PORT:-2222}:2222"
+      - "127.0.0.1:${FORGEJO_HTTP_PORT:-3000}:3000"
+      - "127.0.0.1:${FORGEJO_SSH_PORT:-2222}:2222"
     volumes:
       - forgejo_data:/var/lib/gitea
       - forgejo_config:/etc/gitea

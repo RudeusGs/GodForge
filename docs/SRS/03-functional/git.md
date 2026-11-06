@@ -71,3 +71,20 @@ Hosted mode:
 - Test suites: `TC-REPO-*` and `TC-WEBHOOK-*`, including SSRF, provider failure, permission reconciliation and duplicate webhook.
 - Metrics: provision/sync latency, provider error, reconciliation drift, webhook validation and repository quota rejection.
 - Logs never contain credentials, raw remote URLs with secrets or provider admin tokens.
+
+## M2 implementation boundary
+
+Hosted provisioning, verified personal-token identity binding, desired-state
+collaborator reconciliation, signed webhook handoff, metadata synchronization,
+provider browsing and branch-protection adapters now have executable code.
+See [detailed API contract](../05-api-contracts/repositories.md). Private hosting
+is mandatory. Service-owned namespaces avoid organization/team default grants.
+Users without verified provider identities receive no collaborator grants.
+
+Managed signed hooks are installed and verified by the Worker. Hosted and linked
+browsing/sync, HTTPS/SSH revocation, push delivery/replay and outage recovery have
+real-provider evidence. Final browser/security gates remain tracked in
+[implementation status](../../IMPLEMENTATION_STATUS.md). Provider operations use
+short leased claim/finalization transactions and current desired-state generations.
+Automatic analysis dispatch is not supplied by this M2
+metadata sync path. No parser or untrusted project execution is added.

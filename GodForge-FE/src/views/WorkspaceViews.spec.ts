@@ -19,6 +19,7 @@ async function render(component: typeof DashboardView | typeof OrganizationProje
         { path: '/dashboard', name: 'dashboard', component: DashboardView },
         { path: '/organizations/:organizationId/projects', name: 'organizationProjects', component: OrganizationProjectsView },
         { path: '/organizations/:organizationId/projects/:projectId', name: 'projectDetail', component: ProjectDetailView },
+        { path: '/organizations/:organizationId/projects/:projectId/repository', name: 'projectRepository', component: ProjectDetailView },
         { path: '/organizations/:organizationId/projects/:projectId/members', name: 'projectMembers', component: ProjectDetailView },
         { path: '/organizations/:organizationId/projects/:projectId/settings', name: 'projectSettings', component: ProjectDetailView },
     ] });

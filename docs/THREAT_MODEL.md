@@ -1,6 +1,6 @@
 # Threat Model
 
-Settings extension: own-session actor binding, required typed properties, unknown-field rejection and enum allow-lists address target-user injection and mass assignment. Current membership/role checks, shared transaction locks, independent EF tokens and atomic audit protect tenant policy mutations and stale writes. Platform restrictions always dominate organization/project intent. Fresh worker eligibility checks prevent queued requests from bypassing policy and discard results after in-flight restrictions. An already transmitted provider request cannot be retracted; provider operation and full immutable execution remain later acceptance gates. [Evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+Settings extension: own-session actor binding, required typed properties, unknown-field rejection and enum allow-lists address target-user injection and mass assignment. Current membership/role checks, shared transaction locks, independent EF tokens and atomic audit protect tenant policy mutations and stale writes. Platform restrictions always dominate organization/project intent. Fresh worker eligibility checks prevent queued requests from bypassing policy and discard results after in-flight restrictions. An already transmitted provider request cannot be retracted; provider operation and full immutable execution remain later acceptance gates. [Evidence](TESTING.md).
 
 ## Security objectives
 
@@ -39,7 +39,7 @@ Settings extension: own-session actor binding, required typed properties, unknow
 | T-13 | Stored XSS from README/source | High | Escape text, sanitize Markdown/HTML, CSP | Sanitizer bypass vulnerability. |
 | T-14 | SQL injection | High | Parameterized EF queries, no raw interpolation, validation | Provider/library vulnerabilities. |
 | T-15 | Token theft | High | Short access token, refresh rotation, revocation, HTTPS, and an HttpOnly SameSite=Strict refresh cookie scoped to auth endpoints | Compromised client device or same-origin request abuse. |
-| T-16 | Privilege drift in Forgejo | High | Hosted repository provisioning is isolated; no unprocessable membership-reconciliation messages are emitted | Provider membership synchronization is not implemented in the current source and must not be assumed. |
+| T-16 | Privilege drift in Forgejo | High | Verified provider identity, transactionally staged desired-state reconciliation, shared membership locks, read-back verification and bounded periodic drift scan | External revocation remains unverified against real Forgejo; instance admins retain inherent access. |
 | T-17 | Analysis result tampering | High | Immutable version identity, checksums, authorization, audit | Privileged database compromise. |
 | T-18 | Malicious asset upload | High | MIME/magic validation, size limits, malware scan, no execution, private bucket | Unknown malware not detected. |
 | T-19 | Backup exposure | Critical | Encryption, restricted access, tested retention and deletion | Backup operator compromise. |
@@ -49,7 +49,7 @@ Settings extension: own-session actor binding, required typed properties, unknow
 
 Current M1 browser controls for `T-15`: access tokens stay in memory; a non-secret logout-intent marker prevents automatic session restoration after failed server logout and the sign-in page explains the incomplete revocation. Bootstrap outage recovery must re-evaluate protected-route access after a definitive 401. `TC-AUTH-BROWSER-001` through `011` cover browser interaction with controlled API responses; real PostgreSQL HTTP tests cover server session state. A server session may remain valid until expiry or successful remote revocation when a logout request cannot reach the server.
 
-`T-16` describes the current implementation gap, not a waiver of `FR-27.2`/`AC-FR-27.2-02`: durable provider reconciliation remains required before M1/hosted Git completion. Passing local tenancy tests does not prove external repository access is revoked.
+`T-16` describes the external reconciliation requirement, not a waiver of `FR-27.2`/`AC-FR-27.2-02`: durable provider reconciliation remains required before M2 hosted Git production completion. Passing local tenancy tests does not prove external repository access is revoked.
 
 - User creates many projects/jobs to exhaust queue and storage.
 - User links a remote that redirects to internal metadata service.

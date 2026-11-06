@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace GodForge.Infrastructure.Git;
 
-public sealed class GitWorkspaceService : IRepositoryWorkspaceService
+public sealed partial class GitWorkspaceService : IRepositoryWorkspaceService, ILinkedRepositoryBrowser
 {
     private static readonly Dictionary<Guid, RepositoryLockEntry> RepositoryLocks = new();
     private static readonly object RepositoryLocksSync = new();

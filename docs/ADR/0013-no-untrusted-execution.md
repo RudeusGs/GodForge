@@ -16,6 +16,6 @@ Core GodForge analysis is static. It does not open the project in Godot Editor, 
 ### Negative
 - Some runtime-only issues cannot be detected.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Never invoke project-provided scripts or binaries in the API/standard worker.
 - Do not add dynamic execution without a new ADR and threat-model update.

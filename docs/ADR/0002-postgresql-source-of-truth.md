@@ -18,6 +18,6 @@ PostgreSQL is authoritative for users, organizations, projects, permissions, job
 - Cross-system consistency requires outbox/inbox and reconciliation.
 - PostgreSQL schema governance becomes critical.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Never use Redis or RabbitMQ as the only record of a business event.
 - Store object references and checksums, not large binaries, in PostgreSQL.

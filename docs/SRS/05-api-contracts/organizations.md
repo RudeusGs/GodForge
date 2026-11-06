@@ -198,4 +198,4 @@ Acceptance criteria: `AC-FR-27-*` in `../03-functional/project.md`
 
 ## Project candidate compatibility — 2026-10-30
 
-Organization member summaries additionally expose accountStatus derived from the account. Existing role/status/joinedAt/version are retained. Authorized readers can exclude inactive accounts from project candidate pages; assignment rechecks eligibility server-side. Pagination now ends with a unique ID tiebreaker. [Project evidence](../../PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md).
+Organization member summaries additionally expose accountStatus derived from the account. Existing role/status/joinedAt/version are retained. Authorized readers can exclude inactive accounts from project candidate pages; assignment rechecks eligibility server-side. Pagination now ends with a unique ID tiebreaker. See [Testing Guide](../../TESTING.md).

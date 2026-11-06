@@ -183,6 +183,32 @@ jobs:
           name: workspace-live-test-results
           path: GodForge-E2E/test-results
 
+  m2-provider-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            GodForge-FE/package-lock.json
+            GodForge-E2E/package-lock.json
+      - run: npm ci --prefix GodForge-FE --no-audit --no-fund
+      - run: npm ci --prefix GodForge-E2E --no-audit --no-fund
+      - run: npx --prefix GodForge-E2E playwright install --with-deps chromium
+      - name: Real isolated API, Worker, Forgejo, Git and browser acceptance
+        run: npm run test:m2:acceptance
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: m2-provider-browser-failures
+          path: GodForge-E2E/test-results
+
   secret-quality-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -193,14 +219,21 @@ jobs:
 
   container-security-quality-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-v2-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-db-v2-${{ runner.os }}-
       - name: Build API and Worker release images
         run: |
           docker build --target api -f GodForge-BE/Dockerfile -t godforge-api:ci .
           docker build --target worker -f GodForge-BE/Dockerfile -t godforge-worker:ci .
+      - name: Refresh vulnerability database through official registries
+        run: docker run --rm -v "$HOME/.cache/trivy:/root/.cache/trivy" aquasec/trivy:0.69.3 image --download-db-only --db-repository ghcr.io/aquasecurity/trivy-db:2 --db-repository public.ecr.aws/aquasecurity/trivy-db:2 --timeout 12m --no-progress
       - name: Scan API runtime and dependencies
-        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.69.3 image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln godforge-api:ci
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$HOME/.cache/trivy:/root/.cache/trivy" aquasec/trivy:0.69.3 image --skip-db-update --exit-code 1 --severity HIGH,CRITICAL --scanners vuln godforge-api:ci
       - name: Scan Worker runtime and dependencies
-        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.69.3 image --exit-code 1 --severity HIGH,CRITICAL --scanners vuln godforge-worker:ci
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$HOME/.cache/trivy:/root/.cache/trivy" aquasec/trivy:0.69.3 image --skip-db-update --exit-code 1 --severity HIGH,CRITICAL --scanners vuln godforge-worker:ci

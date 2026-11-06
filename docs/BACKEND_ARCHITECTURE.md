@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Settings extension: MediatR own-user query/command handlers use typed repositories, current session actor, strict boundary DTOs, FluentValidation and independent EF concurrency tokens. OrganizationPolicyHandler applies current Owner/Admin authorization under the shared organization-membership lock. ProjectSettingsService enforces EffectiveSettingsPolicy inside the existing serialized mutation before changing the row. Gemini.Enabled is the platform ceiling; organization allowance is a restriction preference, never a permission grant. Fresh database projections bypass tracking/cache for queued AI eligibility before provider/cache use and after provider response. Existing job/outbox/claim flows remain unchanged. Successful explicit writes commit safe before/after audit summaries atomically and emit the bounded `GodForge.Settings` meter counter `godforge.settings.updates` with scope/outcome tags; production metric export remains an operations gate. [Settings contract](SRS/05-api-contracts/settings.md); [evidence and dependencies](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+Settings extension: MediatR own-user query/command handlers use typed repositories, current session actor, strict boundary DTOs, FluentValidation and independent EF concurrency tokens. OrganizationPolicyHandler applies current Owner/Admin authorization under the shared organization-membership lock. ProjectSettingsService enforces EffectiveSettingsPolicy inside the existing serialized mutation before changing the row. Gemini.Enabled is the platform ceiling; organization allowance is a restriction preference, never a permission grant. Fresh database projections bypass tracking/cache for queued AI eligibility before provider/cache use and after provider response. Existing job/outbox/claim flows remain unchanged. Successful explicit writes commit safe before/after audit summaries atomically and emit the bounded `GodForge.Settings` meter counter `godforge.settings.updates` with scope/outcome tags; production metric export remains an operations gate. [Settings contract](SRS/05-api-contracts/settings.md); [testing and verification](TESTING.md).
 
 ## Runtime target
 
@@ -12,7 +12,7 @@ Stabilization: remote session revocation retries up to three optimistic conflict
 - Boundary validation through dedicated validators.
 - PostgreSQL is the primary business database.
 
-All seven current backend projects target `net10.0`. Locked restore, build, tests and .NET 10 API/Worker runtime images have current executable evidence in the [final stabilization record](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md). Production release acceptance remains separate.
+All seven current backend projects target `net10.0`. Locked restore, build, tests and .NET 10 API/Worker runtime images have current executable evidence in the [Testing Guide](TESTING.md). Production release acceptance remains separate.
 
 ## Layer responsibilities
 
@@ -69,7 +69,7 @@ INTERSECT project role permission
 INTERSECT resource-specific policy
 ```
 
-- Removed or suspended organization membership invalidates all project access and emits provider-reconciliation events.
+- Removed or suspended organization membership invalidates all project access according to authorization rules; external Forgejo provider reconciliation is an outstanding M2 requirement.
 
 ## Transaction rule
 
@@ -78,7 +78,7 @@ A state-changing use case defines one business transaction boundary. Business ch
 Examples:
 
 - Refresh-token rotation updates token family and session state atomically.
-- Organization-member removal updates all affected project memberships and writes Forgejo reconciliation events atomically.
+- Organization-member removal updates and revokes all affected project memberships atomically; external Forgejo reconciliation will be dispatched via outbox in M2.
 - Project creation, creator ProjectOwner membership and audit/outbox records commit atomically.
 
 ## Read-model rule

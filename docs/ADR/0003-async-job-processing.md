@@ -17,7 +17,7 @@ API commands create a durable PostgreSQL job and publish through an outbox. The 
 ### Negative
 - Eventual consistency and more operational complexity.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Heavy work never runs inside an HTTP request.
 - Duplicate delivery must not duplicate outputs.
 - Completion is visible only after durable output commits.

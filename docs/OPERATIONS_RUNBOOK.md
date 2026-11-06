@@ -1,5 +1,34 @@
 # Operations Runbook
 
+## M2 hosted Git recovery
+
+- **Forgejo outage:** Restore the configured internal endpoint and non-admin
+  service token. Membership changes remain authoritative immediately; monitor
+  access generations until `accessConfirmedGeneration == accessGeneration` with
+  no access error. Do not report a completed external revocation while pending.
+- **Interrupted Worker/provisioning:** Restart the Worker. Three-minute job
+  leases and recovery outbox records permit reclaim after heartbeat expiry.
+  Provider ownership markers recover uncertain creation outcomes. For a terminal
+  provisioning failure, an authorized manager repeats the original hosted POST;
+  it reuses the durable operation and provider identity.
+- **Reconciliation failure/drift:** Inspect sanitized job error codes, provider
+  availability and account bindings. The five-minute scan schedules up to 100
+  eligible repositories, including failed operations; active jobs retain their
+  existing backoff. Verify provider read-back, never force a database success flag.
+- **Missing/stale webhook:** Correct the server callback/secret and Forgejo
+  outbound destination allowlist. Provisioning/reconciliation idempotently
+  installs or repairs the managed hook and verifies its non-secret configuration.
+  Confirm a real subsequent push reaches the callback and revision sync completes.
+- **Outbox exhaustion:** Inspect failed/dead-letter jobs and outbox records,
+  restore RabbitMQ/connectivity first, and use supported operation retry paths.
+  Never delete pending deliveries or acknowledge unsuccessful reconciliation.
+
+Monitor the oldest unprocessed outbox `created_at` (`pending`, `processing`,
+`failed` statuses), queued/running/retrying/dead-letter job counts by queue,
+attempt counts/availability, repository access generation lag and access error
+codes, webhook records and failed synchronization jobs. Logs expose stable failure codes and
+IDs. Do not dump provider headers, personal tokens, hook secrets or raw payloads.
+
 ## Daily checks
 
 - API and Worker readiness.

@@ -21,6 +21,18 @@ public sealed class GitRepositoryConfiguration : IEntityTypeConfiguration<GitRep
         builder.Property(r => r.DefaultBranch).HasColumnName("default_branch").HasMaxLength(150).IsRequired();
         builder.Property(r => r.ExternalRepositoryId).HasColumnName("external_repository_id").HasMaxLength(200);
         builder.Property(r => r.HostedRepositoryId).HasColumnName("hosted_repository_id").HasMaxLength(200);
+        builder.Property(r => r.HostedName).HasColumnName("hosted_name").HasMaxLength(60);
+        builder.Property(r => r.ProvisionIdentity).HasColumnName("provision_identity").HasMaxLength(32);
+        builder.Property(r => r.AccessRequestedAt).HasColumnName("access_requested_at");
+        builder.Property(r => r.AccessReconciledAt).HasColumnName("access_reconciled_at");
+        builder.Property(r => r.AccessErrorCode).HasColumnName("access_error_code").HasMaxLength(100);
+        builder.Property(r => r.AccessGeneration).HasColumnName("access_generation").IsConcurrencyToken();
+        builder.Property(r => r.AccessConfirmedGeneration).HasColumnName("access_confirmed_generation");
+        builder.Property(r => r.WebhookId).HasColumnName("webhook_id");
+        builder.Property(r => r.WebhookConfirmedAt).HasColumnName("webhook_confirmed_at");
+        builder.Property(r => r.SyncGeneration).HasColumnName("sync_generation").IsConcurrencyToken();
+        builder.HasIndex(r => new { r.Provider, r.HostedRepositoryId }).IsUnique()
+            .HasFilter("hosted_repository_id IS NOT NULL").HasDatabaseName("ux_repositories_hosted_identity");
         builder.Property(r => r.WorkspaceKey).HasColumnName("workspace_key").HasMaxLength(200);
         builder.Property(r => r.GitRepositoryStatus).HasColumnName("status").HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(r => r.AutoAnalyzeEnabled).HasColumnName("auto_analyze_enabled").IsRequired();

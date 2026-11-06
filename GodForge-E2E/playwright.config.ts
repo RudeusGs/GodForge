@@ -3,7 +3,7 @@ import process from 'node:process';
 
 export default defineConfig({
   testDir: './tests',
-  testIgnore: '**/*.live.spec.ts',
+  testIgnore: ['**/*.live.spec.ts', '**/*.m2.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

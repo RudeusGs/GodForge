@@ -45,6 +45,9 @@ public static class DependencyInjection
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IGitRepositoryRepository, GitRepositoryRepository>();
+        services.AddScoped<IHostedRepositoryAccessStore, HostedRepositoryAccessStore>();
+        services.AddScoped<IHostedWebhookStore, HostedWebhookStore>();
+        services.AddSingleton<IForgejoWebhookSignature, ForgejoWebhookSignature>();
         services.AddScoped<IRepositorySnapshotRepository, RepositorySnapshotRepository>();
         services.AddScoped<IAiAnalysisRepository, AiAnalysisRepository>();
         services.AddScoped<IHealthReportRepository, HealthReportRepository>();
@@ -153,11 +156,10 @@ public static class DependencyInjection
                 "Forgejo BaseUrl must be an absolute URL.")
             .Validate(
                 settings => !settings.Enabled ||
-                            (Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri) &&
-                             (baseUri.Scheme == Uri.UriSchemeHttps ||
-                              (baseUri.Scheme == Uri.UriSchemeHttp && baseUri.IsLoopback)) &&
-                             !string.IsNullOrWhiteSpace(settings.ApiToken)),
-                "Forgejo requires a non-empty ApiToken and an HTTPS BaseUrl; HTTP is allowed only for loopback development endpoints.")
+                            (settings.HasSafeEndpoints && !string.IsNullOrWhiteSpace(settings.ApiToken)),
+                "Forgejo requires a token and HTTPS internal/public URLs; AllowLocalHttp permits only loopback or the forgejo development service.")
+            .Validate(settings => !settings.Enabled || settings.WebhookSecret.Length >= 32, "Enabled Forgejo requires a webhook secret of at least 32 characters.")
+            .Validate(settings => !settings.Enabled || settings.HasSafeWebhook, "Enabled Forgejo requires a trusted webhook callback URL.")
             .ValidateOnStart();
         services.AddOptions<M1QuotaSettings>()
             .Bind(configuration.GetSection(M1QuotaSettings.SectionName))
@@ -198,6 +200,7 @@ public static class DependencyInjection
         services.AddScoped<IDependencyGraphBuilder, DependencyGraphBuilder>();
         services.AddSingleton<IRepositoryLockProvider, PostgresRepositoryLockProvider>();
         services.AddScoped<IRepositoryWorkspaceService, GitWorkspaceService>();
+        services.AddScoped<ILinkedRepositoryBrowser, GitWorkspaceService>();
 
         services.AddHttpClient<IAiAnalysisProvider, GeminiAnalysisProvider>((serviceProvider, client) =>
         {
@@ -210,8 +213,8 @@ public static class DependencyInjection
         {
             var settings = serviceProvider.GetRequiredService<IOptions<ForgejoSettings>>().Value;
             client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute);
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 
         return services;
     }

@@ -4,6 +4,7 @@ public static class WorkerQueueNames
 {
     public const string RepositoryPipeline = "repository.pipeline";
     public const string HostedRepositoryProvision = "repository.hosted.provision";
+    public const string HostedRepositoryReconcile = "repository.hosted.reconcile";
     public const string RepositorySync = "repository.sync";
     public const string RepositoryParse = "repository.parse";
     public const string RepositoryHealth = "repository.health";

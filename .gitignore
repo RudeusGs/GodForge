@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!GodForge-FE/.env.docker
 **/appsettings.Local.json
 **/secrets.json
 

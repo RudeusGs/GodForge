@@ -138,6 +138,37 @@ Public errors use stable `SCREAMING_SNAKE_CASE`, safe messages and correlation I
 
 ## Jobs and operations
 
+## M2 hosted provider and browser additions
+
+| Code | Status | Meaning |
+|---|---|---|
+| `FORGEJO_NOT_CONFIGURED` | 409/job failed | Hosted provider disabled or incomplete server configuration. |
+| `FORGEJO_UNAVAILABLE` | 409/retrying | Bounded provider request failed or timed out. |
+| `FORGEJO_SERVICE_ACCOUNT_INVALID` | job dead-lettered | Hosting account has prohibited provider admin privileges. |
+| `FORGEJO_IDENTITY_INVALID` | 400 | Account-binding proof is invalid or prohibited. |
+| `FORGEJO_IDENTITY_CONFLICT` | 409/job dead-lettered | Stable provider identity or repository ownership marker does not match. |
+| `FORGEJO_RESPONSE_INVALID` | 409/job dead-lettered | Provider response violates the expected schema. |
+| `FORGEJO_RESPONSE_TOO_LARGE` | 409/job dead-lettered | Provider response exceeds bounded transport capacity. |
+| `FORGEJO_RECONCILIATION_INCOMPLETE` | 409/retrying | Provider read-back does not match requested state. |
+| `REPOSITORY_PERMISSION_DENIED` | 403/job failed | GodForge/provider operation is not authorized. |
+| `REPOSITORY_PROVIDER_NOT_FOUND` | 404/job failed | Provider repository/revision is absent. |
+| `REPOSITORY_PROVISIONING` | 409 | Hosted repository is not yet provisioned. |
+| `REPOSITORY_PROVISION_FAILED` | job failed | Hosted provisioning input or provider operation failed. |
+| `REPOSITORY_SYNC_REQUIRED` | 409 | Linked repository has no synchronized revision cache. |
+| `REPOSITORY_SYNC_FAILED` | job failed | Safe linked fetch or revision validation failed. |
+| `FORGEJO_WEBHOOK_NOT_CONFIGURED` | job failed | Trusted server callback/secret is missing. |
+| `FORGEJO_WEBHOOK_INCOMPLETE` | retrying | Managed webhook read-back does not match configuration. |
+| `M2_OPERATION_INTERRUPTED` | retrying | Bounded execution was cancelled or timed out. |
+| `JOB_RETRY_EXHAUSTED` / `WORKER_DELIVERY_FAILED` | dead-lettered | Durable M2/consumer retry budget exhausted. |
+| `RECONCILIATION_PENDING` | metadata | Current access generation still needs provider confirmation. |
+| `REPOSITORY_PATH_INVALID` / `REPOSITORY_REF_INVALID` | 400 | Unsafe path or invalid immutable SHA/branch. |
+| `REPOSITORY_BINARY_FILE` | 400 | Blob is not bounded UTF-8 text. |
+| `REPOSITORY_BLOB_TOO_LARGE` / `REPOSITORY_TREE_TOO_LARGE` | 400 | Browser resource limit exceeded. |
+| `WEBHOOK_SIGNATURE_INVALID` | 401 | Raw-body provider authentication failed. |
+| `WEBHOOK_PAYLOAD_INVALID` | 400 | Signed payload or delivery metadata is malformed. |
+
+## Durable job errors
+
 | Code | Status | Meaning |
 |---|---:|---|
 | `JOB_NOT_FOUND` | 404 | Job absent/inaccessible. |

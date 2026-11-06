@@ -18,7 +18,7 @@ Protected assets are stored in MinIO through an Asset Vault service. Git stores 
 - Clone alone may not recreate the project; a plugin or CLI must hydrate assets.
 - Object storage and manifest consistency require reconciliation.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Never claim a Git-committed asset can remain secret after repository publication.
 - Never return direct bucket credentials.
 - Every protected download must be authorized and audited.

@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 // Only the isolated local development stack is targeted. No external email is sent.
-const api = 'http://127.0.0.1:15072/api/v1';
-const mailbox = 'http://127.0.0.1:18025';
+const api = process.env.GODFORGE_SMOKE_API ?? 'http://127.0.0.1:15072/api/v1';
+const mailbox = process.env.GODFORGE_SMOKE_MAILBOX ?? 'http://127.0.0.1:18025';
+for (const endpoint of [api, mailbox]) {
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(endpoint).hostname))
+    throw new Error('Smoke fixtures require explicitly local endpoints.');
+}
 const suffix = randomUUID().replaceAll('-', '');
 const password = `Local-smoke1!-${suffix}`;
 let checks = 0;
@@ -59,7 +63,7 @@ async function register(label) {
 }
 
 try {
-  assert.equal((await fetch('http://127.0.0.1:15072/health/ready')).status, 200);
+  assert.equal((await fetch(new URL('/health/ready', api), { signal: AbortSignal.timeout(15_000) })).status, 200);
   const owner = await register('owner');
   const member = await register('member');
   console.log('PASS: registration OTP, real outbox/SMTP delivery, registration and secure login');

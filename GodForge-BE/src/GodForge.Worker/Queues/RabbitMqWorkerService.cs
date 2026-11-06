@@ -22,6 +22,7 @@ internal sealed class RabbitMqWorkerService : BackgroundService
     private IConnection? _connection;
     private IModel? _channel;
     private CancellationToken _stoppingToken;
+    private int _infrastructureFailureCount;
 
     public RabbitMqWorkerService(
         IOptions<RabbitMqSettings> settings,
@@ -80,24 +81,28 @@ internal sealed class RabbitMqWorkerService : BackgroundService
         _connection = _connectionFactory.CreateConnection(_settings);
         _channel = _connection.CreateModel();
         _channel.QueueDeclare(WorkerQueueNames.DeadLetter, durable: true, exclusive: false, autoDelete: false);
-        _channel.QueueDeclare(
-            WorkerQueueNames.RepositoryPipeline,
-            durable: true,
-            exclusive: false,
-            autoDelete: false,
-            arguments: new Dictionary<string, object>
-            {
-                ["x-dead-letter-exchange"] = string.Empty,
-                ["x-dead-letter-routing-key"] = WorkerQueueNames.DeadLetter
-            });
-        _channel.BasicQos(0, 1, global: false);
+        foreach (var queue in new[] { WorkerQueueNames.RepositoryPipeline, WorkerQueueNames.HostedRepositoryProvision, WorkerQueueNames.HostedRepositoryReconcile, WorkerQueueNames.RepositorySync })
+        {
+            _channel.QueueDeclare(
+                queue,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: new Dictionary<string, object>
+                {
+                    ["x-dead-letter-exchange"] = string.Empty,
+                    ["x-dead-letter-routing-key"] = WorkerQueueNames.DeadLetter
+                });
+            _channel.BasicQos(0, 1, global: false);
 
-        var consumer = new AsyncEventingBasicConsumer(_channel);
-        consumer.Received += HandleMessageAsync;
-        _channel.BasicConsume(
-            queue: WorkerQueueNames.RepositoryPipeline,
-            autoAck: false,
-            consumer: consumer);
+            var consumer = new AsyncEventingBasicConsumer(_channel);
+            var deliveryChannel = _channel;
+            consumer.Received += (sender, args) => HandleMessageAsync(queue, deliveryChannel, sender, args);
+            _channel.BasicConsume(
+                queue: queue,
+                autoAck: false,
+                consumer: consumer);
+        }
     }
 
     private static TimeSpan CalculateReconnectDelay(int attempt)
@@ -106,69 +111,101 @@ internal sealed class RabbitMqWorkerService : BackgroundService
         return TimeSpan.FromMilliseconds((exponentialSeconds * 1000) + Random.Shared.Next(0, 501));
     }
 
-    private async Task HandleMessageAsync(object sender, BasicDeliverEventArgs eventArgs)
+    private async Task HandleMessageAsync(string queue, IModel deliveryChannel, object sender, BasicDeliverEventArgs eventArgs)
     {
         if (_channel is null)
         {
             return;
         }
 
-        RepositoryAnalysisJobMessage? message;
+        WorkerMessage? message;
         try
         {
             var json = Encoding.UTF8.GetString(eventArgs.Body.Span);
-            message = JsonSerializer.Deserialize<RepositoryAnalysisJobMessage>(json, JsonOptions);
+            message = queue switch
+            {
+                WorkerQueueNames.RepositorySync => JsonSerializer.Deserialize<RepositorySyncJobMessage>(json, JsonOptions),
+                WorkerQueueNames.HostedRepositoryProvision => JsonSerializer.Deserialize<HostedRepositoryProvisionJobMessage>(json, JsonOptions),
+                WorkerQueueNames.HostedRepositoryReconcile => JsonSerializer.Deserialize<HostedRepositoryReconcileJobMessage>(json, JsonOptions),
+                _ => JsonSerializer.Deserialize<RepositoryAnalysisJobMessage>(json, JsonOptions)
+            };
         }
         catch (JsonException exception)
         {
             _logger.LogWarning(exception, "Invalid worker message JSON was dead-lettered");
-            _channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
+            deliveryChannel.BasicReject(eventArgs.DeliveryTag, requeue: false);
             return;
         }
 
         if (message is null || message.SchemaVersion != "1.0")
         {
-            _channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
+            deliveryChannel.BasicReject(eventArgs.DeliveryTag, requeue: false);
             return;
         }
 
         try
         {
             using var scope = _scopeFactory.CreateScope();
-            var handler = scope.ServiceProvider.GetRequiredService<RepositoryAnalysisPipelineHandler>();
-            var result = await handler.HandleAsync(message, _stoppingToken);
+            var result = message switch
+            {
+                RepositorySyncJobMessage sync => await scope.ServiceProvider.GetRequiredService<RepositorySyncHandler>().HandleAsync(sync, _stoppingToken),
+                HostedRepositoryReconcileJobMessage reconcile => await scope.ServiceProvider.GetRequiredService<HostedRepositoryReconcileHandler>().HandleAsync(reconcile, _stoppingToken),
+                HostedRepositoryProvisionJobMessage provision => await scope.ServiceProvider.GetRequiredService<HostedRepositoryProvisionHandler>().HandleAsync(provision, _stoppingToken),
+                RepositoryAnalysisJobMessage analysis => await scope.ServiceProvider.GetRequiredService<RepositoryAnalysisPipelineHandler>().HandleAsync(analysis, _stoppingToken),
+                _ => JobExecutionResult.DeadLetter()
+            };
 
             if (result.Disposition == JobExecutionDisposition.Retry)
             {
-                // Retry scheduling is normally persisted through the database outbox by
-                // the handler. Requeue an unexpected Retry result rather than creating a
-                // non-transactional RabbitMQ retry message.
-                _logger.LogWarning(
-                    "Job {JobId} returned an unexpected direct retry disposition; the delivery will be requeued",
-                    message.JobId);
-                _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
+                await RecoverAsync(queue, message, deliveryChannel, eventArgs.DeliveryTag);
                 return;
             }
 
             if (result.Disposition == JobExecutionDisposition.DeadLetter)
             {
-                _channel.BasicReject(eventArgs.DeliveryTag, requeue: false);
+                deliveryChannel.BasicReject(eventArgs.DeliveryTag, requeue: false);
                 return;
             }
 
-            _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
+            deliveryChannel.BasicAck(eventArgs.DeliveryTag, multiple: false);
+            _infrastructureFailureCount = 0;
         }
         catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested)
         {
-            _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
+            // Closing leaves unacknowledged deliveries recoverable and stops callbacks
+            // immediately; repeatedly nacking during shutdown can create a hot loop.
+            DisposeConnection();
         }
         catch (Exception exception)
         {
-            // Consumer-level failures are infrastructure failures. Business/poison
-            // messages are converted to DeadLetter by the handler, so an unhandled
-            // exception must remain recoverable even after RabbitMQ redelivery.
-            _logger.LogError(exception, "Unhandled worker consumer failure; message will be requeued");
-            _channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
+            _logger.LogError("WORKER_DELIVERY_FAILED for job {JobId}; exception type {ExceptionType}", message.JobId, exception.GetType().Name);
+            await RecoverAsync(queue, message, deliveryChannel, eventArgs.DeliveryTag);
+        }
+    }
+
+    private async Task RecoverAsync(string queue, WorkerMessage message, IModel channel, ulong tag)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var result = await scope.ServiceProvider.GetRequiredService<WorkerDeliveryRecovery>().ScheduleAsync(queue, message, _stoppingToken);
+            if (result.Disposition == JobExecutionDisposition.DeadLetter) channel.BasicReject(tag, requeue: false);
+            else channel.BasicAck(tag, multiple: false);
+        }
+        catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested) { DisposeConnection(); }
+        catch (Exception)
+        {
+            // Database/broker outage: no acknowledgement without durable intent. Delay
+            // the current delivery using the existing reconnect policy before requeue.
+            var delay = CalculateReconnectDelay(Math.Min(10, ++_infrastructureFailureCount));
+            _logger.LogWarning("WORKER_RECOVERY_UNAVAILABLE; delaying redelivery by {DelaySeconds} seconds", delay.TotalSeconds);
+            try
+            {
+                await _reconnectDelay.WaitAsync(delay, _stoppingToken);
+                if (channel.IsOpen) channel.BasicNack(tag, multiple: false, requeue: true);
+            }
+            catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested) { DisposeConnection(); }
+            catch (Exception) { DisposeConnection(); }
         }
     }
 

@@ -16,6 +16,6 @@ Production message publication uses a PostgreSQL outbox written in the same tran
 ### Negative
 - Dispatcher, cleanup and monitoring are required.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Direct publish after commit may be used only for local prototypes and must not be labeled production-ready.
 - Outbox/inbox records have retention and replay procedures.

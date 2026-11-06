@@ -16,7 +16,7 @@ Repository jobs use isolated directories under one configured root, owner-token 
 ### Negative
 - More validation, cleanup and resource accounting.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Never concatenate shell commands.
 - Never follow a path or symlink outside the workspace.
 - Never mount the Docker socket or broad host directories into workers.

@@ -1,0 +1,45 @@
+# Only the godforge-m2-acceptance disposable project uses this override.
+services:
+  api:
+    ports: !override ["127.0.0.1:35072:8080"]
+    environment:
+      Forgejo__Enabled: "true"
+      Forgejo__PublicUrl: http://localhost:33000
+      Forgejo__WebhookUrl: http://api:8080/api/v1/webhooks/forgejo
+      Frontend__BaseUrl: http://127.0.0.1:35173
+      Frontend__AllowedOrigins__0: http://127.0.0.1:35173
+      Frontend__AllowedOrigins__1: http://127.0.0.1:35173
+  worker:
+    volumes:
+      - ${GODFORGE_M2_TLS_DIR:-./artifacts/m2-tls}/ca.pem:/m2-tls/ca.pem:ro
+    environment:
+      Forgejo__Enabled: "true"
+      Forgejo__PublicUrl: http://localhost:33000
+      Forgejo__WebhookUrl: http://api:8080/api/v1/webhooks/forgejo
+      RepositoryProcessing__AllowedRemoteHosts__0: linked-tls
+      GIT_SSL_CAINFO: /m2-tls/ca.pem
+  linked-tls:
+    image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+    volumes:
+      - ${GODFORGE_M2_TLS_DIR:-./artifacts/m2-tls}:/fixture:ro
+    command: ["nginx", "-c", "/fixture/nginx.conf", "-g", "daemon off;"]
+    depends_on: [forgejo]
+  mailpit:
+    ports: !override ["127.0.0.1:38025:8025"]
+  forgejo:
+    ports: !override ["127.0.0.1:33000:3000", "127.0.0.1:32222:2222"]
+    environment:
+      FORGEJO__server__ROOT_URL: http://localhost:33000/
+      FORGEJO__server__SSH_DOMAIN: localhost
+      FORGEJO__server__SSH_PORT: "32222"
+      FORGEJO__server__START_SSH_SERVER: "true"
+      FORGEJO__server__SSH_LISTEN_PORT: "2222"
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__security__SECRET_KEY: ${GODFORGE_M2_INSTANCE_SECRET:?Disposable harness supplies instance secret}
+      FORGEJO__webhook__ALLOWED_HOST_LIST: api
+      FORGEJO__webhook__DELIVER_TIMEOUT: "5"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:3000/api/v1/version"]
+      interval: 2s
+      timeout: 5s
+      retries: 60

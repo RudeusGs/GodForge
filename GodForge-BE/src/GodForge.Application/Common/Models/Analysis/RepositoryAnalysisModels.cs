@@ -62,7 +62,8 @@ public sealed record HostedRepositoryProvisionRequest(
     string Owner,
     string Name,
     bool IsPrivate,
-    string DefaultBranch);
+    string DefaultBranch,
+    string? ProvisionIdentity = null);
 
 public sealed record HostedRepositoryProvisionResult(
     string ProviderRepositoryId,

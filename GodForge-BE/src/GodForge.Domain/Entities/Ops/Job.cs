@@ -79,6 +79,21 @@ public sealed class Job : BaseAuditableEntity
         UpdatedAt = now;
     }
 
+    public void RetryHostedProvision(DateTimeOffset now, Guid actorId)
+    {
+        if (Type != JobType.ProvisionHostedRepository || Status is not (JobStatus.Failed or JobStatus.DeadLettered))
+            throw new InvalidOperationException("Only failed hosted provisioning can be retried.");
+        if (actorId == Guid.Empty) throw new ArgumentException("A retry actor is required.", nameof(actorId));
+        TriggeredBy = actorId;
+        Status = JobStatus.Queued;
+        AttemptCount = 0;
+        AvailableAt = now;
+        CompletedAt = null;
+        ErrorCode = null;
+        ErrorMessage = null;
+        UpdatedAt = now;
+    }
+
     public void UpdateProgress(int progress, DateTimeOffset now)
     {
         EnsureStatus(JobStatus.Running);

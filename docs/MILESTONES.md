@@ -24,16 +24,19 @@ Do not start a later milestone until the previous milestone exit gate passes. Pa
 - Member invitation, role changes and removal.
 - Server-side permission checks and audit events.
 
-**Exit gate**: cross-tenant access tests pass for every role.
+**Exit gate**: cross-tenant access tests pass for every role. (Passed for internal tenancy and authorization; M2 development is unblocked.)
 
 ## M2 — Repository foundation and hosted Git
+
+Current state: partial implementation; provider acceptance remains open. See
+[implementation status](IMPLEMENTATION_STATUS.md) and [repository contracts](SRS/05-api-contracts/repositories.md).
 
 - Linked HTTPS repository.
 - Forgejo provisioning for hosted repositories.
 - Branch, commit, tree and text-blob views.
-- Signed webhooks, permission synchronization and protected-branch policy foundation.
+- Signed webhooks, permission synchronization (including external Forgejo reconciliation for `FR-27.2` / `AC-FR-27.2-02`), and protected-branch policy foundation.
 
-**Exit gate**: a team member can create, clone, push and view a hosted Godot repository without credential leakage.
+**Exit gate**: a team member can create, clone, push and view a hosted Godot repository without credential leakage, and external member revocation reconciles cleanly.
 
 ## M3 — Durable worker and secure workspace
 

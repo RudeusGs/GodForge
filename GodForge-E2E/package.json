@@ -1,15 +1,13 @@
 {
   "name": "godforge-e2e",
+  "private": true,
   "version": "1.0.0",
   "description": "GodForge browser workflows against controlled API contracts",
-  "main": "index.js",
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "type": "commonjs",
   "devDependencies": {
     "@playwright/test": "^1.62.1",

@@ -1,83 +1,62 @@
 # Implementation Status
 
-2026-10-30 stabilization: policy recovery and safe conditional retry, separate advisory-mode validation, post-cache policy revalidation, and the remote session-revocation concurrency defect are fixed with targeted regressions. [Final settings evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) owns final source identifiers, actual gate results and remote CI status. Full M1 stays open for FR-27.2 external reconciliation and AC-FR-17.4-01 immutable execution; selection is a foundation only.
+This document reflects the verified implementation state of GodForge based on executable source code and automated tests.
 
-Evidence basis: the repository snapshot and executable local verification performed through 2026-10-30. This file records only behavior present in the current snapshot; future milestones are not counted as current defects. Remaining work is tracked in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). The dated workspace evidence below supplements the earlier baseline record; it does not certify M0/M1 or a clean CI run.
+---
 
-## Current evidence
+## 1. Feature Implementation Matrix
 
-Final stabilization source `1e56c7f757a95ec5e41138bd410b8bbca281c410` has a successful eight-job [Actions run 41066217337](https://github.com/RudeusGs/GodForge/actions/runs/41066217337), clean-checkout local full verification, 271 unit/153 PostgreSQL/148 frontend/22 controlled-browser tests, 10 live browser tests and 41 smoke assertions. Both API and Worker HIGH/CRITICAL scans and dependency/secret scans passed. [Final commands, image identities and source limits](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) supersede historical pending local/security/CI statements below. M0 verification is accepted for this source; overall M1 remains partially verified. M2 readiness is BLOCKED on the unresolved M1 exit gate/provider-reconciliation dependency. Immutable execution remains separate M4–M6 work, not an additional M2 feature requirement.
+| Module | Status | Implemented Functionality | Verified Scope | Remaining Work |
+|---|---|---|---|---|
+| **M0: Foundation & Runtime** | Implemented | Clean Architecture (.NET 10 LTS), ASP.NET Core API, Worker host, PostgreSQL 16 migrations, Redis 7 cache/locks, RabbitMQ 3.13, Docker Compose. | Verified locally & in CI | Production container hardening, release observability deployment. |
+| **M1: Authentication & Sessions** (`FR-01.*`) | Implemented | OTP registration via email, secure login, HttpOnly SameSite=Strict refresh cookies, multi-device session management, remote session revocation, password reset, distributed Redis abuse limiters. | Tested locally & verified in CI | MFA (`FR-01.6`, documented extension). |
+| **M1: User Session Management** (`FR-01.4`) | Implemented | `GET /users/me`, session listing, single session revocation, current session logout, cross-tab invalidation, safe return path preservation. | Tested locally & verified in CI | None for M1 baseline. |
+| **M1: Public Landing Page** (`FR-00.1`) | Implemented | Responsive landing page, product positioning bento, accessibility landmarks, reduced-motion compliance. | Tested locally & verified in CI | None. |
+| **M1: Organization Management** (`FR-27`) | Implemented | Organization creation, slug normalization, overview, general settings (1–160 char name, 1–80 char slug), member directory with search/filters, invitations, URL token scrubbing, ownership transfer, deletion requests (`deleting` lifecycle state). | Tested locally & verified in CI | None for internal tenancy. |
+| **M1: Tenant & Project Membership Hierarchy** (`FR-27.1`, `FR-27.2`) | Implemented (Internal) | Internal GodForge membership revocation: removing or suspending an organization member atomically revokes all project memberships in that organization. | Tested locally & verified in CI | External Forgejo hosted-provider reconciliation (`FR-27.2` / `AC-FR-27.2-02`), scheduled as an M2 acceptance requirement. |
+| **M1: Project Lifecycle & Catalog** (`FR-03`, `FR-27.3`) | Implemented | Project creation within organization, slug uniqueness, metadata overview, assigned project list vs administration catalog separation, project archive and restore. | Tested locally & verified in CI | None for M1 project lifecycle. |
+| **M1: Project Membership & Settings** (`FR-03.1`, `FR-17`) | Implemented | Project member listing, candidate picker beyond 100 members, role assignment, role updates, member removal, project ownership transfer, project settings updates, deletion requests. | Tested locally & verified in CI | Complete analysis profile integration (deferred to M4–M6). |
+| **M1: Settings & Policy Management** (`FR-17.1`, `FR-17.2`) | Implemented | Own-user preferences, organization-wide AI policy restrictions, effective policy resolution (Platform > Org > Project), schema upgrades. | Tested locally & verified in CI | Advanced asset-retention and quota policies. |
+| **M2: Hosted Git & Repository Foundation** (`FR-04`–`FR-07`, `FR-21`) | Partial; final gates open | Short claim/I/O/finalize boundaries, leased/fenced jobs, desired-state generations, automatic managed hooks, hosted and linked browsing/sync, Vue polling and protection. | Real Forgejo API/outbox/Worker provisioning, HTTPS/SSH push/revocation, signed push/replay, linked HTTPS browsing, role races/outage recovery; PostgreSQL concurrency and M0/M1 regressions. | Final real-provider browser rerun and runtime vulnerability scanning. Retained Forgejo upgrades are not tested. |
+| **M3: Durable Job Processing** (`FR-19.*`) | Partially implemented | Outbox message dispatcher, Worker queue consumer, RabbitMQ retry with exponential backoff. | Tested locally | Job cancellation, DLQ inspection API, distributed worker coordination. |
+| **M4–M6: Godot Validation, Parser & Engine** (`FR-08`, `FR-09`, `FR-10`, `FR-11`, `FR-12`, `FR-20`) | Planned | Basic project.godot validation rules and analyzer structure. | Planned | Deterministic parser for `.tscn`, `.tres`, `.gd`, dependency graph builder, health score engine. |
+| **M7: AI Advisory Services** (`FR-22.*`) | Planned | Structured context builder abstraction, secret redaction filter, policy gating. | Planned | End-to-end Gemini advisory integration, advisory display in UI. |
+| **M8: Asset Vault** (`FR-23.*`) | Planned | Storage abstraction, MinIO bucket layout, access policy model. | Planned | Chunked upload, signed URL generation, manifest verification, quarantine pipeline. |
+| **M9: Collaboration, Activity & Reports** (`FR-14`, `FR-16`, `FR-18`, `FR-24`, `FR-25`) | Planned | Audit log persistence, activity writer interface. | Planned | Finding collaboration workflows, activity feed, PDF/JSON/CSV report generation. |
+| **M10: Production Hardening & Operations** | Planned | Local Docker Compose, health check endpoints, backup/restore runbook. | Planned | Production secret management, OpenTelemetry metric export, staging deployment drill. |
 
-| Area | Status | Current evidence |
-|---|---|---|
-| Baseline and CI | Local executable gates passed; clean-checkout CI pending | `npm run verify` checks documentation links, creates isolated PostgreSQL/Redis, runs backend restore/format/build/tests, frontend clean install/audit/lint/typecheck/tests/build and Chromium tests, then removes the verification containers. The configured SDK floor is `10.0.302` with `latestFeature`; the SDK actually resolved on this run was `10.0.400`. All solution projects built as `net10.0`. Runtime-image/release verification and clean-checkout CI remain separate gates. |
-| Authentication and sessions | Implemented M1 workflows locally verified; live browser/API release gate pending | Real-PostgreSQL HTTP tests prove two independent sessions, independent refresh, session-scoped logout/remote revoke, replay-family revocation, password-reset global invalidation, concurrent one-time challenge consumption, concurrent lockout updates and the active-session limit. Refresh tokens remain only in the scoped HttpOnly SameSite=Strict cookie and access tokens remain frontend memory-only. Redis counters provide atomic IP plus keyed-scope abuse limits and fail closed outside Development/Testing. Eleven Chromium cases verify browser interaction against controlled HTTP contracts. `FR-01.6` MFA remains the documented Should/future extension. |
-| User session API and UI | Locally verified | `GET /users/me`, `GET /users/me/sessions` and `DELETE /users/me/sessions/{sessionId}` require an active session-bound JWT. The authenticated UI provides loading, empty, recoverable-error and revocation states and clears local authentication after revoking the current session. |
-| M1 workspace & organization management UI | Locally verified organization slice; see current project addendum below | Responsive authenticated shell, paginated organization switcher/list/create/onboarding, organization overview, members directory/role management/removal/self-leave, invitations creation/listing/revocation, invitation acceptance with URL token scrubbing, organization settings (General with domain-aligned 1–160 name and 1–80 slug bounds, Ownership Transfer with server-paginated/searchable candidates, Danger Zone deletion request), assigned-project list/create and metadata detail use real typed contracts. Separate organization catalogs expose administration metadata without content links. Unit (96 tests), controlled Chromium (`TC-WORKSPACE-BROWSER-001`–`008`), and live browser-to-API workflows (`TC-WORKSPACE-LIVE-001`–`002` with real PostgreSQL/Redis/RabbitMQ/Worker/Mailpit) pass. [Execution record and limitations](ORGANIZATION_MANAGEMENT_ACCEPTANCE_EVIDENCE.md) ([prior foundation record](WORKSPACE_FOUNDATION_EVIDENCE.md)). Project management UI now exists; current verification and remaining FR-17/provider prerequisites are recorded in the addendum below. |
-| Organization lifecycle | Locally verified for internal GodForge tenancy; external provider reconciliation open | Lifecycle, ownership, membership and invitation routes include audit records, current M1 quotas, serialized membership/invitation locks, active target-account verification on ownership transfer, and persistent idempotency for organization and invitation creation. Organization suspension/removal locks affected projects, prevents sole-project-owner removal, and revokes project memberships atomically in the same transaction. Full RBAC matrix, 10 invitation security cases, 6 concurrency cases, boundary lengths, and >100-member scale/multi-owner cases pass on isolated PostgreSQL (`OrganizationManagementHttpTests`). External provider reconciliation (`FR-27.2`) remains open. |
-| Project lifecycle | Locally verified; see current project acceptance report | Project HTTP use cases enter through MediatR validation before delegating to lifecycle/membership services. Lifecycle, ownership, membership and settings routes include audit records, project quota, persistent create idempotency and active organization-membership intersection. The previous unconsumed provider-reconciliation intents were removed. |
-| Tenant persistence | Locally verified on isolated PostgreSQL | The complete migration chain applies to a clean database and upgrades from `20260810130447_PendingModelChanges`. Migration `20260810135055_ProtectSessionClientMetadata` removes legacy raw session IP/user-agent columns and adds nullable bounded hash columns. PostgreSQL persistence/concurrency integration tests pass. |
-| Public landing experience | Locally verified | `/` lazy-loads a responsive public landing page aligned with the authentication visual system. It presents the documented specialized Git/Godot project-intelligence positioning, anonymous login/registration actions and an authenticated dashboard action without reading tenant data. The bounded CSS/SVG hero and three-panel structure/health/access bento use fine-pointer perspective where applicable, accessibility-isolate decorative graphics and disable non-essential motion through `prefers-reduced-motion`. `TC-LANDING-*`, lint, typecheck and production build pass locally. |
-| Frontend authentication | Locally verified with controlled browser contracts | A single refresh coordinator deduplicates same-tab callers and prefers Web Locks/BroadcastChannel, with an atomic IndexedDB fallback lease. Bootstrap failures block protected content and allow retry; retry followed by 401 now redirects even when authentication was already false. Failed logout clears local credentials, preserves a non-secret logout intent and explains that server revocation was not confirmed. Chromium verifies reload, cross-tab invalidation, session revoke/retry and reset-link scrubbing. Forty-eight frontend unit tests and eleven browser cases pass. Real browser-to-live-API/provider release flows remain unverified. |
-| Frontend dependencies and transport | Local audit/build verified | Patched Axios `1.20.0`, Vue `3.5.44`, Vite `8.3.5`, Vitest `4.1.12`, PostCSS `8.5.31` and affected lockfile transitives. Frontend/browser npm audits report zero vulnerabilities on this run. Axios interceptors retain typed responses and `baseApi` unwraps payloads; concurrent 401 retry coverage verifies the public payload contract. Typecheck now explicitly checks both application and Node/Vite projects. Duplicate icon CSS import was removed; production build no longer emits unresolved icon-font warnings. |
-| Linked repository and later modules | Partial; hardening fixes added | Git tree file counting is streamed and workspace scans use bounded backoff. Dependency graphs track `.cs` scripts and preserve `extends`/`preload`/`load` relations. This patch does not claim completion of M2 or later milestones. |
-| Worker host startup | Locally verified | The Worker composition root is independent of HTTP/Identity-only services, applies development database initialization only in Development, and retries an unavailable initial RabbitMQ connection with bounded exponential backoff and jitter instead of stopping the host. Composition and broker-outage regressions are covered by automated unit tests. |
-| Production deployment | Not ready | Production secrets, backup/restore evidence, full observability, hosted-provider membership synchronization and release hardening remain outside the current M1 source patch. |
+---
 
-## Added verification coverage
+## 2. Verification Summary
 
-The executable integration suite includes organization-role by project-role authorization, suspended/removed membership checks, cross-tenant masking, organization-only access denial, soft-deleted-user pagination, session validation and PostgreSQL concurrency/migration checks. Identity coverage additionally includes independent-device HTTP lifecycle, real refresh replay concurrency, password-reset/registration challenge concurrency, concurrent login lockout, active-session boundary serialization, logout cookie cleanup on error, Redis atomic increments/failure behavior and trusted-proxy handling. Frontend unit coverage includes same-tab/cross-tab refresh coordination, lease recovery, stale completion rejection, cross-tab logout, safe return paths, partial registration success and authenticated reset routing.
+For detailed test commands, architecture breakdown, regression scenarios, and reproducing test runs, refer to the [Testing and Verification Guide](TESTING.md).
 
-## Verification state
+- **Backend Unit Tests:** 305 passed (including final retry-actor and linked URL credential guards).
+- **Backend Integration Tests (PostgreSQL 16 & Redis 7):** 165 passed; 1 provider adapter skipped in the provider-free gate. The isolated real adapter command separately passes with zero skips. Clean and preceding-M1 schema upgrade tests pass.
+- **Frontend Unit Tests (Vitest):** 155 passed.
+- **Controlled Browser Tests (Playwright Chromium):** 22 passed.
+- **Live Browser-to-API Acceptance Tests:** 10 passed.
+- **Backend Smoke Gate:** 41 HTTP assertions passed.
+- **Vulnerability & Secret Audits:** 0 High/Critical findings in npm and NuGet dependencies.
 
-The source, contracts and local executable evidence are synchronized for the changed Identity M1/browser behavior. Production/release gates remain separate: secret/container scanning, staging observability, backup/restore, production configuration, runtime images and a clean-checkout CI run are not claimed by this local verification. Current organization/project implementation still lacks required provider-reconciliation evidence; neither M1 nor the complete product is marked complete.
+---
 
-## Verification record — 2026-10-26
+## 3. Status Maintenance Rules
 
-Environment: Windows PowerShell, Node `v26.5.0`, .NET SDK `10.0.400`, disposable PostgreSQL `16-alpine` and Redis `7-alpine`. CI is configured for Node 22; its exact-snapshot run remains pending.
+1. A module may be marked **Implemented** only when its production code exists and satisfies documented functional requirements.
+2. A module may be marked **Verified** only when automated unit, integration, or E2E tests have been executed with passing evidence.
+3. Interfaces, entities, or design documentation alone do not constitute proof of implementation.
+4. Blocked dependencies must remain explicitly identified.
 
-| Command | Result |
-|---|---|
-| `npm.cmd run verify` from the repository root | Passed end to end, including startup and cleanup of the isolated Compose test project. |
-| `node scripts/check-doc-links.mjs` | Relative documentation targets passed; remote URLs and heading anchors are outside this check. |
-| `dotnet restore` | Passed. |
-| `dotnet format --verify-no-changes --no-restore` | Passed. |
-| `dotnet build --no-restore` | Passed, zero warnings/errors. |
-| `dotnet test --no-build` | 212 unit tests and 50 integration tests passed, zero skipped. Integration tests used the isolated PostgreSQL and Redis endpoints from the runner. |
-| `npm ci --no-audit --no-fund` in frontend and browser packages | Passed from the respective lockfiles. |
-| `npm run lint` and `npm run typecheck` in frontend | Passed; application and Node/Vite TypeScript projects are checked explicitly. |
-| `npm run test:unit` in frontend | 48 passed across 9 files. |
-| `npm run build` in frontend | Passed. |
-| `npm exec -- playwright install chromium`, then `npm test` in `GodForge-E2E` | 11 passed, zero skipped. Browser HTTP contracts are controlled fixtures, not live server/provider evidence. |
-| `npm audit --audit-level=high` in frontend and browser packages | Both report zero vulnerabilities on this run. |
-| `dotnet list package --vulnerable --include-transitive` | All seven projects report no vulnerable packages from configured sources on this run. |
-| `git diff --check` | Passed. |
+## M2 verification boundary
 
-Regression evidence: `TC-AUTH-BROWSER-011` failed before the bootstrap watcher/render guard fix, remaining on `/dashboard` after outage retry returned 401; it passes after the fix. Logout-error coverage asserts the explanation, absence of uncaught browser exceptions, and no refresh resurrection on reload. Requirements affected: `FR-01.2` through `FR-01.5`, browser controls for `T-15`. No database migration, new business API or asynchronous job behavior was introduced. Existing backend authentication edits present before this work were preserved and exercised by the backend gates.
+The pinned Forgejo 15.0.11 image uses isolated volumes; the legacy root
+Forgejo 11 deployment has not been upgraded. No existing developer database was
+reset. `npm.cmd run test:m2:provider` bootstraps the real adapter configuration;
+`npm.cmd run test:m2:acceptance` exercises the full HTTP/outbox/Worker/provider/Git
+path and real browser tests. An adapter-only pass does not establish full
+GodForge membership-to-provider acceptance.
 
-Documentation synchronized: functional authentication SRS, auth contract, frontend architecture, threat model, traceability, testing/acceptance, local setup, quality gates and completion backlog. Organization/project/frontend completion, hosted Git, durable provider reconciliation and later milestone/release gates remain open in the completion plan.
-
-Do not mark the entire product milestone or production release complete solely from this status file.
-
-## Workspace verification record — 2026-10-27
-
-The first workspace foundation slice is locally verified for `FR-27`, `FR-03` and `FR-27.3` presentation behavior. `npm.cmd run verify` passed from this working tree: documentation links; backend restore/format/build (zero warnings/errors), 222 unit and 72 integration tests; FE/E2E clean installs and zero-vulnerability audits; FE lint/typecheck, 79 unit tests and build; 16 controlled Chromium tests. No mandatory tests were skipped. The separate `npm.cmd run test:workspace:live` rebuilt .NET 10 API/Worker images and passed one actual browser-to-local-API workflow with real PostgreSQL/Redis/SMTP/outbox, then removed its containers and fixture volumes. Both Playwright configs/tests also passed TypeScript checking. [Changed files, endpoints, security decisions, regression history and reproduction](WORKSPACE_FOUNDATION_EVIDENCE.md).
-
-The first combined run failed due to the auth HTTP test cache using default localhost Redis outside the isolated test environment. Correcting that test-only endpoint exposed a reset-versus-refresh optimistic conflict; the existing reset use case now retries bounded conflicts from fresh state and revalidates the single-use challenge. Two unit regressions and the existing real PostgreSQL race/single-use cases pass. Session architecture, transport, refresh coordination, API shape and backend tenant authorization were preserved.
-
-Missing evidence remains explicit: no clean-checkout CI of the exact reviewed snapshot (including CI Node 22), complete release scans/OpenAPI artifact verification, staging acceptance or provider reconciliation. M1 is **not complete**. Invitations, membership/ownership/settings UI and comprehensive live role/revocation evidence are the next slices. The single local live workflow does not close those gates.
-
-## Organization management verification record — 2026-10-30
-
-The M1 Organization Management and Collaboration slice (`Overview`, `Projects`, `Members`, `Invitations`, `Invitation Acceptance`, and `Settings: General, Ownership, Danger Zone`) is locally verified and stabilized for `FR-27`, `FR-27.1`, `FR-27.2` (internal revocation), `FR-27.3`, and `FR-03`, including remediation of Defects A–D (domain-aligned 1–160 name and 1–80 slug bounds, removal of speculative single-page last-owner disabling in favor of authoritative `409 LAST_OWNER_REQUIRED` server enforcement, server-paginated/searchable ownership-transfer candidate loading for >100-member organizations, and generation-guarded `useResource` `onSuccess` form initialization with tenant-epoch disposal guards). `npm.cmd run verify` passed end to end: documentation links; backend restore/format/build (zero warnings/errors), 250 unit and 85 PostgreSQL integration tests; FE/E2E clean installs and zero-vulnerability audits; FE lint/typecheck, 96 unit tests across 15 files and production build; 19 controlled Chromium tests (`TC-AUTH-BROWSER-001`–`011`, `TC-WORKSPACE-BROWSER-001`–`008`). No mandatory tests were skipped. The separate `npm.cmd run test:workspace:live` rebuilt .NET 10 API/Worker images and passed two live browser-to-API workflows (`TC-WORKSPACE-LIVE-001` and `TC-WORKSPACE-LIVE-002`) with real PostgreSQL/Redis/RabbitMQ/Worker/Mailpit, and `npm.cmd run test:backend:smoke` passed 41 HTTP assertions. [Acceptance evidence and defect remediation record](ORGANIZATION_MANAGEMENT_ACCEPTANCE_EVIDENCE.md) ([prior workspace record](WORKSPACE_FOUNDATION_EVIDENCE.md)).
-
-Missing evidence remains explicit: no clean-checkout CI of the exact reviewed snapshot (including CI Node 22 and CI `trivy`/`gitleaks` scans), staging acceptance, remaining FR-17 acceptance (see project addendum), or external hosted-provider reconciliation (`FR-27.2` / `AC-FR-27.2-02`). M1 is **not complete**.
-
-## Status update rule
-
-A row may be marked fully verified only when code, automated tests, documentation and a reproducible execution record are available. Entity or interface presence alone is not proof of runtime completion.
-
-
-## Project management addendum — 2026-10-30
-
-Overview, Members and Settings implement assignment/reactivation, role management, removal/self-leave, ownership, versioned metadata/settings, archive/restore and retained deletion requests. The earlier organization results are historical. [Project management evidence](PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md) is supplemented by [settings and policy evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md): own-user preferences and effective AI policy are now executable. Full M1 remains incomplete: immutable profile/analysis execution identity and FR-27.2 external reconciliation remain open. Remote CI/staging/release readiness is not established.
+`AC-FR-21-01`, `AC-FR-21-02`, `AC-FR-21-03`, `AC-FR-07-01` and
+`AC-FR-27.2-02` are tracked against the full suite; provider-free tests alone
+cannot close them. Final browser/security gates remain open. M3 remains gated.

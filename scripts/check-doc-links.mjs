@@ -4,13 +4,19 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 function markdownFiles(directory) {
+  if (!existsSync(directory)) return [];
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const path = resolve(directory, entry.name);
     return entry.isDirectory() ? markdownFiles(path) : entry.name.endsWith('.md') ? [path] : [];
   });
 }
-const files = [resolve(root, 'AGENTS.md'), resolve(root, 'README.md'),
-  ...markdownFiles(resolve(root, 'docs')), ...markdownFiles(resolve(root, '.agents'))];
+const candidateFiles = [
+  resolve(root, 'AGENTS.md'),
+  resolve(root, 'README.md'),
+  ...markdownFiles(resolve(root, 'docs')),
+  ...markdownFiles(resolve(root, '.agents'))
+];
+const files = candidateFiles.filter(existsSync);
 const errors = [];
 for (const file of files) {
   // Code examples do not declare documentation links.

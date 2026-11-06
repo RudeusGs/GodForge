@@ -1,5 +1,7 @@
 namespace GodForge.Api.Contracts.Repositories;
 
+public sealed record ProvisionHostedRepositoryRequest(string Name, string DefaultBranch = "main", bool IsPrivate = true, bool AutoAnalyzeEnabled = false);
+
 public sealed record LinkRepositoryRequest(
     string RemoteUrl,
     string Provider,

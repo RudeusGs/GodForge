@@ -48,6 +48,6 @@ dotnet format --verify-no-changes
 dotnet list package --vulnerable --include-transitive
 ```
 
-See `../docs/SRS/02-architecture.md`, `../docs/MILESTONES.md`, and `../docs/STABILIZATION_REPORT.md` before adding repository, parser, worker or AI features.
+See `../docs/SRS/02-architecture.md`, `../docs/MILESTONES.md`, and `../docs/QUALITY_GATES.md` before adding repository, parser, worker or AI features.
 
 Node-based repository tooling and Git hooks are configured at the repository root. Install them there with `npm ci`; the backend does not need a separate npm dependency tree. Run root `npm run verify` for the isolated combined gate.

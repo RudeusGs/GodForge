@@ -1,8 +1,18 @@
 # 6. Security Requirements
 
+M2 adapter controls: hosted repositories are private and owned by a non-admin
+service account. Personal binding tokens are transient and excluded from stored
+identity rows and job messages. Provider calls disable redirects, bound response
+bodies and allow insecure transport only through explicit loopback/`forgejo`
+development configuration. Tree/blob reads require immutable SHA, reject unsafe
+paths, symlinks and submodules, and render strict UTF-8 text only. Signed raw-body
+webhooks use constant-time HMAC verification and persistent delivery/revision
+deduplication. Desired access is re-read under shared membership locks and verified
+externally before reconciliation completion. Real provider acceptance is open.
+
 Stabilization: project settings now reject unknown tenant/platform-policy properties before mutation, alongside strict user/organization DTOs. Remote session revocation retries optimistic refresh conflicts from fresh state, revalidates ownership, invalidates the distributed cache before saving and commits one audit on success; retry exhaustion remains an explicit failure. AI policy is rechecked after cache lookup before cached output/provider use. No atomic policy fence through final job publication is claimed by these point-in-time checks.
 
-M1 settings controls: strict own-user full request DTOs prevent target-user injection/mass assignment. Typed organization AI restrictions are Owner/Admin-only, tenant masked, versioned and audited. Project policy checks run inside Application under shared organization/project locks; no frontend-only authorization. Effective policy uses current durable state without a cache. Queued AI rechecks fresh projections before provider/cache use and after a response, discarding revoked output. Point-in-time revalidation cannot undo an already transmitted request. No notification delivery, Gemini operation or immutable analysis execution is certified by saving preferences. [Acceptance and residual dependencies](../M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md).
+M1 settings controls: strict own-user full request DTOs prevent target-user injection/mass assignment. Typed organization AI restrictions are Owner/Admin-only, tenant masked, versioned and audited. Project policy checks run inside Application under shared organization/project locks; no frontend-only authorization. Effective policy uses current durable state without a cache. Queued AI rechecks fresh projections before provider/cache use and after a response, discarding revoked output. Point-in-time revalidation cannot undo an already transmitted request. No notification delivery, Gemini operation or immutable analysis execution is certified by saving preferences. See [Testing Guide](../TESTING.md).
 
 ## Identity and session
 

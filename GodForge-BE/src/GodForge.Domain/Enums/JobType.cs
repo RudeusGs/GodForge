@@ -16,5 +16,6 @@ public enum JobType
     FinalizeAnalysis,
     DiffScene,
     GeneratePreview,
-    NotificationDispatch
+    NotificationDispatch,
+    ReconcileHostedRepository
 }

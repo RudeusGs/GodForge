@@ -27,7 +27,7 @@ Settings scope extension: authenticated active users read/write only their own `
 1. Every project belongs to exactly one organization.
 2. Every active project member must be an active member of that same organization.
 3. A project role never survives suspension or removal of its organization membership.
-4. Organization membership removal/suspension revokes affected project memberships in the same business transaction and creates outbox events for Forgejo permission reconciliation.
+4. Organization membership removal/suspension revokes affected project memberships in the same business transaction. External Forgejo permission reconciliation is an open M2 requirement and will be integrated via durable outbox events.
 5. OrganizationOwner/OrganizationAdmin can administer organization and project metadata, but they do not automatically read repository source, protected assets or analysis content unless they also hold a project role.
 6. ProjectOwner/Maintainer may add only active organization members to a project in M1. External users must first join the organization through an organization invitation.
 7. At least one active OrganizationOwner and one active ProjectOwner must remain. Ownership transfer is atomic.
@@ -119,4 +119,15 @@ For project membership changes, `limited` means Maintainer cannot add, promote, 
 
 ## Project browser permission projection — 2026-10-30
 
-The UI projects RolePermissions: active ProjectOwner/Maintainer see metadata, membership administration and settings; ProjectOwner additionally sees ownership/deletion. Maintainer cannot manage/grant ProjectOwner. All active project roles can read the member directory and self-leave subject to backend owner protection. Archived reads and authorized restore remain available. Organization catalog administration does not enable project content/navigation. Backend authorization remains authoritative, including existing documented organization lifecycle administration exceptions. Ownership/assignment targets require active accounts and membership intersection. [Role and race evidence](PROJECT_MANAGEMENT_ACCEPTANCE_EVIDENCE.md).
+The UI projects RolePermissions: active ProjectOwner/Maintainer see metadata, membership administration and settings; ProjectOwner additionally sees ownership/deletion. Maintainer cannot manage/grant ProjectOwner. All active project roles can read the member directory and self-leave subject to backend owner protection. Archived reads and authorized restore remain available. Organization catalog administration does not enable project content/navigation. Backend authorization remains authoritative, including existing documented organization lifecycle administration exceptions. Ownership/assignment targets require active accounts and membership intersection. See [Testing Guide](TESTING.md).
+
+## Hosted Git provider mapping
+
+Repository provisioning and protection mutations require `repository.manage`;
+browsing requires `repository.read`. Provider collaborators map ProjectOwner to
+admin, Maintainer/Developer to write, Reviewer/Viewer to read. Binding proves
+control of a non-admin Forgejo account with a transient personal token; stable
+provider ID is authoritative, never display name or email. Removed/suspended
+members and inactive scopes have no desired grants. Internal authorization is
+immediate; external access remains pending/degraded until verified reconciliation.
+Provider integration and revocation acceptance remain open.

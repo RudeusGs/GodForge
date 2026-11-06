@@ -14,7 +14,13 @@ public sealed record RepositoryDto(
     string? CurrentCommitHash,
     long? RepositorySizeBytes,
     DateTimeOffset? LastSyncedAt,
-    string? LastErrorCode)
+    string? LastErrorCode,
+    DateTimeOffset? AccessRequestedAt = null,
+    DateTimeOffset? AccessReconciledAt = null,
+    string? AccessErrorCode = null,
+    long AccessGeneration = 0,
+    long AccessConfirmedGeneration = 0,
+    DateTimeOffset? WebhookConfirmedAt = null)
 {
     public static RepositoryDto From(GitRepository repository)
         => new(
@@ -29,5 +35,11 @@ public sealed record RepositoryDto(
             repository.CurrentCommitHash,
             repository.RepoSizeBytes,
             repository.LastSyncedAt,
-            repository.LastErrorCode);
+            repository.LastErrorCode,
+            repository.AccessRequestedAt,
+            repository.AccessReconciledAt,
+            repository.AccessErrorCode,
+            repository.AccessGeneration,
+            repository.AccessConfirmedGeneration,
+            repository.WebhookConfirmedAt);
 }

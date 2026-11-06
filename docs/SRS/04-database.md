@@ -148,3 +148,34 @@ PostgreSQL is the durable source of GodForge business state. This document defin
 ## 4.5 M1 implementation gate
 
 Before M1 code or migrations are written, use `04-database-m1-physical.md` as the authoritative column/constraint/index design for identity, organization, project, membership, invitation, audit and outbox tables. Any deviation requires the physical document and traceability matrix to be updated first.
+
+## 4.6 M2 hosted repository additions
+
+`AddHostedRepositoryLifecycle` adds nullable `hosted_name` (60 characters),
+`provision_identity` (32-character random ownership marker), `access_requested_at`,
+`access_reconciled_at` and `access_error_code` (100 characters) to
+`repo.repositories`. Pending hosted rows retain empty remote/clone URL and null
+provider ID. Existing linked/M1 rows require no backfill. Provider + hosted ID
+has a unique partial index for non-null IDs.
+
+`repo.forgejo_identities` contains UUID PK, user FK with restricted delete,
+unique user_id, unique positive provider_user_id, verified login (100 characters)
+and verified_at. It stores no token. Application verifies ownership before insert.
+This schema assumes one configured Forgejo instance; switching instances requires
+an explicit migration and identity/repository rebinding plan.
+
+Existing `ops.jobs`, `ops.outbox_messages`, `repo.webhook_events`, `repo.git_refs`
+and `repo.git_commits` supply durable operations and deduplication. Webhook payload
+retention contains only sanitized reference/SHA metadata, not raw source or
+credentials. Unique delivery and repository/commit/ref indexes are reused.
+Reconciliation jobs and outbox rows are staged by the existing unit of work in
+the same SaveChanges transaction as membership/lifecycle mutations. No startup
+production migration was added.
+
+`HardenM2ProviderOperations` adds non-negative access generation projections,
+managed webhook ID and confirmation timestamp. `FenceRepositorySynchronization`
+adds the sync generation. Generation columns default to zero for existing rows
+and are EF concurrency tokens. Existing job `claim_token`, heartbeat and attempt
+columns provide lease fencing; no second job table is introduced. Provider I/O
+runs between claim and completion transactions. Existing M1 migrations remain
+unchanged; fresh and prior-M1 upgrade tests include model snapshot consistency.

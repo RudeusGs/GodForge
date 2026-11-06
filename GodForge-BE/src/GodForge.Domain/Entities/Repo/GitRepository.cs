@@ -13,6 +13,17 @@ public sealed class GitRepository : BaseAuditableEntity, ISoftDeletable
     public string DefaultBranch { get; private set; } = default!;
     public string? ExternalRepositoryId { get; private set; }
     public string? HostedRepositoryId { get; private set; }
+    public string? HostedName { get; private set; }
+    public string? ProvisionIdentity { get; private set; }
+    public DateTimeOffset? AccessRequestedAt { get; private set; }
+    public DateTimeOffset? AccessReconciledAt { get; private set; }
+    public string? AccessErrorCode { get; private set; }
+    public long AccessGeneration { get; private set; }
+    public long AccessConfirmedGeneration { get; private set; }
+    public long? WebhookId { get; private set; }
+    public DateTimeOffset? WebhookConfirmedAt { get; private set; }
+    public long SyncGeneration { get; private set; }
+    public void BeginMetadataSync() { SyncGeneration = checked(SyncGeneration + 1); }
     public string? WorkspaceKey { get; private set; }
     public GitRepositoryStatus GitRepositoryStatus { get; private set; }
     public bool AutoAnalyzeEnabled { get; private set; }
@@ -23,6 +34,67 @@ public sealed class GitRepository : BaseAuditableEntity, ISoftDeletable
     public DateTimeOffset? DeletedAt { get; private set; }
 
     private GitRepository() { }
+
+    public void RequestAccessReconciliation(DateTimeOffset now) { AccessGeneration = checked(AccessGeneration + 1); AccessRequestedAt = now; AccessErrorCode = null; }
+    public void CompleteAccessReconciliation(DateTimeOffset now) { AccessConfirmedGeneration = AccessGeneration; AccessReconciledAt = now; AccessErrorCode = null; }
+    public void FailAccessReconciliation(string code) { AccessErrorCode = code; }
+    public void ConfirmWebhook(long id, DateTimeOffset now) { if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id)); WebhookId = id; WebhookConfirmedAt = now; }
+
+    public static GitRepository RequestHosted(Guid projectId, string name, string defaultBranch, bool autoAnalyzeEnabled, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(defaultBranch);
+        if (projectId == Guid.Empty) throw new ArgumentException("Project is required.", nameof(projectId));
+        return new GitRepository
+        {
+            Id = Guid.NewGuid(),
+            ProjectId = projectId,
+            Mode = RepositoryMode.InternalHosted,
+            Provider = GitProvider.Forgejo,
+            RemoteUrl = string.Empty,
+            CloneUrlSanitized = string.Empty,
+            HostedName = name,
+            ProvisionIdentity = Guid.NewGuid().ToString("N"),
+            DefaultBranch = defaultBranch,
+            AutoAnalyzeEnabled = autoAnalyzeEnabled,
+            GitRepositoryStatus = GitRepositoryStatus.ProvisioningPending,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+    }
+
+    public void BeginProvisioning(DateTimeOffset now)
+    {
+        if (Mode != RepositoryMode.InternalHosted || HostedRepositoryId is not null || DeletedAt is not null)
+            throw new InvalidOperationException("Repository cannot be provisioned.");
+        GitRepositoryStatus = GitRepositoryStatus.Provisioning;
+        LastErrorCode = null;
+        UpdatedAt = now;
+    }
+
+    public void CompleteProvisioning(string providerId, string cloneUrl, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cloneUrl);
+        if (GitRepositoryStatus != GitRepositoryStatus.Provisioning)
+            throw new InvalidOperationException("Repository is not provisioning.");
+        HostedRepositoryId = providerId;
+        RemoteUrl = cloneUrl;
+        CloneUrlSanitized = SanitizeCloneUrl(cloneUrl);
+        GitRepositoryStatus = GitRepositoryStatus.Ready;
+        LastErrorCode = null;
+        UpdatedAt = now;
+    }
+
+    public void FailProvisioning(string errorCode, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorCode);
+        if (Mode != RepositoryMode.InternalHosted || HostedRepositoryId is not null)
+            throw new InvalidOperationException("Repository cannot fail provisioning.");
+        GitRepositoryStatus = GitRepositoryStatus.ProvisioningFailed;
+        LastErrorCode = errorCode;
+        UpdatedAt = now;
+    }
 
     public static GitRepository Create(
         Guid projectId,
@@ -100,7 +172,7 @@ public sealed class GitRepository : BaseAuditableEntity, ISoftDeletable
         UpdatedAt = now;
     }
 
-    public void MarkSynchronized(string commitHash, long repositorySizeBytes, DateTimeOffset now)
+    public void MarkSynchronized(string commitHash, long? repositorySizeBytes, DateTimeOffset now)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(commitHash);
         CurrentCommitHash = commitHash.Trim();

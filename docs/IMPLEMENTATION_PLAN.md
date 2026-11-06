@@ -1,27 +1,70 @@
-# Completion Plan
+# Implementation Plan and Roadmap
 
-Final source `1e56c7f` closes available M0 local/clean-checkout/remote CI and security gates: [Actions 41066217337](https://github.com/RudeusGs/GodForge/actions/runs/41066217337), eight successful mandatory jobs, both runtime images scanned and local regression gates passed. This supersedes the historical M0 row's missing CI/scan evidence for that source. Full M1 and M2 readiness remain blocked by required FR-27.2 provider reconciliation; full AC-FR-17.4-01 remains dependent on M4–M6, with no fabricated profiles or executions.
+This document outlines the ordered implementation roadmap for GodForge, maintaining the milestone dependencies defined in [MILESTONES.md](MILESTONES.md) and [Scope Specification](SRS/01-scope.md).
 
-2026-10-30 stabilization: policy recovery, advisory-mode boundaries, post-cache policy checks and the verified remote refresh/revocation race have targeted fixes. [Final settings evidence](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) owns commands, counts, source identity and CI status. FR-27.2 remains an M2 provider-reconciliation dependency; AC-FR-17.4-01 remains OPEN for M4–M6 version propagation, immutable uniqueness and historical execution evidence.
+---
 
-Status: current implementation backlog, reviewed 2026-10-26. This plan preserves the milestone order and Core Must scope in [MILESTONES.md](MILESTONES.md) and [SRS/01-scope.md](SRS/01-scope.md). Passing an isolated test suite does not close a milestone or a production release.
+## 1. Milestone Dependency Order
 
-| Order | Remaining completion work | Required exit evidence |
-|---|---|---|
-| M0 | Run the exact reviewed snapshot in clean-checkout CI; validate .NET 10 runtime artifacts/images and OpenAPI generation; finish secret/container scans. Local checks now have a single reproducible runner and isolated test infrastructure. | Restore, format, build, tests, documentation links and scans pass from a clean checkout; no unresolved architecture conflict. |
-| M1 | The workspace and organization collaboration slices now provide organization/project list/create, project metadata navigation, organization overview, members management, invitations management, invitation acceptance, general settings, ownership transfer, and deletion request (`deleting` lifecycle state), with controlled browser and two isolated live-API workflows (`TC-WORKSPACE-LIVE-001` and `TC-WORKSPACE-LIVE-002`); see [organization management acceptance evidence](ORGANIZATION_MANAGEMENT_ACCEPTANCE_EVIDENCE.md) and [workspace foundation evidence](WORKSPACE_FOUNDATION_EVIDENCE.md). Project browser workflows now have local live evidence; complete the remaining FR-17 prerequisites listed in the project acceptance addendum. Implement durable reconciliation required by `FR-27.2` without emitting events that have no consumer; coordinate the provider adapter with the M2 dependency. Verify every required endpoint and role against its acceptance IDs. | `FR-01.*`, `FR-27.*`, `FR-03*` and M1 `FR-17` Must criteria pass, including current membership intersection, atomic revocation/outbox intent and cross-tenant denials. Local live browser workflows do not close all staging/provider acceptance. |
-| M2 | Finish linked/hosted repository behavior, provider permissions and signed webhook foundation against documented requirements. Existing partial implementation does not establish completion. | Team creates, clones, pushes and browses a hosted repository; removed members lose provider access; webhook identity/replay and credential handling tests pass. |
-| M3 | Verify durable jobs, atomic outbox/inbox, retry/DLQ, cancellation, locks and workspace limits end to end. | Duplicate delivery, worker restart, broker failure, timeout and cancellation leave consistent durable state and release resources. |
-| M4-M6 | Complete validation/parser corpus, scene/asset/graph/health interfaces, immutable revision output, incremental equivalence and comparison. | Versioned reproducible outputs, hostile input regression tests and measured incremental/full equivalence. |
-| M7-M8 | Complete optional Gemini advisory and protected Asset Vault after their dependencies pass. | Redaction and schema/degraded-mode tests; independent asset authorization, upload/quarantine/checksum and hydration evidence. |
-| M9 | Complete findings, notifications/activity, dashboard and report export. | A team resolves a finding across two revisions and exports an authorized report with provenance. |
-| M10 | Deploy the reviewed release, verify observability/alerts, performance, retention and encrypted backup/restore; run the complete demonstration workflow. | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), security/performance/recovery evidence and graduation acceptance all pass. |
+```text
+[M0: Foundation & Runtime] (Completed)
+         |
+         v
+[M1: Internal Identity, Tenancy & Settings] (Completed - Internal foundation verified)
+         |
+         v
+[M2: Hosted Git & Repository Foundation] (Partial implementation; real provider acceptance open)
+         |
+         v
+[M3: Durable Worker & Pipeline Infrastructure]
+         |
+         v
+[M4–M6: Godot Validation, Parser, AST & Health Engine]
+         |
+         v
+[M7–M8: AI Advisory & Asset Vault]
+         |
+         v
+[M9: Finding Collaboration & Technical Reports]
+         |
+         v
+[M10: Production Release, Operations & Hardening]
+```
 
-Reconciliation requirements remain normative in [SRS/03-functional/project.md](SRS/03-functional/project.md). Current source limitations recorded in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) and threat `T-16` are unmet work, not permission to weaken the tenant revocation invariant. Provider integration must not start before the preceding milestone gates are satisfied.
+---
 
-For every slice, identify FR/AC IDs and actor permissions, implement API/UI/data/security behavior, add meaningful regression/acceptance tests, synchronize affected contracts and traceability, and run [QUALITY_GATES.md](QUALITY_GATES.md). Record verified evidence rather than estimating a completion percentage from file counts.
+## 2. Milestone Execution Roadmap
 
+| Milestone | Target Scope | Current Status | Required Exit Evidence |
+|---|---|---|---|
+| **M0: Foundation & Runtime** | Clean Architecture solution, .NET 10 LTS target, Docker Compose, locked dependency restores, CI quality gates, container vulnerability scanning. | **Completed** | Full build, format, test passes in CI; reproducible clean-checkout execution. |
+| **M1: Identity, Tenancy & Settings** | Authentication (`FR-01.*`), organization management (`FR-27`), project lifecycle (`FR-03`), membership hierarchy (`FR-27.1`, `FR-27.2`), settings & policies (`FR-17`). | **Completed (Internal Foundation)** | Internal tenancy, memberships, settings, and authorization verified across unit, integration, and E2E suites. External Forgejo reconciliation (`FR-27.2` / `AC-FR-27.2-02`) scheduled as an M2 acceptance requirement. |
+| **M2: Hosted Git & Repositories** | Forgejo hosted Git provisioning, external linked Git adapters over HTTPS, branch/commit/tree navigation, signed webhooks, provider permission synchronization (`FR-27.2`). | **Partial implementation** | Real team creation, clone, push and browse; verified asynchronous external revocation; actual signed provider delivery and protection enforcement. |
+| **M3: Durable Worker Pipeline** | Distributed job processing, transactional outbox/inbox, job retry with exponential backoff, dead-letter queues (DLQ), lock management, and cancellation tokens. | **Planned** | Reliable job dispatch under broker restarts; verified cleanup of temporary workspaces; idempotent message processing. |
+| **M4–M6: Godot Intelligence & Health** | Godot validation gateway (`project.godot`), deterministic AST parser (`.tscn`, `.tres`, `.gd`), scene dependency graph, incremental analysis, and versioned health rules. | **Planned** | Deterministic and canonical parser outputs across Godot versions; verified equivalence between incremental and full analysis runs; hostile file rejection. |
+| **M7–M8: AI Advisory & Asset Vault** | Gemini advisory integration with prompt redacting and schema validation; MinIO binary storage with access policies, manifests, and signed download URLs. | **Planned** | Advisory suggestions validated against deterministic rules; advisory failure degrades gracefully; private asset downloads restricted by scope and audited. |
+| **M9: Collaboration & Reports** | Finding collaboration workflows, activity feeds, audit querying, and technical export in PDF, JSON, and CSV formats. | **Planned** | End-to-end finding resolution across revisions; authorized technical report downloads with verifiable provenance. |
+| **M10: Production Release & Operations** | Observability dashboards, metrics/traces export, encrypted backup and restore drill, production secret management, and graduation defense demonstration. | **Planned** | Verified encrypted backup and restore drill; zero critical/high security findings; operational monitoring active. |
 
-## Project management follow-up — 2026-10-30
+---
 
-Project browser workflows have real local acceptance. The [settings slice](M1_SETTINGS_POLICY_ACCEPTANCE_EVIDENCE.md) now implements typed/versioned own-user preferences, safe schema upgrade, authoritative AI policy resolution and single-profile selection. Before M2, close exact-snapshot remote CI/release evidence. Full AC-FR-17.4-01 remains dependent on M4–M6 immutable parser/rule/profile/input identity integration. Coordinate the FR-27.2 durable consumer with the M2 provider adapter; internal authorization does not establish external revocation. No unused reconciliation messages are emitted by settings changes.
+## 3. Next Milestone Focus: M2 Hosted Git & External Reconciliation
+
+1. **Forgejo Repository Provisioning & Adapter Integration (`FR-04`–`FR-07`):**
+   - Verify the implemented provisioning, browser and branch-protection adapters against real Forgejo.
+   - Resolve provider registry access; test the isolated rootless candidate before upgrading retained data.
+
+2. **Forgejo Reconciliation Outbox Consumer (`FR-27.2` / `AC-FR-27.2-02`):**
+   - Verify the implemented desired-state consumer with real non-admin Git users, including member removal/suspension and stale delivery ordering.
+   - Complete automatic webhook setup, linked-mode synchronization/browsing and the full M2 live journey.
+
+3. **Analysis Profile Propagation (`AC-FR-17.4-01`):**
+   - Propagate versioned analysis profiles into worker execution identities once the Godot parser engine (M4–M6) is initialized.
+
+---
+
+## 4. Implementation Rules
+
+- Every new feature must satisfy the [Definition of Ready](DEFINITION_OF_READY.md) before code is written.
+- Unit, integration, and E2E verification must pass before claiming completion (see [Testing Guide](TESTING.md)).
+- Documentation must be updated synchronously with code changes.

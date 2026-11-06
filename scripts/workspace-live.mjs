@@ -23,6 +23,12 @@ try {
   run('npm', ['exec', '--', 'playwright', 'install', 'chromium'], resolve(root, 'GodForge-E2E'));
   process.env.GODFORGE_WORKSPACE_ACCEPTANCE = 'isolated-compose';
   run('npm', ['test', '--', '--config', 'playwright.live.config.ts'], resolve(root, 'GodForge-E2E'));
+  // Browser cases consume the same IP-based auth budget. Reset only fixture
+  // counters in this run's disposable Redis, as the live cases do before each test.
+  run('docker', [...compose, 'exec', '-T', 'redis', 'redis-cli', 'EVAL', "for _, key in ipairs(redis.call('KEYS', 'auth:rate:*')) do redis.call('DEL', key) end return 1", '0']);
+  process.env.GODFORGE_SMOKE_API = 'http://127.0.0.1:25072/api/v1';
+  process.env.GODFORGE_SMOKE_MAILBOX = 'http://127.0.0.1:28025';
+  run('npm', ['run', 'test:backend:smoke']);
 } catch (error) {
   console.error(error.message); process.exitCode = 1;
 } finally {

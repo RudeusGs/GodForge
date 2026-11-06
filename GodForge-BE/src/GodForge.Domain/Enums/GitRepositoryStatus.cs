@@ -17,5 +17,8 @@ public enum GitRepositoryStatus
     /// <summary>Gặp lỗi</summary>
     Error,
     /// <summary>Bị vô hiệu hóa</summary>
-    Disabled
+    Disabled,
+    ProvisioningPending,
+    Provisioning,
+    ProvisioningFailed
 }

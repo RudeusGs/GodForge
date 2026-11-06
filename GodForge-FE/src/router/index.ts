@@ -19,6 +19,7 @@ const router = createRouter({
                 { path: '/organizations/:organizationId', name: 'organizationOverview', component: () => import('../views/OrganizationOverviewView.vue') },
                 { path: '/organizations/:organizationId/projects', name: 'organizationProjects', component: () => import('../views/OrganizationProjectsView.vue') },
                 { path: '/organizations/:organizationId/projects/:projectId', name: 'projectDetail', component: () => import('../views/ProjectDetailView.vue') },
+                { path: '/organizations/:organizationId/projects/:projectId/repository', name: 'projectRepository', component: () => import('../views/ProjectRepositoryView.vue') },
                 { path: '/organizations/:organizationId/projects/:projectId/members', name: 'projectMembers', component: () => import('../views/ProjectMembersView.vue') },
                 { path: '/organizations/:organizationId/projects/:projectId/settings', name: 'projectSettings', component: () => import('../views/ProjectSettingsView.vue') },
                 { path: '/organizations/:organizationId/members', name: 'organizationMembers', component: () => import('../views/OrganizationMembersView.vue') },

@@ -4706,6 +4706,45 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                     b.ToTable("file_versions", "repo");
                 });
 
+            modelBuilder.Entity("GodForge.Domain.Entities.Repo.ForgejoIdentity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Login")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("login");
+
+                    b.Property<long>("ProviderUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("provider_user_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_forgejo_identities");
+
+                    b.HasIndex("ProviderUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_forgejo_identities_provider_user_id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_forgejo_identities_user_id");
+
+                    b.ToTable("forgejo_identities", "repo");
+                });
+
             modelBuilder.Entity("GodForge.Domain.Entities.Repo.GitCommit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4880,6 +4919,28 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<long>("AccessConfirmedGeneration")
+                        .HasColumnType("bigint")
+                        .HasColumnName("access_confirmed_generation");
+
+                    b.Property<string>("AccessErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("access_error_code");
+
+                    b.Property<long>("AccessGeneration")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("access_generation");
+
+                    b.Property<DateTimeOffset?>("AccessReconciledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("access_reconciled_at");
+
+                    b.Property<DateTimeOffset?>("AccessRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("access_requested_at");
+
                     b.Property<bool>("AutoAnalyzeEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("auto_analyze_enabled");
@@ -4920,6 +4981,11 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
+                    b.Property<string>("HostedName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("hosted_name");
+
                     b.Property<string>("HostedRepositoryId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -4950,6 +5016,11 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("provider");
 
+                    b.Property<string>("ProvisionIdentity")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("provision_identity");
+
                     b.Property<string>("RemoteUrl")
                         .IsRequired()
                         .HasMaxLength(800)
@@ -4960,9 +5031,22 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("repo_size_bytes");
 
+                    b.Property<long>("SyncGeneration")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sync_generation");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at");
+
+                    b.Property<DateTimeOffset?>("WebhookConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("webhook_confirmed_at");
+
+                    b.Property<long?>("WebhookId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("webhook_id");
 
                     b.Property<string>("WorkspaceKey")
                         .HasMaxLength(200)
@@ -4982,6 +5066,11 @@ namespace GodForge.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Provider", "ExternalRepositoryId")
                         .HasDatabaseName("ix_repositories_provider_external_id");
+
+                    b.HasIndex("Provider", "HostedRepositoryId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_repositories_hosted_identity")
+                        .HasFilter("hosted_repository_id IS NOT NULL");
 
                     b.ToTable("repositories", "repo");
                 });
@@ -6744,6 +6833,16 @@ namespace GodForge.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_file_versions_repository_files_file_id");
+                });
+
+            modelBuilder.Entity("GodForge.Domain.Entities.Repo.ForgejoIdentity", b =>
+                {
+                    b.HasOne("GodForge.Domain.Entities.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_forgejo_identities_users_user_id");
                 });
 
             modelBuilder.Entity("GodForge.Domain.Entities.Repo.GitCommit", b =>

@@ -105,7 +105,7 @@ Consume durable jobs, orchestrate safe stages, report progress and enforce retry
 
 ## 8. Database and migration rules
 
-- Read `docs/SRS/04-database.md` and `docs/DATABASE_CHANGE_CHECKLIST.md`.
+- Read `docs/SRS/04-database.md` and `docs/QUALITY_GATES.md`.
 - Every tenant-owned row has an explicit scope path.
 - Add database constraints for business uniqueness and idempotency.
 - Add indexes for documented high-volume queries.
@@ -231,4 +231,4 @@ When finishing a task, report:
 - Known limitations and deferred work.
 - Documentation synchronized.
 
-Follow `docs/DEFINITION_OF_DONE.md` and invoke the `ci-quality-gate` skill before declaring completion.
+Follow `docs/DEFINITION_OF_DONE.md` and verify all gates in `docs/QUALITY_GATES.md` before declaring completion.

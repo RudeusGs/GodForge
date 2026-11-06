@@ -29,7 +29,7 @@ Domain owns invariants and state transitions. Application owns use cases, author
 - More abstractions and mapping code.
 - Small changes may touch several layers.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - No EF Core, HTTP, Git, queue, Redis, MinIO or Gemini dependency in Domain/Application.
 - Controllers and consumers orchestrate only.
 - Domain entities are never returned directly through APIs.

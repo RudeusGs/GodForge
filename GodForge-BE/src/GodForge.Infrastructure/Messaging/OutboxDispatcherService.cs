@@ -257,9 +257,7 @@ public sealed class OutboxDispatcherService : BackgroundService
 
             if (message.EventType == RetiredProviderReconciliationEventType)
             {
-                _logger.LogWarning(
-                    "Retiring legacy provider reconciliation outbox message {OutboxMessageId}; no provider membership adapter exists in this codebase.",
-                    message.Id);
+                throw new NotSupportedException("PROVIDER_RECONCILIATION_NOT_IMPLEMENTED");
             }
             else if (message.EventType == EmailOutbox.EventType)
             {
@@ -531,6 +529,14 @@ public sealed class OutboxDispatcherService : BackgroundService
     private static WorkerMessage DeserializeMessage(string queueName, string payloadJson)
         => queueName switch
         {
+            WorkerQueueNames.RepositorySync => JsonSerializer.Deserialize<RepositorySyncJobMessage>(payloadJson, JsonOptions)
+                ?? throw new JsonException("Repository sync outbox payload is empty."),
+            WorkerQueueNames.HostedRepositoryReconcile =>
+                JsonSerializer.Deserialize<HostedRepositoryReconcileJobMessage>(payloadJson, JsonOptions)
+                ?? throw new JsonException("Hosted access outbox payload is empty."),
+            WorkerQueueNames.HostedRepositoryProvision =>
+                JsonSerializer.Deserialize<HostedRepositoryProvisionJobMessage>(payloadJson, JsonOptions)
+                ?? throw new JsonException("Hosted repository outbox payload is empty."),
             WorkerQueueNames.RepositoryPipeline =>
                 JsonSerializer.Deserialize<RepositoryAnalysisJobMessage>(payloadJson, JsonOptions)
                 ?? throw new JsonException("Repository analysis outbox payload is empty."),

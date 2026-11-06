@@ -16,7 +16,7 @@ The first eligible revision receives full analysis. Later revisions may use Git 
 ### Negative
 - More complex invalidation and correctness testing.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Correctness takes priority over speed.
 - Incremental output must use the same normalized model as full analysis.
 - The reason for fallback must be recorded.

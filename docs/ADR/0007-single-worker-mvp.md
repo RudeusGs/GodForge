@@ -16,6 +16,6 @@ Deploy one `GodForge.Worker` host initially, but isolate consumers and handlers 
 ### Negative
 - One process can suffer noisy-neighbor effects and requires careful concurrency limits.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - No giant universal consumer.
 - Each logical worker owns explicit queue, timeout, retry and metrics configuration.

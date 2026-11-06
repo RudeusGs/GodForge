@@ -1,8 +1,8 @@
 {
   "name": "godforge",
+  "private": true,
   "version": "1.0.0",
-  "description": "GodForge là một nền tảng Web phục vụ công tác quản lý, phân tích và trực quan hóa các dự án Godot Engine. Hệ thống cung cấp các bộ công cụ chuyên sâu bao gồm Snapshot History, Scene Diff Viewer, Dependency Graph, Project Health Dashboard và hệ thống trích xuất Metadata tự động.",
-  "main": "index.js",
+  "description": "Specialized Git and project-intelligence platform for Godot Engine development teams.",
   "directories": {
     "doc": "docs"
   },
@@ -12,6 +12,9 @@
     "verify:backend": "node scripts/verify.mjs --backend",
     "test:backend:smoke": "node scripts/backend-smoke.mjs",
     "test:workspace:live": "node scripts/workspace-live.mjs",
+    "test:m2:provider": "node scripts/m2-provider.mjs",
+    "test:m2:acceptance": "node scripts/m2-acceptance.mjs",
+    "dev:frontend:docker": "npm run dev:docker --prefix GodForge-FE",
     "docs:check": "node scripts/check-doc-links.mjs",
     "prepare": "husky"
   },
@@ -19,9 +22,7 @@
     "type": "git",
     "url": "git+https://github.com/RudeusGs/GodForge.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/RudeusGs/GodForge/issues"

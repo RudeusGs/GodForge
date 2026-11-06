@@ -23,6 +23,6 @@ Deterministic and AI outputs use separate identities; `promptVersion` is omitted
 ### Negative
 - Version lifecycle and storage retention become explicit responsibilities.
 
-## Constraints enforced on implementation and AI agents
+## Implementation Constraints
 - Never overwrite historical output under a different engine version.
 - Never use timestamps as the only idempotency key.

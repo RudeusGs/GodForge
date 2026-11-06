@@ -15,21 +15,22 @@ Read and follow, in order:
 7. `docs/SRS/05-api.md` and the relevant file under `docs/SRS/05-api-contracts/`.
 8. `docs/RBAC_MATRIX.md`, `docs/SRS/06-security.md` and `docs/THREAT_MODEL.md`.
 9. `docs/SRS/10-traceability.md` and `docs/SRS/11-testing-acceptance.md`.
-10. The most specific `.agents/skills/*/SKILL.md` for the task.
+10. `docs/QUALITY_GATES.md` and `docs/TESTING.md`.
 
 If documents conflict, stop and resolve the documentation. Do not silently invent behavior.
 
 ## Current implementation order
 
-- Finish M0 foundation work first, including migration of backend projects to `.NET 10 LTS`.
-- Implement M1 identity and tenancy only from documented `FR-*`, `AC-*` and M1 API contracts.
-- Do not start hosted Git, worker pipeline, parser, AI or Asset Vault code before their milestone dependencies are complete.
+- M0 foundation work is complete (.NET 10 LTS migration, CI, and test baselines).
+- M1 internal identity, tenancy, and settings foundation is complete and verified.
+- M2 hosted Git and Forgejo integration is unblocked for development; external reconciliation (`FR-27.2` / `AC-FR-27.2-02`) must be verified for M2 acceptance.
+- Do not start downstream worker pipeline, parser, AI, or Asset Vault code before their milestone dependencies are complete.
 
 ## M1 authorization invariants
 
 - Every project belongs to exactly one organization.
 - Every active project member must also be an active member of the same organization.
-- Removing or suspending an organization membership revokes all project memberships in that organization in the same business transaction and emits reconciliation events.
+- Removing or suspending an organization membership revokes all project memberships in that organization in the same business transaction. External Forgejo provider reconciliation is an outstanding M2 requirement and is not yet emitted.
 - OrganizationOwner and OrganizationAdmin may administer organization/project metadata but do not automatically receive repository, source, asset or analysis access unless they also hold a project role.
 - Effective permission is the intersection of platform minimums, organization policy, project role and resource-specific policy.
 - Tenant ownership is verified server-side. Client-supplied organization or project IDs are never authorization evidence.
